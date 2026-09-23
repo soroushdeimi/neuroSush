@@ -1,4 +1,4 @@
-"""Filters module."""
+"""Receptive-field kernels (difference of Gaussians, Gabor) for convolutional front ends."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import torch
 def _grid(
     size: int,
     spacing: float,
-    dtype: type[torch.dtype] | None = None,
+    dtype: torch.dtype | None = None,
     device: torch.device | str | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Create a coordinate grid.
@@ -75,10 +75,12 @@ def dog_kernel(
     spacing: float = 1.0,
     zero_mean: bool = False,
     unit_l1: bool = False,
-    dtype: type[torch.dtype] | None = None,
+    dtype: torch.dtype | None = None,
     device: torch.device | str | None = None,
 ) -> torch.Tensor:
-    """Difference of Gaussians kernel.
+    """Square difference-of-Gaussians kernel ``(G(sigma_1) - G(sigma_2)) / sqrt(2 pi)``.
+
+    ``G(s) = exp(-(x^2 + y^2) / (2 s^2)) / s`` on a grid centered on the kernel.
 
     Args:
         size: Size of the kernel.
@@ -118,10 +120,13 @@ def gabor_kernel(
     spacing: float = 1.0,
     zero_mean: bool = False,
     unit_l1: bool = False,
-    dtype: type[torch.dtype] | None = None,
+    dtype: torch.dtype | None = None,
     device: torch.device | str | None = None,
 ) -> torch.Tensor:
-    """Gabor kernel.
+    """Square Gabor kernel ``exp(-(x'^2 + gamma^2 y'^2) / (2 sigma^2)) cos(2 pi x' / wavelength)``.
+
+    ``x'`` and ``y'`` are the grid coordinates rotated by ``theta`` (radians); ``x`` runs
+    along rows and ``y`` along columns.
 
     Args:
         size: Size of the kernel.
