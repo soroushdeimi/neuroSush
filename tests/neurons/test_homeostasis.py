@@ -111,3 +111,15 @@ class TestVoltageHomeostasis:
     def test_invalid_arguments(self, kwargs, match):
         with pytest.raises(ValueError, match=match):
             VoltageHomeostasis(**kwargs)
+
+
+def test_threshold_keeps_the_network_dtype():
+    # regression: counting spikes in float64 turned float32 thresholds into float64
+    net = Network()
+    ng = NeuronGroup(
+        net,
+        2,
+        behaviors=[LIF(**LIF_ARGS), ActivityHomeostasis(target_spikes=1, window=2, rate=0.1)],
+    )
+    net.run(2)
+    assert ng.threshold.dtype == torch.float32

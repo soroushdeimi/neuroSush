@@ -1,4 +1,4 @@
-"""homeostatic mechanisms that keep firing rates and voltages in range."""
+"""Homeostatic mechanisms that keep firing rates and voltages in range."""
 
 from __future__ import annotations
 
@@ -10,16 +10,23 @@ from neurosush.core.order import Order
 
 
 class ActivityHomeostasis(Behavior):
-    """Adjusts threshold to maintain a target spike rate.
+    """Moves each neuron's threshold so it fires ``target_spikes`` times per ``window`` steps.
 
-    A spike counts +1, a silent step -target/(window-target), so the counter ends a
-    window at 0 exactly when the neuron hits its target.
+    A spike counts +1 and a silent step ``-target_spikes / (window - target_spikes)``, so the
+    counter ends a window at 0 exactly when the neuron hits its target. At the end of each
+    window the threshold rises by ``counter * rate`` (falls when negative), the counter
+    resets and ``rate *= decay``.
+
+    Args:
+        target_spikes: Desired spikes per window, ``0 < target_spikes < window``.
+        window: Window length in steps.
+        rate: Threshold change per unit of activity.
+        decay: Factor applied to ``rate`` after every window, in ``(0, 1]``.
     """
 
     order = Order.ACTIVITY_HOMEOSTASIS
 
     def __init__(self, *, target_spikes: int, window: int, rate: float, decay: float = 1.0) -> None:
-        """Initialize the ActivityHomeostasis behavior."""
         if not 0 < target_spikes < window:
             raise ValueError(
                 f"target_spikes must be between 0 and {window} exclusive, got {target_spikes}"
@@ -34,17 +41,16 @@ class ActivityHomeostasis(Behavior):
         self.rate = rate
         self.decay = decay
         self.silent_penalty = target_spikes / (window - target_spikes)
-        self.activity = None  # type: ignore
 
     def initialize(self, group: NeuronGroup) -> None:
-        """Initialize the ActivityHomeostasis behavior."""
+        """Check for a per-neuron threshold and allocate the activity counter."""
         if not hasattr(group, "threshold") or not isinstance(group.threshold, torch.Tensor):
             raise RuntimeError(f"ActivityHomeostasis on {group.name} needs a threshold (LIF model)")
         self.activity = group.vector()
 
     def forward(self, group: NeuronGroup) -> None:
-        """Update the activity and threshold."""
-        s = group.spikes.to(torch.float64)
+        """Count activity and adjust the threshold at the end of each window."""
+        s = group.spikes.to(self.activity.dtype)
         self.activity = self.activity + s - (1 - s) * self.silent_penalty
         if group.net.iteration % self.window == 0:
             group.threshold = group.threshold + self.activity * self.rate
@@ -53,7 +59,17 @@ class ActivityHomeostasis(Behavior):
 
 
 class VoltageHomeostasis(Behavior):
-    """Adjusts voltages to stay within a specified range."""
+    """Pushes voltages back into ``[v_min, v_max]`` through an accumulating exhaustion term.
+
+    ``exhaustion += rate * (v - v_max)`` above the band and ``rate * (v - v_min)`` below it;
+    then ``v -= exhaustion``.
+
+    Args:
+        target: Sets both ``v_min`` and ``v_max``.
+        v_min: Lower edge of the band (with ``v_max``, instead of ``target``).
+        v_max: Upper edge of the band.
+        rate: Adaptation speed.
+    """
 
     order = Order.VOLTAGE_HOMEOSTASIS
 
@@ -65,19 +81,14 @@ class VoltageHomeostasis(Behavior):
         v_max: float | None = None,
         rate: float = 0.001,
     ) -> None:
-        """Initialize the VoltageHomeostasis behavior."""
         if (target is not None and (v_min is not None or v_max is not None)) or (
             target is None and (v_min is None or v_max is None)
         ):
             raise ValueError("give either target, or both v_min and v_max")
 
         if target is not None:
-            self.v_min = target
-            self.v_max = target
-        else:
-            # v_min and v_max are both not None here
-            self.v_min = v_min  # type: ignore
-            self.v_max = v_max  # type: ignore
+            v_min = v_max = target
+        self.v_min, self.v_max = v_min, v_max
 
         if self.v_min > self.v_max:
             raise ValueError(f"v_min must be <= v_max, got v_min={self.v_min}, v_max={self.v_max}")
@@ -85,14 +96,13 @@ class VoltageHomeostasis(Behavior):
             raise ValueError(f"rate must be positive, got {rate}")
 
         self.rate = rate
-        self.exhaustion = None  # type: ignore
 
     def initialize(self, group: NeuronGroup) -> None:
-        """Initialize the VoltageHomeostasis behavior."""
+        """Allocate the exhaustion term."""
         group.exhaustion = group.vector()
 
     def forward(self, group: NeuronGroup) -> None:
-        """Update the exhaustion and voltages."""
+        """Update the exhaustion term and apply it to the membrane."""
         v = group.v
         above = torch.clamp(v - self.v_max, min=0.0)
         below = torch.clamp(v - self.v_min, max=0.0)
