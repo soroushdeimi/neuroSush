@@ -69,9 +69,9 @@ class _Grid:
         boxes = grid_boxes(height, width, self.rows, self.cols, self.gap)
         outputs = torch.stack([self._apply(img, box) for box in boxes])
         cells = len(boxes)
-        location = self._location(cells)
+        location = self._location(cells).to(img.device)
         if self.shuffle:
-            order = torch.randperm(cells, generator=self.generator)
+            order = torch.randperm(cells, generator=self.generator).to(img.device)
             outputs = outputs[order]
             location = location[order]
         return outputs, location
