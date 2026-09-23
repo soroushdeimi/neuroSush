@@ -10,7 +10,7 @@ Gates = tuple[torch.Tensor, torch.Tensor]
 
 
 def soft_bound(w: torch.Tensor, w_min: float, w_max: float) -> Gates:
-    """Soft weight-dependent gates.
+    """Multiplicative gates ``(w_max - w, w - w_min)``, clamped at zero.
 
     Args:
         w: Weights tensor.
@@ -24,7 +24,9 @@ def soft_bound(w: torch.Tensor, w_min: float, w_max: float) -> Gates:
 
 
 def hard_bound(w: torch.Tensor, w_min: float, w_max: float) -> Gates:
-    """Hard weight-dependent gates.
+    """Potentiation only below ``w_max``, depression only above ``w_min``.
+
+    A weight above ``w_max`` can no longer grow but can still shrink, so it recovers.
 
     Args:
         w: Weights tensor.
@@ -38,7 +40,7 @@ def hard_bound(w: torch.Tensor, w_min: float, w_max: float) -> Gates:
 
 
 def no_bound(w: torch.Tensor, w_min: float, w_max: float) -> Gates:
-    """No weight-dependent gates.
+    """Gates of one: learning ignores the weight.
 
     Args:
         w: Weights tensor.

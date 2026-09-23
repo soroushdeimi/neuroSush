@@ -10,7 +10,7 @@ from neurosush.core.order import Order
 
 
 class Payoff(Behavior):
-    """Network-wide reward signal.
+    """Sets ``net.payoff`` every step from a user function (reward is positive).
 
     Args:
         fn: Function that takes a Network and returns a float.
@@ -20,10 +20,8 @@ class Payoff(Behavior):
     order = Order.PAYOFF
 
     def __init__(self, fn: Callable[[Network], float], *, initial: float = 0.0) -> None:
-        """Initialize the Payoff behavior."""
         self.fn = fn
         self.initial = initial
-        self.payoff = 0.0
 
     def initialize(self, net: Network) -> None:
         """Set the initial payoff: net.payoff = float(initial)."""
@@ -35,26 +33,20 @@ class Payoff(Behavior):
 
 
 class Dopamine(Behavior):
-    """Network-wide dopamine concentration.
+    """Extracellular dopamine driven by the payoff: ``dd/dt = -d / tau + payoff``.
 
     Args:
-        tau: Time constant of dopamine dynamics.
+        tau: Decay time constant, in the unit of ``dt``.
         initial: Initial dopamine concentration.
     """
 
     order = Order.NEUROMODULATOR
 
     def __init__(self, *, tau: float, initial: float = 0.0) -> None:
-        """Initialize the Dopamine behavior.
-
-        Raises:
-            ValueError: If tau is not positive.
-        """
         if tau <= 0:
             raise ValueError(f"tau must be positive, got {tau}")
         self.tau = tau
         self.initial = initial
-        self.dopamine = 0.0
 
     def initialize(self, net: Network) -> None:
         """Set the initial dopamine: net.dopamine = float(initial).
