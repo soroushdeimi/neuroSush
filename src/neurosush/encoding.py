@@ -27,7 +27,7 @@ def _validate_poisson(x: torch.Tensor, steps: int, ratio: float) -> None:
 def rate_poisson(
     x: torch.Tensor, steps: int, *, ratio: float = 1.0, generator: torch.Generator | None = None
 ) -> torch.Tensor:
-    """Draw spikes using a rate Poisson encoder.
+    """Bernoulli spikes: every step, each element spikes with probability ``x * ratio``.
 
     Args:
         x: Input tensor of rates.
@@ -39,14 +39,16 @@ def rate_poisson(
         A boolean tensor of shape (steps, *x.shape).
     """
     _validate_poisson(x, steps, ratio)
-    noise = torch.rand((steps, *x.shape), generator=generator, device=x.device, dtype=x.dtype)
+    noise = torch.rand((steps, *x.shape), generator=generator, device=x.device)
     return noise < x * ratio
 
 
 def interval_poisson(
     x: torch.Tensor, steps: int, *, ratio: float = 1.0, generator: torch.Generator | None = None
 ) -> torch.Tensor:
-    """Draw spikes using an interval Poisson encoder.
+    """Spikes whose inter-spike intervals are Poisson with mean ``1 / (x * ratio)`` steps.
+
+    Zero intervals are raised to one step; zero intensities never spike.
 
     Args:
         x: Input tensor of intensities.
@@ -71,40 +73,11 @@ def interval_poisson(
 
     times = torch.cumsum(intervals, dim=0)
 
+    # A time t (1-based) is row t - 1; late times and inactive elements go to row 0,
+    # which is dropped.
+    rows = torch.where(times <= steps, times, torch.zeros_like(times)).long()
     spikes_plus_one = torch.zeros((steps + 1, n), dtype=torch.bool, device=x.device)
-    indices = torch.where((times > 0) & (times <= steps), times, torch.zeros_like(times))
-    # We need to use scatter_ with indices and active elements.
-    # But the spec says "send them (and the zeros of inactive elements) to an extra row 0"
-    # This implies we scatter for all i, e.
-    # For inactive elements, times is 0, so indices is 0.
-    # For active elements with times > steps, indices is 0.
-
-    # We need to flatten indices and create a flat version of elements to scatter.
-    # Actually, scatter_ works on the dimension we specify.
-    # We want to scatter at (indices[i, e], e)
-    # indices is (steps, n), we want to scatter into (steps+1, n)
-
-    # Let's use the 2D version of scatter_ if possible, or flatten.
-    # scatter_(dim, index, src)
-    # If dim=0, it scatters along rows.
-    # index must have same shape as src.
-
-    # We want to scatter True.
-    # src = torch.ones((steps, n), dtype=torch.bool, device=x.device)
-    # But we only want to scatter where it's valid?
-    # No, the spec says "send them ... to an extra row 0".
-    # If we scatter True at (0, e) for inactive elements, it's fine, they get dropped.
-
-    # Wait, if we scatter True at (0, e) for an inactive element, it's fine.
-    # If we scatter True at (0, e) for an active element with times > steps, it's fine.
-
-    # Let's use scatter_
-    # We need to make sure indices is long.
-    indices = indices.long()
-    # We need a source tensor of the same shape as indices.
-    src = torch.ones((steps, n), dtype=torch.bool, device=x.device)
-    spikes_plus_one.scatter_(0, indices, src)
-
+    spikes_plus_one.scatter_(0, rows, True)
     return spikes_plus_one[1:].reshape(steps, *x.shape)
 
 
