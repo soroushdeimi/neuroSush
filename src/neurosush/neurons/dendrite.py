@@ -14,9 +14,9 @@ class DendriteStructure(Behavior):
     """Allocates dendritic compartments and buffers for incoming synaptic current.
 
     Args:
-        proximal_depth: Number of steps for proximal compartment.
-        distal_depth: Number of steps for distal compartment.
-        apical_depth: Number of steps for apical compartment.
+        proximal_depth: Steps of delay storage for proximal input; delays must be below it.
+        distal_depth: Same for distal input.
+        apical_depth: Same for apical input.
     """
 
     order = Order.DENDRITE_STRUCTURE
@@ -73,7 +73,10 @@ def modulatory_drive(
     threshold: float | torch.Tensor,
     gain: float,
 ) -> torch.Tensor:
-    """Primes the neuron toward the limit and never pushes past it.
+    """Priming voltage rate ``tanh(current) * max(limit - v, 0)``.
+
+    ``limit = v_rest + gain * (threshold - v_rest)``: the drive primes the neuron toward the
+    limit and never pushes past it.
 
     Args:
         current: Input current.
@@ -125,16 +128,11 @@ class DendriteIntegration(Behavior):
         The priming term moves the membrane toward the limit at rate
         tanh(I_compartment) per unit time through the LIF step.
         """
-        # 1. Decay current
         if self.tau_current is None:
             current = torch.zeros_like(group.I)
         else:
             current = group.I * (1 - group.net.dt / self.tau_current)
-
-        # 2. Add proximal
         current = current + group.I_proximal
-
-        # 3. Add distal and apical with priming
         for gain, compartment_current in [
             (self.distal_gain, group.I_distal),
             (self.apical_gain, group.I_apical),
@@ -147,6 +145,4 @@ class DendriteIntegration(Behavior):
                     threshold=group.threshold,
                     gain=gain,
                 )
-
-        # 4. Update group.I
         group.I = current
