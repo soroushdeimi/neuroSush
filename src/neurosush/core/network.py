@@ -20,11 +20,19 @@ class Compartment(str, Enum):
 
 def _check_name(name: str, groups: Iterable[NeuronGroup | SynapseGroup]) -> None:
     if any(group.name == name for group in groups):
-        raise ValueError(f"name {name!r} is already used")
+        raise ValueError(f"name {name!r} is already used in this network")
 
 
 class Network:
-    """Own simulation objects, randomness and the behavior schedule."""
+    """Own simulation objects, randomness and the behavior schedule.
+
+    Args:
+        dt: Time step in the same unit as every time constant.
+        dtype: Floating point dtype for network tensors.
+        device: Device for network tensors and the random generator.
+        seed: Random seed; None draws a nondeterministic seed.
+        behaviors: Behaviors attached to the network.
+    """
 
     def __init__(
         self,
@@ -36,9 +44,9 @@ class Network:
         behaviors: Iterable[Behavior] = (),
     ) -> None:
         if dt <= 0:
-            raise ValueError("dt must be positive")
+            raise ValueError(f"dt must be positive, got {dt}")
         if not dtype.is_floating_point:
-            raise TypeError("dtype must be floating point")
+            raise TypeError(f"dtype must be a floating point type, got {dtype}")
         self.dt = float(dt)
         self.dtype = dtype
         self.device = torch.device(device)
@@ -65,12 +73,12 @@ class Network:
         pending_ids: set[int] = set()
         for behavior in attached:
             if not isinstance(behavior, Behavior):
-                raise TypeError("each behavior must be a Behavior")
+                raise TypeError(f"expected a Behavior, got {type(behavior).__name__}")
             if not isinstance(getattr(behavior, "order", None), int):
-                raise TypeError("behavior order must be an int")
+                raise TypeError(f"{type(behavior).__name__} must define an integer order")
             identity = id(behavior)
             if identity in self._attached_ids or identity in pending_ids:
-                raise ValueError("behavior is already attached")
+                raise ValueError(f"{behavior!r} is already attached to an object of this network")
             pending_ids.add(identity)
         self._attached_ids.update(pending_ids)
         self._registrations.extend((host, behavior) for behavior in attached)
@@ -98,13 +106,22 @@ class Network:
     def run(self, steps: int) -> None:
         """Advance the network by the requested number of steps."""
         if steps < 0:
-            raise ValueError("steps must be nonnegative")
+            raise ValueError(f"steps must be non-negative, got {steps}")
         for _ in range(steps):
             self.step()
 
 
 class NeuronGroup:
-    """A shaped population of neurons belonging to one network."""
+    """A shaped population of neurons belonging to one network.
+
+    Args:
+        net: Network that owns the group.
+        shape: Positive int n for (1, 1, n), or three positive dimensions.
+        behaviors: Behaviors attached to the group.
+        name: Unique neuron group name; None generates a name.
+        tags: Labels stored as a frozenset.
+        inhibitory: Whether outgoing currents are made negative.
+    """
 
     def __init__(
         self,
@@ -126,7 +143,9 @@ class NeuronGroup:
                 for value in shape
             )
         ):
-            raise ValueError("shape must be a positive int or a tuple of three positive ints")
+            raise ValueError(
+                f"shape must be a positive int or a tuple of three positive ints, got {shape!r}"
+            )
         self.shape = shape
         self.name = f"ng{len(net.groups)}" if name is None else name
         _check_name(self.name, net.groups)
@@ -189,7 +208,17 @@ class NeuronGroup:
 
 
 class SynapseGroup:
-    """Connections between neuron groups targeting one compartment."""
+    """Connections between neuron groups targeting one compartment.
+
+    Args:
+        net: Network that owns the synapse group and both neuron groups.
+        src: Source neuron group.
+        dst: Destination neuron group.
+        behaviors: Behaviors attached to the synapse group.
+        compartment: Target compartment of dst.
+        name: Unique synapse group name; None generates a name.
+        tags: Labels stored as a frozenset.
+    """
 
     def __init__(
         self,
@@ -203,11 +232,13 @@ class SynapseGroup:
         tags: Iterable[str] = (),
     ) -> None:
         if src.net is not net or dst.net is not net:
-            raise ValueError("source and destination must belong to the network")
+            raise ValueError("src and dst must belong to the same network as the synapse")
         try:
             self.compartment = Compartment(compartment)
         except ValueError:
-            raise ValueError(f"unknown compartment: {compartment!r}") from None
+            raise ValueError(
+                f"compartment must be one of {[c.value for c in Compartment]}, got {compartment!r}"
+            ) from None
         self.name = f"sg{len(net.synapses)}" if name is None else name
         _check_name(self.name, net.synapses)
         self.net = net
