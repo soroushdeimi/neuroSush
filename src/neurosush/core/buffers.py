@@ -1,4 +1,4 @@
-"""Buffer implementations for neuroSush."""
+"""Fixed-depth per-neuron buffers that implement transmission delays."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from torch import Tensor
 
 
 class _Buffer:
-    """Private base class for buffers."""
+    """Storage of shape ``(depth, size)``: one row per slot, one column per neuron."""
 
     def __init__(
         self,
@@ -34,18 +34,14 @@ class _Buffer:
     def reset(self) -> None:
         self._storage.zero_()
 
-    def _validate_delay(self, delay: int | Tensor) -> None:
-        if isinstance(delay, int):
-            if delay < 0 or delay >= self._depth:
-                raise ValueError(f"delay {delay} is out of range")
-        else:
-            if (
-                delay.ndim != 1
-                or delay.shape[0] != self._size
-                or torch.any(delay < 0)
-                or torch.any(delay >= self._depth)
-            ):
-                raise ValueError("delay is out of range or has wrong shape")
+    def _delays(self, delay: int | Tensor) -> Tensor:
+        """Validated per-neuron delays as a long tensor of shape ``(1, size)``."""
+        delay = torch.as_tensor(delay, dtype=torch.long, device=self._storage.device)
+        if delay.shape not in ((), (self._size,)):
+            raise ValueError(f"delay shape must be () or ({self._size},), got {tuple(delay.shape)}")
+        if bool(((delay < 0) | (delay >= self._depth)).any()):
+            raise ValueError(f"delay must be in [0, {self._depth}), got {delay.tolist()}")
+        return delay.expand(self._size).unsqueeze(0)
 
     def _validate_shape(self, value: Tensor) -> None:
         if value.shape != (self._size,):
@@ -53,7 +49,7 @@ class _Buffer:
 
 
 class HistoryBuffer(_Buffer):
-    """Buffer that stores the last `depth` pushed values."""
+    """The last ``depth`` values of a per-neuron vector; slot 0 holds the newest."""
 
     def __init__(
         self,
@@ -66,23 +62,18 @@ class HistoryBuffer(_Buffer):
         super().__init__(depth, size, dtype=dtype, device=device)
 
     def push(self, value: Tensor) -> None:
-        """Push a new value into the buffer."""
+        """Store a copy of ``value`` as the newest entry, dropping the oldest."""
         self._validate_shape(value)
         self._storage[1:] = self._storage[:-1].clone()
         self._storage[0] = value.clone()
 
     def read(self, delay: int | Tensor) -> Tensor:
-        """Read values with a given delay."""
-        self._validate_delay(delay)
-        if isinstance(delay, int):
-            return self._storage[delay].clone()
-
-        idx = delay.unsqueeze(0)
-        return torch.gather(self._storage, 0, idx).squeeze(0).clone()
+        """Value pushed ``delay[i]`` pushes ago, for each neuron ``i`` (0 is the newest)."""
+        return torch.gather(self._storage, 0, self._delays(delay)).squeeze(0)
 
 
 class ArrivalBuffer(_Buffer):
-    """Buffer for values scheduled to arrive later."""
+    """Values scheduled to arrive after a per-neuron delay; slot 0 is due now."""
 
     def __init__(
         self,
@@ -95,22 +86,16 @@ class ArrivalBuffer(_Buffer):
         super().__init__(depth, size, dtype=dtype, device=device)
 
     def add(self, value: Tensor, delay: int | Tensor) -> None:
-        """Add values with a given delay."""
+        """Add ``value[i]`` to the slot ``delay[i]`` steps ahead, for each neuron ``i``."""
         self._validate_shape(value)
-        self._validate_delay(delay)
-
-        if isinstance(delay, int):
-            self._storage[delay].add_(value)
-            return
-
-        idx = delay.unsqueeze(0)
-        self._storage.scatter_add_(0, idx, value.unsqueeze(0))
+        index = self._delays(delay)
+        self._storage.scatter_add_(0, index, value.to(self._storage.dtype).unsqueeze(0))
 
     def current(self) -> Tensor:
         """Return a copy of the current slot."""
         return self._storage[0].clone()
 
     def advance(self) -> None:
-        """Advance the buffer by one step."""
+        """Move one step forward: drop the due slot and open an empty last slot."""
         self._storage[:-1] = self._storage[1:].clone()
         self._storage[-1].zero_()
