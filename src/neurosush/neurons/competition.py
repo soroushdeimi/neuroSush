@@ -1,4 +1,4 @@
-"""competition and noise acting on the membrane between integration and firing."""
+"""Competition and noise acting on the membrane between integration and firing."""
 
 from __future__ import annotations
 
@@ -17,26 +17,41 @@ def kwta_losers(
     shape: tuple[int, ...] | None = None,
     dim: int | None = None,
 ) -> torch.Tensor:
-    """Pure k-winners-take-all losers identification."""
-    if dim is None:
-        if shape is not None:
-            raise ValueError("shape must be None if dim is None")
-        v_flat = v.reshape(-1)
-        candidates = v_flat >= threshold
-        masked = v_flat.masked_fill(~candidates, -float("inf"))
-        rank = masked.argsort(dim=0, descending=True, stable=True).argsort(dim=0, stable=True)
-        return candidates & (rank >= k)
-    if shape is None:
-        raise ValueError("shape must be provided if dim is not None")
+    """Neurons above threshold that are not among the ``k`` highest voltages.
+
+    Args:
+        v: Membrane voltages, one per neuron.
+        threshold: Spike threshold, scalar or per neuron.
+        k: Number of winners.
+        shape: ``(depth, height, width)`` of the group; required when ``dim`` is given.
+        dim: Compete separately along this axis of ``shape`` (``0``: across feature maps at
+            every position); ``None`` runs one competition over all neurons.
+
+    Returns:
+        Flat bool mask of the neurons that must not spike. Ties keep the lower index.
+    """
     candidates = v >= threshold
-    masked = v.view(shape).masked_fill(~candidates.view(shape), -float("inf"))
-    rank = masked.argsort(dim=dim, descending=True, stable=True).argsort(dim=dim, stable=True)
-    losers = candidates.view(shape) & (rank >= k)
-    return losers.reshape(-1)
+    if dim is None:
+        view_v, view_c, axis = v, candidates, 0
+    elif shape is None:
+        raise ValueError(f"shape is required when dim is given (dim={dim})")
+    else:
+        view_v, view_c, axis = v.view(shape), candidates.view(shape), dim
+    masked = view_v.masked_fill(~view_c, -float("inf"))
+    rank = masked.argsort(dim=axis, descending=True, stable=True).argsort(dim=axis, stable=True)
+    return (view_c & (rank >= k)).reshape(-1)
 
 
 class KWTA(Behavior):
-    """K-winners-take-all competition."""
+    """k-winners-take-all: only the ``k`` highest voltages above threshold may spike.
+
+    Losers are set to ``v_reset`` before :class:`~neurosush.neurons.models.Fire` runs.
+
+    Args:
+        k: Number of winners.
+        dim: Axis of the group shape ``(depth, height, width)`` to compete along, or ``None``
+            for one competition over the group.
+    """
 
     order = Order.COMPETITION
 
@@ -54,16 +69,21 @@ class KWTA(Behavior):
             raise RuntimeError(f"KWTA on {group.name} needs a neuron model such as LIF")
 
     def forward(self, group: NeuronGroup) -> None:
-        """Apply k-winners-take-all competition."""
-        if self.dim is None:
-            losers = kwta_losers(group.v, group.threshold, self.k)
-        else:
-            losers = kwta_losers(group.v, group.threshold, self.k, shape=group.shape, dim=self.dim)
-        group.v = torch.where(losers.reshape(group.v.shape), group.v_reset, group.v)
+        """Reset the losers of the competition."""
+        losers = kwta_losers(group.v, group.threshold, self.k, shape=group.shape, dim=self.dim)
+        group.v = torch.where(losers, group.v_reset, group.v)
 
 
 class InherentNoise(Behavior):
-    """Inherent noise acting on the membrane."""
+    """Adds ``scale * sample + offset`` to the membrane every step.
+
+    Samples come from the network generator: uniform in ``[0, 1)`` or standard normal.
+
+    Args:
+        scale: Multiplier of the random sample.
+        offset: Constant added every step.
+        distribution: ``"uniform"`` or ``"normal"``.
+    """
 
     order = Order.NOISE
 
@@ -77,6 +97,6 @@ class InherentNoise(Behavior):
         self.distribution = distribution
 
     def forward(self, group: NeuronGroup) -> None:
-        """Emit noise on the membrane."""
+        """Perturb the membrane."""
         sample = group.rand() if self.distribution == "uniform" else group.randn()
         group.v = group.v + self.scale * sample + self.offset
