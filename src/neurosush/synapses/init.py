@@ -14,7 +14,7 @@ from neurosush.core.order import Order
 
 def _check_density(density: float) -> None:
     if not 0 < density <= 1:
-        raise ValueError("density must be in (0, 1]")
+        raise ValueError(f"density must be in (0, 1], got {density}")
 
 
 def sparse_random(
@@ -25,7 +25,15 @@ def sparse_random(
     generator: torch.Generator | None = None,
     device: str | torch.device | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Return sorted source and destination indices for unique random connections."""
+    """Return sorted source and destination indices for unique random connections.
+
+    Args:
+        n_src: Number of source neurons.
+        n_dst: Number of destination neurons.
+        density: Fraction of possible connections to sample.
+        generator: Random generator used to sample connections.
+        device: Device for the returned indices.
+    """
     _check_density(density)
     count = round(n_src * n_dst * density)
     flat = torch.randperm(n_src * n_dst, generator=generator, device=device)[:count]
@@ -34,7 +42,18 @@ def sparse_random(
 
 
 class WeightInit(Behavior):
-    """Initialize copied weights or sampled dense or sparse weights."""
+    """Initialize copied weights or sampled dense or sparse weights.
+
+    Args:
+        mode: Sampling distribution or constant weight value.
+        weights: Explicit weights to copy instead of sampling.
+        scale: Multiplier applied after sampling and transformation.
+        offset: Offset added after scaling.
+        fn: Optional transformation of sampled weights.
+        density: Fraction of connections to retain.
+        sparse: Store sampled connections as indices and a weight vector.
+        shape: Weight geometry; defaults to source by destination size.
+    """
 
     order = Order.INITIALIZATION
 
@@ -51,17 +70,23 @@ class WeightInit(Behavior):
         shape: tuple[int, ...] | None = None,
     ) -> None:
         if (mode is None) == (weights is None):
-            raise ValueError("exactly one of mode or weights must be given")
+            raise ValueError(
+                "exactly one of mode or weights must be given, "
+                f"got mode={mode!r}, weights={weights}"
+            )
         if mode is not None and (
             (isinstance(mode, str) and mode not in ("uniform", "normal", "zeros", "ones"))
             or not isinstance(mode, (str, Number))
         ):
-            raise ValueError("mode must be uniform, normal, zeros, ones or a number")
+            raise ValueError(f"mode must be uniform, normal, zeros, ones or a number, got {mode!r}")
         if weights is not None and (scale != 1.0 or offset != 0.0 or fn is not None):
-            raise ValueError("explicit weights cannot be combined with scale, offset or fn")
+            raise ValueError(
+                "explicit weights cannot be combined with scale, offset or fn, "
+                f"got scale={scale}, offset={offset}, fn={fn!r}"
+            )
         _check_density(density)
         if sparse and shape is not None and len(shape) != 2:
-            raise ValueError("sparse weights require a 2-D shape")
+            raise ValueError(f"sparse weights require a 2-D shape, got {shape}")
         self.mode = mode
         self.weights = weights
         self.scale = scale
@@ -72,12 +97,19 @@ class WeightInit(Behavior):
         self.shape = shape
 
     def initialize(self, syn: SynapseGroup) -> None:
-        """Allocate weights and, for sparse storage, connection indices."""
+        """Allocate weights and, for sparse storage, connection indices.
+
+        Args:
+            syn: Synapse group receiving the weights.
+        """
         net = syn.net
         shape = self.shape or (syn.src.size, syn.dst.size)
         if self.weights is not None:
             if self.weights.shape != shape:
-                raise ValueError(f"weights shape for {syn.name!r} must be {shape}")
+                raise ValueError(
+                    f"weights shape for {syn.name!r} must be {shape}, "
+                    f"got {tuple(self.weights.shape)}"
+                )
             syn.weights = self.weights.to(dtype=net.dtype, device=net.device, copy=True)
             return
         if self.sparse:
@@ -104,7 +136,13 @@ class WeightInit(Behavior):
 
 
 class DelayInit(Behavior):
-    """Initialize source or destination delays in simulation steps."""
+    """Initialize source or destination delays in simulation steps.
+
+    Args:
+        delays: Non-negative fixed delay or per-neuron delay tensor.
+        max_delay: Exclusive upper bound for sampled delays.
+        side: Source (src) or destination (dst) receiving delays.
+    """
 
     order = Order.INITIALIZATION
 
@@ -116,19 +154,26 @@ class DelayInit(Behavior):
         side: str = "src",
     ) -> None:
         if (delays is None) == (max_delay is None):
-            raise ValueError("exactly one of delays or max_delay must be given")
+            raise ValueError(
+                "exactly one of delays or max_delay must be given, "
+                f"got delays={delays}, max_delay={max_delay}"
+            )
         if delays is not None and bool((torch.as_tensor(delays) < 0).any()):
-            raise ValueError("delays must be non-negative")
+            raise ValueError(f"delays must be non-negative, got {delays}")
         if max_delay is not None and max_delay < 1:
-            raise ValueError("max_delay must be at least 1")
+            raise ValueError(f"max_delay must be at least 1, got {max_delay}")
         if side not in ("src", "dst"):
-            raise ValueError("side must be src or dst")
+            raise ValueError(f"side must be src or dst, got {side!r}")
         self.delays = delays
         self.max_delay = max_delay
         self.side = side
 
     def initialize(self, syn: SynapseGroup) -> None:
-        """Allocate a long delay vector for the selected side."""
+        """Allocate a long delay vector for the selected side.
+
+        Args:
+            syn: Synapse group receiving the delays.
+        """
         net = syn.net
         size = syn.src.size if self.side == "src" else syn.dst.size
         if self.max_delay is not None:
@@ -140,5 +185,7 @@ class DelayInit(Behavior):
             if delays.ndim == 0:
                 delays = delays.expand(size)
             elif delays.shape != (size,):
-                raise ValueError(f"delays shape for {syn.name!r} must be ({size},)")
+                raise ValueError(
+                    f"delays shape for {syn.name!r} must be ({size},), got {tuple(delays.shape)}"
+                )
         setattr(syn, f"{self.side}_delay", delays.to(dtype=torch.long, copy=True))
