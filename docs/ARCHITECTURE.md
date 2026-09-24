@@ -39,6 +39,7 @@ cortical structures.
 | `synapses/currents.py` | pure current functions + `DenseInput`, `OneToOneInput`, `SparseInput`, `Conv2dInput`, `Local2dInput`, `LateralInput`, `AvgPool2dInput` |
 | `synapses/traces.py` | `SpikeGather`, `Traces`, `trace_step` |
 | `synapses/segments.py` | `ActiveSegments`, `segment_counts`, `plateau_step` |
+| `synapses/segment_learning.py` | `SegmentLearning` |
 | `synapses/bounds.py` | `soft_bound`, `hard_bound`, `no_bound` (directional learning gates) |
 | `synapses/plasticity.py` | pure STDP / iSTDP kernels per connectivity + `STDP`, `RSTDP`, `ISTDP` |
 | `synapses/constraints.py` | `WeightClip`, `WeightNormalization`, `CurrentNormalization` |
@@ -50,6 +51,7 @@ cortical structures.
 | `structure/layer.py` | `Layer`, `CorticalLayer` (named groups and ports) |
 | `structure/connect.py` | `connect` (one synapse group per source/destination pair) |
 | `structure/column.py` | `CorticalColumn` |
+| `structure/sequence.py` | `sequence_memory`, `sequence_timing`, `Neuron` |
 | `structure/spec.py` | `ColumnSpec` and friends, `build_column`, `to_json`/`from_json`, `register` |
 | `recording.py` | `Recorder` (runs last, at `Order.RECORD`) |
 | `checkpoint.py` | `state_dict`, `load_state_dict`, `save`, `load` |
@@ -177,3 +179,9 @@ window of `W` steps, every `P` steps.
   (`a + plateau <= 2 P`), and a coincidence window of at least `b - a + 1` steps when an
   element mixes predicted and bursting minicolumns. `tests/validation/test_sequence_math.py`
   derives `a` and `b` from the exact Euler map and checks all of it.
+- **Learning** (`SegmentLearning`) applies the temporal memory's rules when cells fire. The
+  previous element is the set of cells that fired (or won) within the learning context,
+  a range of ages around one period; the current element's own spikes are younger. Spikes,
+  wins and plateau starts keep their last two times, so a cell whose minicolumn is active
+  in two consecutive elements still counts as context. `sequence_memory` derives the
+  context, plateau and coincidence window from the neuron (`sequence_timing`).

@@ -299,6 +299,13 @@ class SynapseGroup:
     active_segments: torch.Tensor
     segment_potential: torch.Tensor
     pre_recent: torch.Tensor
+    # SegmentLearning sets when segments started and were used, what started them, and the
+    # last spike and win of every cell.
+    segment_start: torch.Tensor
+    segment_used: torch.Tensor
+    activation_synapses: torch.Tensor
+    last_spike: torch.Tensor
+    last_win: torch.Tensor
 
     def __init__(
         self,

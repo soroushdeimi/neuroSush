@@ -200,13 +200,14 @@ streams (`SpikeInput`) are not part of it: resume them yourself.
 | `neurosush.synapses.currents` | `DenseInput`, `OneToOneInput`, `SparseInput`, `Conv2dInput`, `Local2dInput`, `LateralInput`, `AvgPool2dInput` |
 | `neurosush.synapses.traces` | `SpikeGather`, `Traces` |
 | `neurosush.synapses.segments` | `ActiveSegments` (dendritic segments with NMDA-like plateaus) |
+| `neurosush.synapses.segment_learning` | `SegmentLearning` (temporal memory learning in spike time) |
 | `neurosush.synapses.plasticity` | `STDP`, `RSTDP`, `ISTDP` (bounds in `bounds`) |
 | `neurosush.synapses.constraints` | `WeightClip`, `WeightNormalization`, `CurrentNormalization` |
 | `neurosush.modulation` | `Payoff`, `Dopamine` |
 | `neurosush.encoding` | `rate_poisson`, `interval_poisson`, `intensity_to_latency` |
 | `neurosush.filters`, `.transforms` | DoG and Gabor kernels; grid masks, polarity split, filter bank |
 | `neurosush.data` | `LocationDataset`, `spike_frames` |
-| `neurosush.structure` | layers, ports, `connect`, `CorticalColumn`, JSON specs |
+| `neurosush.structure` | layers, ports, `connect`, `CorticalColumn`, JSON specs, `sequence_memory` |
 | `neurosush.recording` | `Recorder` |
 | `neurosush.checkpoint` | `state_dict`, `load_state_dict`, `save`, `load` |
 | `neurosush.htm.sdr`, `.encoders`, `.classifier` | SDR operations and match probabilities; scalar, RDSE and category encoders; `SDRClassifier` |
@@ -327,6 +328,15 @@ rest. A primed (predicted) cell therefore fires alone, and a minicolumn without 
 all at once (a burst). `tests/validation/test_sequence_math.py` checks that such a layer
 activates exactly the cells `TemporalMemory` activates, element by element, under timing
 conditions it also checks.
+
+`SegmentLearning` adds the temporal memory's learning in spike time (reinforcement, growth
+towards the previous element's winners, new segments in bursting minicolumns, punishment
+of wrong predictions), and `sequence_memory` builds the whole layer. It derives the
+plateau, coincidence window and learning context from the neuron's exact race times and
+refuses parameters under which the equivalence would fail. On sequences that share their
+middle it learns the same curves as `TemporalMemory` and ends in the same state
+(`tests/validation/test_sequence_learning.py`, and `experiments/sequence_learning.py` for
+the full curves).
 
 ## Validation
 

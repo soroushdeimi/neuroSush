@@ -10,6 +10,10 @@ All notable changes to neuroSush are documented here, following the
   plateaus and a coincidence window) and `MinicolumnInhibition`; a layer built from them
   activates exactly the cells `TemporalMemory` activates, checked by
   `tests/validation/test_segment_math.py` and `test_sequence_math.py`.
+- `SegmentLearning`: the temporal memory's learning in spike time, and `sequence_memory`,
+  which builds a spiking sequence memory layer with derived and checked timing. It learns
+  the same curves as `TemporalMemory` (`tests/validation/test_sequence_learning.py`).
+- `experiments/sequence_learning.py`: the full learning curves, with parameters and seeds.
 - `SpatialPooler.state_dict()`/`load_state_dict()` and the same for `TemporalMemory`
   (including its random generator), so both resume exactly.
 - More of `tests/validation`: conv2d, local2d, lateral and pooling currents and the conv and
