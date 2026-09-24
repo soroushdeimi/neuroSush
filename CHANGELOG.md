@@ -5,6 +5,14 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+### Added
+- `neurosush.htm`: SDR operations with exact match probabilities, scalar, random
+  distributed and category encoders, `SDRClassifier`, `SpatialPooler`, `TemporalMemory`,
+  grid cell modules, `ActiveDendrites`, and voting columns for object recognition.
+- `neurosush.predictive_coding.PredictiveCodingNetwork`: hierarchical predictive coding with
+  learned weights, priors and variances.
+- `examples/sequence_prediction.py` and `examples/object_recognition.py`.
+
 ## [0.1.0] - 2026-09-24
 
 ### Added

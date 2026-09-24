@@ -50,6 +50,15 @@ cortical structures.
 | `structure/connect.py` | `connect` (one synapse group per source/destination pair) |
 | `structure/column.py` | `CorticalColumn` |
 | `structure/spec.py` | `ColumnSpec` and friends, `build_column`, `to_json`/`from_json`, `register` |
+| `htm/sdr.py` | SDR operations, `match_probability`, union capacity |
+| `htm/encoders.py` | `ScalarEncoder`, `RandomDistributedScalarEncoder`, `CategoryEncoder` |
+| `htm/classifier.py` | `SDRClassifier` (softmax regression) |
+| `htm/spatial_pooler.py` | `SpatialPooler` (topology, global or local inhibition, boosting, bumping) |
+| `htm/temporal_memory.py` | `TemporalMemory` (segments stored as tensors) |
+| `htm/grid_cells.py` | `GridCellModule`, `GridCellModules`, `hexagonal_rate` |
+| `htm/active_dendrites.py` | `ActiveDendrites` (an `nn.Module`), `kwta` |
+| `htm/objects.py` | `ObjectLibrary`, `SensorColumn`, `ColumnEnsemble`, `vote` |
+| `predictive_coding.py` | `PredictiveCodingNetwork` |
 
 ## Simulation model
 
@@ -114,3 +123,22 @@ Synaptic input at step t uses spikes gathered at step t-1 (one step of transmiss
   currents are one `index_add` and learning updates the values directly.
 - Specs describe construction only; learned tensors are saved separately.
 
+## Thousand Brains models
+
+The `htm` package and `predictive_coding` are plain tensor algorithms, not behaviors: they
+step in discrete time on binary codes (or rates), so the spiking scheduler would add
+nothing. They share the conventions above: seeded generators, validated arguments with the
+offending value in the message, and a batch dimension where the algorithm allows one.
+
+- **Spatial pooler.** Overlaps for a batch are one matrix product; local inhibition
+  compares every column with its neighborhood through `unfold`, so no Python loop runs over
+  columns. Learning goes sample by sample because every sample changes the duty cycles.
+- **Temporal memory.** Segments live in fixed-width tensors (`segment_cell`, `presynaptic`,
+  `permanence`) that double when full. Segment activity for all segments is one gather
+  and sum; only the few segments that learn in a step are touched one by one.
+- **Grid cells.** A module is its lattice basis `A`: phases are `A^-1 x mod 1`, so path
+  integration is exact and independent of the path taken.
+- **Voting columns.** A column's hypotheses are a boolean `(object, y, x)` tensor; sensing
+  is an `&` with the feature map and moving is a `roll`.
+- **Predictive coding.** All updates are the closed-form gradients of the free energy;
+  the tests compare them with autograd.

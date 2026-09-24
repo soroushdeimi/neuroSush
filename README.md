@@ -146,6 +146,12 @@ More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | `neurosush.filters`, `.transforms` | DoG and Gabor kernels; grid masks, polarity split, filter bank |
 | `neurosush.data` | `LocationDataset`, `spike_frames` |
 | `neurosush.structure` | layers, ports, `connect`, `CorticalColumn`, JSON specs |
+| `neurosush.htm.sdr`, `.encoders`, `.classifier` | SDR operations and match probabilities; scalar, RDSE and category encoders; `SDRClassifier` |
+| `neurosush.htm.spatial_pooler`, `.temporal_memory` | `SpatialPooler`, `TemporalMemory` |
+| `neurosush.htm.grid_cells` | `GridCellModule`, `GridCellModules`, `hexagonal_rate` |
+| `neurosush.htm.active_dendrites` | `ActiveDendrites`, `kwta` |
+| `neurosush.htm.objects` | `ObjectLibrary`, `SensorColumn`, `ColumnEnsemble`, `vote` |
+| `neurosush.predictive_coding` | `PredictiveCodingNetwork` |
 
 ## Structures and specs
 
@@ -192,6 +198,57 @@ column = build_column(net, "C1", spec)
 net.run(10)
 print([group.name for group in column.output_port("out")])  # ['C1.L23.exc']
 ```
+
+## Thousand Brains models
+
+`neurosush.htm` implements the algorithms of hierarchical temporal memory and the Thousand
+Brains theory as tensor code, each checked against the mathematics of its paper:
+
+| model | reference | validated by the tests |
+|---|---|---|
+| SDRs | Ahmad and Hawkins (2016) | exact false-match probabilities, confirmed by Monte Carlo |
+| encoders | Numenta encoders | overlap of scalar codes is `max(0, w - distance)` |
+| spatial pooler | Cui et al. (2017) | exact update rules; learned codes stay stable under 20% input noise; boosting spreads activity |
+| temporal memory | Hawkins and Ahmad (2016) | first- and high-order sequences, branching unions, punishment of wrong predictions |
+| grid cells | Hawkins et al. (2019) | exact path integration on the torus; six-fold symmetric fields; several modules locate far beyond one scale |
+| active dendrites | Iyer et al. (2022) | gating equations; context solves two tasks that give every input opposite labels |
+| voting columns | Lewis et al. (2019) | the true object is never lost; elimination rates match closed-form expectations; more columns need fewer touches |
+| predictive coding | Rao and Ballard (1999), Bogacz (2017) | inference and learning follow the free-energy gradient; the exact Gaussian posterior; convergence to backprop (Whittington and Bogacz 2017) |
+
+```python
+import torch
+
+from neurosush.htm.encoders import CategoryEncoder
+from neurosush.htm.sdr import match_probability
+from neurosush.htm.temporal_memory import TemporalMemory
+
+# chance that a random 40-of-2048 SDR shares 20 or more bits with a stored one
+print(f"{match_probability(2048, 40, 40, 20):.1e}")
+
+a, b, c, d = CategoryEncoder(256, 12, 4, seed=0).encode(torch.arange(4))
+tm = TemporalMemory(
+    256,
+    8,
+    activation_threshold=8,
+    min_threshold=6,
+    initial_permanence=0.51,
+    max_new_synapses=12,
+    max_synapses_per_segment=16,
+)
+for _ in range(3):
+    tm.reset()
+    for symbol in (a, b, c, d):
+        tm.compute(symbol)
+tm.reset()
+tm.compute(a, learn=False)
+tm.compute(b, learn=False)
+assert torch.equal(tm.predicted_columns(), c)  # after A B it expects C
+```
+
+[`examples/sequence_prediction.py`](examples/sequence_prediction.py) chains an encoder, the
+spatial pooler, temporal memory and a classifier on sequences that differ only in their
+first symbol; [`examples/object_recognition.py`](examples/object_recognition.py) shows voting
+columns recognizing objects in fewer touches.
 
 ## Development
 
