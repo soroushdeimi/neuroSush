@@ -326,7 +326,10 @@ Traces respond to a spike with exactly `(1 - dt/tau)^k`; the STDP window is the 
 `a_plus c^k` or `-a_minus c^k`, and uncorrelated spike trains drift the weights by the
 expected amount. Inhibitory STDP settles the firing rate at its target, homeostasis settles
 the spike count, Poisson spike counts are binomial with geometric intervals, and every spike
-arrives exactly `src_delay + dst_delay + 1` steps after it was fired.
+arrives exactly `src_delay + dst_delay + 1` steps after it was fired. Conv, local, lateral and
+pooling synapses equal their dense synapse-by-synapse definition, for both currents and
+STDP; reward-modulated STDP matches the closed form of the three-factor rule and solves the
+distal reward problem of Izhikevich (2007).
 
 ## Development
 

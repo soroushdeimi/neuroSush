@@ -5,6 +5,19 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+### Added
+- `SpatialPooler.state_dict()`/`load_state_dict()` and the same for `TemporalMemory`
+  (including its random generator), so both resume exactly.
+- More of `tests/validation`: conv2d, local2d, lateral and pooling currents and the conv and
+  local STDP rules against the dense synapse-by-synapse definition; reward-modulated STDP
+  against its closed form, and the distal reward problem (Izhikevich 2007).
+- `benchmarks/suite.py` and `compare.py`, run weekly by the Benchmarks workflow: throughput
+  normalized by a calibration workload, compared with a baseline.
+
+### Fixed
+- STDP computed in torch's default dtype instead of the traces' dtype, so a float64
+  network learned in float32 precision (and conv and local synapses got float32 updates).
+
 ## [0.2.0] - 2026-09-24
 
 ### Added

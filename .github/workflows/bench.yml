@@ -1,0 +1,28 @@
+name: Benchmarks
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'  # Mondays
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -e .
+      - run: python benchmarks/suite.py --out benchmark.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: benchmark
+          path: benchmark.json
+      - name: Compare with the baseline (fails on a regression over 30%)
+        run: python benchmarks/compare.py benchmarks/baseline.json benchmark.json | tee -a "$GITHUB_STEP_SUMMARY"

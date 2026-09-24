@@ -40,6 +40,18 @@ use `from __future__ import annotations` in Python modules. Follow
 Use Conventional Commits with a scope: `feat`, `fix`, `docs`, `test`, `build`,
 `ci`, or `refactor`, for example `fix(neurons): validate time constants`.
 
+## Benchmarks
+
+`python benchmarks/suite.py` times the main workloads (dense STDP, batched simulation,
+spatial pooler and temporal memory learning). Each rate is also divided by a calibration
+workload measured on the same machine, which removes most of the difference between
+machines. The Benchmarks workflow runs the suite every Monday (or on demand) and compares
+it with `benchmarks/baseline.json`: a normalized drop of more than 30% fails the run.
+
+To record or move the baseline after an intended change, download the `benchmark`
+artifact of a Benchmarks run on GitHub and commit it as `benchmarks/baseline.json`; a
+baseline from another machine is not comparable.
+
 ## Releasing
 
 Releases are automatic:
