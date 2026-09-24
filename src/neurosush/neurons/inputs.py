@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+from typing import Any
+
 import torch
 
 from neurosush.core.behavior import Behavior
@@ -20,7 +23,7 @@ class SpikeInput(Behavior):
 
     order = Order.FIRE
 
-    def __init__(self, frames: iter) -> None:
+    def __init__(self, frames: Iterable[torch.Tensor | tuple[torch.Tensor, Any]]) -> None:
         self.frames = frames
 
     def initialize(self, group: NeuronGroup) -> None:
