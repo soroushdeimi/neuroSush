@@ -17,6 +17,9 @@ All notable changes to neuroSush are documented here, following the
   exactly, batched or not.
 - `Behavior.state_dict()`/`load_state_dict()`, and the same for delay buffers.
 - Strict mypy type checking of the package (in `scripts/check.sh` and CI).
+- `tests/validation`: the spiking core checked against the closed-form solutions of its
+  equations (LIF, exponential and adaptive LIF, traces, STDP, inhibitory STDP, homeostasis,
+  dopamine, Poisson encoders and delays).
 - Tests marked `gpu` that compare CUDA and CPU runs, pre-commit hooks (also run by the CI
   lint job), and Dependabot updates for pip and GitHub Actions.
 

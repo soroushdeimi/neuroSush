@@ -316,6 +316,18 @@ spatial pooler, temporal memory and a classifier on sequences that differ only i
 first symbol; [`examples/object_recognition.py`](examples/object_recognition.py) shows voting
 columns recognizing objects in fewer touches.
 
+## Validation
+
+Besides unit tests, `tests/validation` checks the spiking core against the mathematics it
+implements. The LIF reproduces the exact solution of its Euler scheme and converges to the
+continuous solution at first order in `dt`; interspike intervals match the closed form, and
+the exponential LIF starts firing exactly at its rheobase `R I = theta_rh - v_rest - delta`.
+Traces respond to a spike with exactly `(1 - dt/tau)^k`; the STDP window is the exponential
+`a_plus c^k` or `-a_minus c^k`, and uncorrelated spike trains drift the weights by the
+expected amount. Inhibitory STDP settles the firing rate at its target, homeostasis settles
+the spike count, Poisson spike counts are binomial with geometric intervals, and every spike
+arrives exactly `src_delay + dst_delay + 1` steps after it was fired.
+
 ## Development
 
 `bash scripts/check.sh` runs ruff (lint and format check), strict mypy and the full test suite;
