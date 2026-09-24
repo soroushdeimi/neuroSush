@@ -5,6 +5,14 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+### Added
+- Package metadata for PyPI (summary, keywords, project links, classifiers) and
+  `CITATION.cff`.
+
+### Changed
+- The README introduces the whole project, links absolutely (so it also works on PyPI), shows
+  the spiking sequence memory learning, and lists the limitations.
+
 ## [0.3.0] - 2026-09-24
 
 ### Added

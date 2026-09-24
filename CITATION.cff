@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below, together with the papers of the models you use."
+title: "neuroSush: brain-inspired computing on PyTorch"
+type: software
+authors:
+  - alias: sush
+    email: soroushdeimi@gmail.com
+repository-code: "https://github.com/soroushdeimi/neuroSush"
+license: MIT
+abstract: >-
+  A PyTorch library that simulates spiking neural networks (integrate-and-fire neurons with
+  dendritic compartments and delays, STDP-family plasticity with dopamine modulation),
+  implements the Thousand Brains and hierarchical temporal memory models and hierarchical
+  predictive coding, and provides a spiking layer that computes the temporal memory. Every
+  model is validated against its mathematics.
+keywords:
+  - spiking neural networks
+  - hierarchical temporal memory
+  - thousand brains theory
+  - predictive coding
+  - computational neuroscience
+  - pytorch

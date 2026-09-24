@@ -5,21 +5,49 @@ build-backend = "hatchling.build"
 [project]
 name = "neurosush"
 dynamic = ["version"]
-description = "Spiking cortical networks on PyTorch."
+description = "Brain-inspired computing on PyTorch: spiking neural networks, Thousand Brains and HTM models, and predictive coding, validated against their mathematics."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "sush", email = "soroushdeimi@gmail.com" }]
 dependencies = ["torch>=2.1"]
+keywords = [
+    "spiking neural networks",
+    "snn",
+    "stdp",
+    "neuromorphic",
+    "computational neuroscience",
+    "hierarchical temporal memory",
+    "htm",
+    "thousand brains",
+    "grid cells",
+    "active dendrites",
+    "predictive coding",
+    "pytorch",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Intended Audience :: Education",
     "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Typing :: Typed",
 ]
+
+[project.urls]
+Homepage = "https://github.com/soroushdeimi/neuroSush"
+Source = "https://github.com/soroushdeimi/neuroSush"
+Documentation = "https://github.com/soroushdeimi/neuroSush/blob/main/docs/ARCHITECTURE.md"
+Changelog = "https://github.com/soroushdeimi/neuroSush/blob/main/CHANGELOG.md"
+Issues = "https://github.com/soroushdeimi/neuroSush/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6", "build>=1.2", "twine>=5", "pre-commit>=3", "mypy>=1.10"]

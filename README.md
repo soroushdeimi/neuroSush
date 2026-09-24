@@ -1,8 +1,22 @@
 # neuroSush
 
-Spiking cortical networks on PyTorch: LIF-family neurons with dendritic compartments and
-delays, STDP-family plasticity with dopamine modulation, spike encoders, and cortical
-structures.
+Brain-inspired computing on PyTorch, validated against its mathematics.
+
+neuroSush simulates **spiking neural networks** (leaky, exponential and adaptive
+integrate-and-fire neurons with dendritic compartments and delays, STDP-family plasticity
+with dopamine modulation) on a CPU or GPU, in batches. It implements the **Thousand Brains
+and HTM models** (sparse distributed representations, spatial pooler, temporal memory, grid
+cells, active dendrites, voting columns) and **hierarchical predictive coding**, and it joins
+the two worlds: a **spiking layer that provably computes the temporal memory** and learns
+the same sequences. Every model is tested against what it claims: exact solutions,
+closed-form probabilities and expectations, and the results of its papers.
+
+| | |
+|---|---|
+| [Spiking networks](#quickstart) | neurons, dendrites, delays, STDP, reward, homeostasis, batching, recording and checkpoints |
+| [Thousand Brains models](#thousand-brains-models) | SDRs, encoders, spatial pooler, temporal memory, grid cells, active dendrites, voting columns, predictive coding |
+| [Spiking temporal memory](#spiking-temporal-memory) | dendritic segments with NMDA-like plateaus, minicolumn inhibition, sequence learning in spike time |
+| [Validation](#validation) | the mathematics every part is checked against |
 
 ## Design
 
@@ -13,8 +27,9 @@ structures.
 - **Reproducible.** All randomness comes from the network's seeded generator.
 - **One dependency.** `torch` only at runtime.
 - **Safe serialization.** Structure specs load through a registry of classes, never `eval`.
-- **Tested.** Every equation has tests with hand-computed values, and an example network
-  that learns runs in CI.
+- **Validated.** Every equation has tests with hand-computed values, and every model is
+  checked against its mathematics (see [Validation](#validation)); examples that learn run
+  in CI.
 
 ## Install
 
@@ -22,7 +37,9 @@ structures.
 pip install neurosush
 ```
 
-From source, with CPU PyTorch (on macOS use `pip install torch` instead):
+Every [GitHub release](https://github.com/soroushdeimi/neuroSush/releases) also carries
+the wheel and the source archive. From source, with CPU PyTorch (on macOS use
+`pip install torch` instead):
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
@@ -89,7 +106,7 @@ for _ in range(200):
 print(f"output spikes: {spikes}, mean weight: {synapse.weights.mean():.3f}")
 ```
 
-[`examples/two_patterns.py`](examples/two_patterns.py) goes further: two output neurons with
+[`examples/two_patterns.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/two_patterns.py) goes further: two output neurons with
 k-winners-take-all and homeostasis learn to respond to one input pattern each.
 
 ## Concepts
@@ -104,14 +121,14 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
 
 | order | behaviors | order | behaviors |
 |---|---|---|---|
-| 0 | `WeightInit`, `DelayInit` | 300 | `KWTA` |
+| 0 | `WeightInit`, `DelayInit` | 300 | `KWTA`, `MinicolumnInhibition` |
 | 100 | `Payoff` | 310 | `VoltageHomeostasis` |
 | 120 | `Dopamine` | 340 | `Fire`, `SpikeInput` |
-| 180 | synaptic inputs | 350 | `ActivityHomeostasis` |
+| 180 | synaptic inputs, `ActiveSegments` | 350 | `ActivityHomeostasis` |
 | 200 | `CurrentNormalization` | 380 | `Axon` |
 | 220 | `DendriteStructure` | 420 | `SpikeGather` |
 | 240 | `DendriteIntegration` | 460 | `Traces` |
-| 260 | `LIF`, `ELIF`, `AdaptiveELIF` | 500 | `STDP`, `RSTDP`, `ISTDP` |
+| 260 | `LIF`, `ELIF`, `AdaptiveELIF` | 500 | `STDP`, `RSTDP`, `ISTDP`, `SegmentLearning` |
 | 280 | `InherentNoise` | 520, 540 | `WeightNormalization`, `WeightClip` |
 |  |  | 1000 | `Recorder` |
 
@@ -128,7 +145,7 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
   Feed it with `spike_frames(samples, batch_size=B)`. On a GPU a batch costs about as much
   as one sample, so throughput grows almost linearly with `B`.
 
-More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+More in [docs/ARCHITECTURE.md](https://github.com/soroushdeimi/neuroSush/blob/main/docs/ARCHITECTURE.md).
 
 ## Recording and checkpoints
 
@@ -313,9 +330,9 @@ tm.compute(b, learn=False)
 assert torch.equal(tm.predicted_columns(), c)  # after A B it expects C
 ```
 
-[`examples/sequence_prediction.py`](examples/sequence_prediction.py) chains an encoder, the
+[`examples/sequence_prediction.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/sequence_prediction.py) chains an encoder, the
 spatial pooler, temporal memory and a classifier on sequences that differ only in their
-first symbol; [`examples/object_recognition.py`](examples/object_recognition.py) shows voting
+first symbol; [`examples/object_recognition.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/object_recognition.py) shows voting
 columns recognizing objects in fewer touches.
 
 ## Spiking temporal memory
@@ -338,6 +355,56 @@ middle it learns the same curves as `TemporalMemory` and ends in the same state
 (`tests/validation/test_sequence_learning.py`, and `experiments/sequence_learning.py` for
 the full curves).
 
+A four-element sequence, learned in one repetition (`initial_permanence=0.51` makes new
+synapses connected at once):
+
+```python
+import torch
+
+from neurosush.core.behavior import Behavior
+from neurosush.core.network import Network, NeuronGroup
+from neurosush.core.order import Order
+from neurosush.htm.sdr import random_sdr
+from neurosush.neurons.axon import Axon
+from neurosush.structure.sequence import sequence_memory
+
+COLUMNS, PERIOD, WINDOW = 32, 60, 25
+sequence = random_sdr(COLUMNS, 6, batch=(4,), generator=torch.Generator().manual_seed(0))
+
+
+class Present(Behavior):
+    """Drive the columns of element t // PERIOD for the first WINDOW steps of its period."""
+
+    order = Order.FIRE
+
+    def initialize(self, group):
+        group.spikes = group.state(False, dtype=torch.bool)
+
+    def forward(self, group):
+        t = group.net.iteration - 1
+        element, offset = divmod(t % (PERIOD * 6), PERIOD)  # 4 elements, then 2 silent
+        on = element < len(sequence) and offset < WINDOW
+        group.spikes = sequence[element].clone() if on else group.state(False, dtype=torch.bool)
+
+
+net = Network(seed=0)
+columns = NeuronGroup(net, COLUMNS, [Present(), Axon()])
+layer, _ = sequence_memory(
+    net, columns, cells_per_column=4, period=PERIOD, window=WINDOW, initial_permanence=0.51
+)
+for repetition in range(2):
+    bursts = []
+    for element in range(6):
+        fired = torch.zeros(layer.size, dtype=torch.bool)
+        for _ in range(PERIOD):
+            net.step()
+            fired |= layer.spikes
+        if element < len(sequence):
+            active = fired.view(COLUMNS, 4)[sequence[element]]
+            bursts.append(int(active.all(-1).sum()))  # columns that were not predicted
+    print(repetition, bursts)  # [6, 6, 6, 6], then [6, 0, 0, 0]: only the first element surprises
+```
+
 ## Validation
 
 Besides unit tests, `tests/validation` checks the spiking core against the mathematics it
@@ -353,21 +420,42 @@ pooling synapses equal their dense synapse-by-synapse definition, for both curre
 STDP; reward-modulated STDP matches the closed form of the three-factor rule and solves the
 distal reward problem of Izhikevich (2007).
 
+## Limitations
+
+- **Alpha.** The API may still change between minor versions.
+- **Speed.** A simulation step is a sequence of small tensor operations driven from
+  Python: a few milliseconds per step on a CPU, whatever the network size up to thousands
+  of neurons. Batches spread that cost over many samples, especially on a GPU. The spatial
+  pooler learns one sample at a time.
+- **CPU-only HTM models.** The `neurosush.htm` models and `SegmentLearning` run unbatched
+  on the CPU.
+- **Checkpoints** save a network's state but not the input streams feeding `SpikeInput`.
+- **The spiking temporal memory** equals the algorithm only under the timing conditions
+  that `sequence_timing` checks; `sequence_memory` refuses other parameters.
+
+## Citing
+
+If you use neuroSush in research, please cite it with the metadata in
+[`CITATION.cff`](https://github.com/soroushdeimi/neuroSush/blob/main/CITATION.cff) (GitHub shows it under "Cite this repository"), and
+cite the papers of the models you use; each module names them.
+
 ## Development
 
-`bash scripts/check.sh` runs ruff (lint and format check), strict mypy and the full test suite;
-`python benchmarks/dense_stdp.py [--device cuda]` measures simulation speed. Tests marked
-`gpu` compare CUDA with CPU results and run only where a CUDA device exists. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and code standards.
+`bash scripts/check.sh` runs ruff (lint and format check), strict mypy and the full test
+suite. `python benchmarks/suite.py` measures throughput (the Benchmarks workflow runs it
+every week), and the scripts in [`experiments/`](https://github.com/soroushdeimi/neuroSush/blob/main/experiments) reproduce the numbers
+behind the validation claims. Tests marked `gpu` compare CUDA with CPU results and run only
+where a CUDA device exists. See [CONTRIBUTING.md](https://github.com/soroushdeimi/neuroSush/blob/main/CONTRIBUTING.md) for the workflow and
+code standards.
 
 ## Releases
 
-Releases are automatic. A commit on `main` that sets a new release version (for example
-`0.2.0`) with its changelog section triggers the Release workflow: it checks the version and
-the changelog, runs the full CI, and creates the tag and a GitHub release with the wheel and
-the sdist. Publishing to PyPI is switched on with the `PYPI_PUBLISH` repository variable after
-a one-time trusted-publisher setup. The steps are in [CONTRIBUTING.md](CONTRIBUTING.md).
+Releases are automatic. A commit on `main` that sets a new release version with its
+changelog section triggers the Release workflow: it checks the version and the changelog,
+runs the full CI, creates the tag and a GitHub release with the wheel and the sdist, and
+publishes them to PyPI. The steps are in [CONTRIBUTING.md](https://github.com/soroushdeimi/neuroSush/blob/main/CONTRIBUTING.md); the history
+is in [CHANGELOG.md](https://github.com/soroushdeimi/neuroSush/blob/main/CHANGELOG.md).
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](https://github.com/soroushdeimi/neuroSush/blob/main/LICENSE).
