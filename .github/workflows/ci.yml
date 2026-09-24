@@ -23,9 +23,20 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-      - run: pip install ruff
-      - run: ruff check .
-      - run: ruff format --check .
+      - run: pip install pre-commit
+      - run: pre-commit run --all-files --show-diff-on-failure
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install "mypy>=1.10"
+      - run: mypy
 
   test:
     runs-on: ${{ matrix.os }}

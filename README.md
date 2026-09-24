@@ -113,7 +113,11 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
 | 240 | `DendriteIntegration` | 460 | `Traces` |
 | 260 | `LIF`, `ELIF`, `AdaptiveELIF` | 500 | `STDP`, `RSTDP`, `ISTDP` |
 | 280 | `InherentNoise` | 520, 540 | `WeightNormalization`, `WeightClip` |
+|  |  | 1000 | `Recorder` |
 
+- **Spikes travel through `SpikeGather`**: a synaptic input reads `syn.pre_spike`, which
+  `SpikeGather` fills from the source's `Axon`, so every synapse group with an input needs
+  both; building without them is an error, not a silent network.
 - **Delays** are integers in steps: `src_delay` is axonal (read from the source's `Axon`
   history), `dst_delay` is dendritic (arrival in the destination's `DendriteStructure`).
 - **Units**: every time constant shares the unit of `dt` (milliseconds by convention).
@@ -125,6 +129,62 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
   as one sample, so throughput grows almost linearly with `B`.
 
 More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Recording and checkpoints
+
+A `Recorder` copies attributes of its host at the end of every `interval`-th step. A
+checkpoint saves the complete state of an initialized network (iteration, random
+generator, every tensor and delay buffer, and behavior state such as homeostasis), and
+loading it into a network built the same way continues the run exactly:
+
+```python
+import tempfile
+from pathlib import Path
+
+import torch
+
+from neurosush import checkpoint
+from neurosush.core.network import Network, NeuronGroup
+from neurosush.neurons.competition import InherentNoise
+from neurosush.neurons.dendrite import DendriteIntegration, DendriteStructure
+from neurosush.neurons.models import LIF, Fire
+from neurosush.recording import Recorder
+
+
+def build():
+    net = Network(seed=0)
+    NeuronGroup(
+        net,
+        3,
+        [
+            DendriteStructure(),
+            DendriteIntegration(),
+            LIF(tau=10.0, threshold=-55.0, v_reset=-70.0, v_rest=-65.0),
+            InherentNoise(scale=8.0),  # random drive from the network generator
+            Fire(),
+            Recorder("v", "spikes", interval=5),
+        ],
+    )
+    return net
+
+
+net = build()
+net.run(50)
+recorder = net.groups[0].behaviors[-1]
+print(recorder.get("v").shape, recorder.steps[:3])  # torch.Size([10, 3]) [5, 10, 15]
+
+path = Path(tempfile.mkdtemp()) / "net.pt"
+checkpoint.save(net, path)
+net.run(20)
+
+resumed = build()
+checkpoint.load(resumed, path)
+resumed.run(20)
+assert torch.equal(resumed.groups[0].v, net.groups[0].v)  # continues exactly
+```
+
+Loading uses `torch.load(weights_only=True)`, so a checkpoint cannot run code. Input
+streams (`SpikeInput`) are not part of it: resume them yourself.
 
 ## Modules
 
@@ -146,6 +206,8 @@ More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | `neurosush.filters`, `.transforms` | DoG and Gabor kernels; grid masks, polarity split, filter bank |
 | `neurosush.data` | `LocationDataset`, `spike_frames` |
 | `neurosush.structure` | layers, ports, `connect`, `CorticalColumn`, JSON specs |
+| `neurosush.recording` | `Recorder` |
+| `neurosush.checkpoint` | `state_dict`, `load_state_dict`, `save`, `load` |
 | `neurosush.htm.sdr`, `.encoders`, `.classifier` | SDR operations and match probabilities; scalar, RDSE and category encoders; `SDRClassifier` |
 | `neurosush.htm.spatial_pooler`, `.temporal_memory` | `SpatialPooler`, `TemporalMemory` |
 | `neurosush.htm.grid_cells` | `GridCellModule`, `GridCellModules`, `hexagonal_rate` |
@@ -256,8 +318,9 @@ columns recognizing objects in fewer touches.
 
 ## Development
 
-`bash scripts/check.sh` runs ruff (lint and format check) and the full test suite;
-`python benchmarks/dense_stdp.py [--device cuda]` measures simulation speed. See
+`bash scripts/check.sh` runs ruff (lint and format check), strict mypy and the full test suite;
+`python benchmarks/dense_stdp.py [--device cuda]` measures simulation speed. Tests marked
+`gpu` compare CUDA with CPU results and run only where a CUDA device exists. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and code standards.
 
 ## Releases

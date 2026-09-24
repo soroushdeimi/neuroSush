@@ -221,9 +221,9 @@ def _behaviors(items: list[_BehaviorData]) -> tuple[BehaviorSpec, ...]:
 def _shape(value: int | list[int]) -> int | tuple[int, int, int]:
     if isinstance(value, int):
         return value
-    shape = tuple(value)
-    assert len(shape) == 3  # Serialized group shapes have depth, height and width.
-    return shape
+    if len(value) != 3:
+        raise ValueError(f"a group shape is an int or three ints, got {value!r}")
+    return value[0], value[1], value[2]
 
 
 def _synapse_specs(items: list[_SynapseData]) -> tuple[SynapseSpec, ...]:

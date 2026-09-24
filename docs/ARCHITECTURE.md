@@ -50,6 +50,8 @@ cortical structures.
 | `structure/connect.py` | `connect` (one synapse group per source/destination pair) |
 | `structure/column.py` | `CorticalColumn` |
 | `structure/spec.py` | `ColumnSpec` and friends, `build_column`, `to_json`/`from_json`, `register` |
+| `recording.py` | `Recorder` (runs last, at `Order.RECORD`) |
+| `checkpoint.py` | `state_dict`, `load_state_dict`, `save`, `load` |
 | `htm/sdr.py` | SDR operations, `match_probability`, union capacity |
 | `htm/encoders.py` | `ScalarEncoder`, `RandomDistributedScalarEncoder`, `CategoryEncoder` |
 | `htm/classifier.py` | `SDRClassifier` (softmax regression) |
@@ -122,6 +124,19 @@ Synaptic input at step t uses spikes gathered at step t-1 (one step of transmiss
 - Sparse weights are a values vector with `src_idx`/`dst_idx`, not torch sparse tensors, so
   currents are one `index_add` and learning updates the values directly.
 - Specs describe construction only; learned tensors are saved separately.
+
+## Checkpoints
+
+State lives in two places: on hosts (tensors and buffers that behaviors put on the network,
+neuron groups and synapse groups) and, rarely, on a behavior itself. A checkpoint walks the
+hosts in a fixed order and saves every tensor, every delay buffer (`state_dict()` of its
+slots and head) and the network's scalars; behaviors that keep state of their own
+(`ActivityHomeostasis`: its activity counter and decayed rate) expose it through
+`Behavior.state_dict()`, keyed by host, class and position. Anything new that a behavior
+stores on its host is therefore saved without extra code; state kept on a behavior needs a
+`state_dict`/`load_state_dict` pair. The host classes declare the state attributes that the
+library's behaviors set (as annotations without values, so `hasattr` still tells whether a
+behavior is present), which is what lets strict mypy check behavior code.
 
 ## Thousand Brains models
 

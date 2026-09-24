@@ -13,11 +13,22 @@ pip install -e ".[dev]"
 ```
 
 On macOS, use `pip install torch` instead of the CPU index command.
+Install the git hooks once; they fix whitespace and run ruff on every commit, as the CI
+lint job does:
+
+```bash
+pre-commit install
+```
+
 Run the full check before committing:
 
 ```bash
 bash scripts/check.sh
 ```
+
+Tests marked `gpu` compare CUDA runs with the CPU. They are skipped on machines without a
+CUDA device (including CI), so run them locally after changing tensor code:
+`pytest -m gpu`.
 
 ## Code and commits
 
@@ -49,4 +60,3 @@ repository as a trusted publisher on PyPI (workflow `release.yml`, environment
 `pypi`), create the `pypi` environment in the repository settings, and set the
 repository variable `PYPI_PUBLISH` to `true`. After that every release is also
 published to PyPI.
-

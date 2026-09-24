@@ -12,6 +12,21 @@ All notable changes to neuroSush are documented here, following the
 - `neurosush.predictive_coding.PredictiveCodingNetwork`: hierarchical predictive coding with
   learned weights, priors and variances.
 - `examples/sequence_prediction.py` and `examples/object_recognition.py`.
+- `Recorder`: records attributes of a network, neuron group or synapse group over time.
+- `neurosush.checkpoint`: save and load the complete state of a network and resume it
+  exactly, batched or not.
+- `Behavior.state_dict()`/`load_state_dict()`, and the same for delay buffers.
+- Strict mypy type checking of the package (in `scripts/check.sh` and CI).
+- Tests marked `gpu` that compare CUDA and CPU runs, pre-commit hooks (also run by the CI
+  lint job), and Dependabot updates for pip and GitHub Actions.
+
+### Changed
+- A synaptic input without `SpikeGather` is now an error; before, the synapse silently
+  delivered no current.
+- `SpikeGather` needs an `Axon` only on the source; `syn.post_spike` is gathered when the
+  destination has one too (traces and plasticity need it and say so).
+- `Axon` checks that the `dst_delay` of incoming synapses fits its history.
+- A group shape in a JSON spec that is neither an int nor three ints raises `ValueError`.
 
 ## [0.1.0] - 2026-09-24
 

@@ -120,6 +120,13 @@ class TestJson:
         with pytest.raises(ValueError, match="unknown behavior"):
             spec.layers["L"].groups["g"].behaviors[0].build()
 
+    @pytest.mark.parametrize("shape", [[2, 3], [1, 2, 3, 4]])
+    def test_malformed_shape_is_a_value_error(self, shape):
+        data = json.loads(to_json(ColumnSpec(layers={"L": LayerSpec(groups={"g": GroupSpec(1)})})))
+        data["layers"]["L"]["groups"]["g"]["shape"] = shape
+        with pytest.raises(ValueError, match="three ints"):
+            from_json(json.dumps(data))
+
 
 class TestRegistry:
     def test_library_behaviors_are_registered(self):
