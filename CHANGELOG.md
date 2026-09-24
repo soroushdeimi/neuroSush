@@ -24,5 +24,8 @@ All notable changes to neuroSush are documented here, following the
 - `examples/two_patterns.py`, which learns two input patterns with STDP.
 - Fast paths: ring-buffer delays validated once, and event-driven in-place STDP for dense
   synapses (5-6x faster on CPU); `benchmarks/dense_stdp.py` measures it.
+- Batched simulation: `Network(batch_size=B)` and `spike_frames(..., batch_size=B)` run `B`
+  samples side by side with shared weights (about 23,000 sample-steps/s on a laptop GPU for
+  the 784 -> 400 benchmark).
 - CI (lint, tests on Python 3.10 to 3.13, coverage, build) and a tag-driven release workflow
   with PyPI trusted publishing.

@@ -119,6 +119,10 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
 - **Units**: every time constant shares the unit of `dt` (milliseconds by convention).
 - **Signs**: weights are magnitudes; `NeuronGroup(..., inhibitory=True)` makes its outgoing
   currents negative.
+- **Batches**: `Network(batch_size=B)` simulates `B` samples side by side. State tensors get
+  shape `(B, size)`; weights and thresholds stay shared, and learning uses the batch mean.
+  Feed it with `spike_frames(samples, batch_size=B)`. On a GPU a batch costs about as much
+  as one sample, so throughput grows almost linearly with `B`.
 
 More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

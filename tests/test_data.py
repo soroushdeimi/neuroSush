@@ -87,3 +87,33 @@ class TestSpikeFrames:
     def test_invalid_silence(self):
         with pytest.raises(ValueError, match="silence"):
             list(spike_frames([], silence=-1))
+
+
+class TestBatchedFrames:
+    def test_samples_run_side_by_side(self):
+        samples = [(train([[1, 0], [0, 1]]), "a"), (train([[0, 0], [1, 1]]), "b")]
+        frames = list(spike_frames(samples, batch_size=2))
+        assert frames[0][0].tolist() == [[True, False], [False, False]]
+        assert frames[1][0].tolist() == [[False, True], [True, True]]
+        assert frames[0][1] == ["a", "b"]
+
+    def test_silence_after_each_batch_and_incomplete_batch_dropped(self):
+        samples = [(train([[1]]), i) for i in range(5)]
+        frames = list(spike_frames(samples, batch_size=2, silence=1))
+        assert len(frames) == 4
+        assert frames[1] == (frames[1][0], None)
+        assert frames[1][0].tolist() == [[False], [False]]
+
+    def test_multi_dimensional_samples_are_flattened_per_sample(self):
+        sample = torch.zeros(3, 2, 2, dtype=torch.bool)
+        frames = list(spike_frames([(sample, 0), (sample, 1)], batch_size=2))
+        assert frames[0][0].shape == (2, 4)
+
+    def test_equal_lengths_required(self):
+        samples = [(train([[1]]), 0), (train([[1], [0]]), 1)]
+        with pytest.raises(ValueError, match="equal length"):
+            list(spike_frames(samples, batch_size=2))
+
+    def test_invalid_batch_size(self):
+        with pytest.raises(ValueError, match="batch_size"):
+            list(spike_frames([], batch_size=0))
