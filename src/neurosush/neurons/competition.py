@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import torch
 
 from neurosush.core.behavior import Behavior
@@ -74,6 +76,95 @@ class KWTA(Behavior):
         """Reset the losers of the competition."""
         losers = kwta_losers(group.v, group.threshold, self.k, shape=group.shape, dim=self.dim)
         group.v = group.v.masked_fill(losers, group.v_reset)
+
+
+def minicolumn_inhibition(
+    v: torch.Tensor,
+    threshold: torch.Tensor | float,
+    v_reset: float,
+    inhibition: torch.Tensor,
+    *,
+    cells_per_column: int,
+    duration: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """One step of fast inhibition inside minicolumns of ``cells_per_column`` cells.
+
+    Cells of an inhibited minicolumn are held at ``v_reset``. In every other minicolumn the
+    cells that reach ``threshold`` this step are left to fire together, and the minicolumn
+    becomes inhibited for the next ``duration`` steps: cells that would cross later stay
+    silent.
+
+    Args:
+        v: Membrane voltages ``(..., columns * cells_per_column)``.
+        threshold: Spike threshold, scalar or per cell.
+        v_reset: Voltage of inhibited cells.
+        inhibition: Steps of inhibition left per minicolumn ``(..., columns)``.
+        cells_per_column: Cells in every minicolumn (consecutive cells).
+        duration: Steps of inhibition after a minicolumn fires.
+
+    Returns:
+        The new voltages and the new inhibition counters.
+    """
+    lead, columns = v.shape[:-1], inhibition.shape[-1]
+    blocked = (inhibition > 0).unsqueeze(-1).expand(*lead, columns, cells_per_column)
+    v = v.masked_fill(blocked.reshape(v.shape), v_reset)
+    fires = (v >= threshold).view(*lead, columns, cells_per_column).any(-1)
+    inhibition = torch.where(fires, duration, (inhibition - 1).clamp(min=0))
+    return v, inhibition
+
+
+class MinicolumnInhibition(Behavior):
+    """The first cells of a minicolumn to reach threshold silence the rest of it.
+
+    Temporal memory in spiking form: a cell depolarized by a dendritic plateau (predicted)
+    reaches threshold before its neighbors and fires alone; when no cell of an active
+    minicolumn is predicted, all of them reach threshold in the same step and fire together
+    (a burst). Consecutive groups of ``cells_per_column`` cells form the minicolumns.
+
+    Args:
+        cells_per_column: Cells in every minicolumn.
+        duration: How long the inhibition lasts after a minicolumn fires, in the unit of
+            ``dt``; it lasts ``ceil(duration / dt)`` steps.
+    """
+
+    order = Order.COMPETITION
+
+    def __init__(self, *, cells_per_column: int, duration: float) -> None:
+        if cells_per_column < 1:
+            raise ValueError(f"cells_per_column must be positive, got {cells_per_column}")
+        if duration <= 0:
+            raise ValueError(f"duration must be positive, got {duration}")
+        self.cells_per_column, self.duration = cells_per_column, duration
+
+    def initialize(self, group: NeuronGroup) -> None:
+        """Check the group and allocate the inhibition counters."""
+        if not hasattr(group, "model"):
+            raise RuntimeError(
+                f"MinicolumnInhibition on {group.name} needs a neuron model such as LIF"
+            )
+        if group.size % self.cells_per_column:
+            raise ValueError(
+                f"{group.name} has {group.size} cells, not a multiple of "
+                f"cells_per_column={self.cells_per_column}"
+            )
+        net = group.net
+        columns = group.size // self.cells_per_column
+        batch = () if net.batch_size is None else (net.batch_size,)
+        group.column_inhibition = torch.zeros(
+            (*batch, columns), dtype=torch.long, device=net.device
+        )
+        self.steps = max(1, math.ceil(self.duration / net.dt - 1e-9))
+
+    def forward(self, group: NeuronGroup) -> None:
+        """Hold inhibited minicolumns down and start inhibition where cells cross."""
+        group.v, group.column_inhibition = minicolumn_inhibition(
+            group.v,
+            group.threshold,
+            group.v_reset,
+            group.column_inhibition,
+            cells_per_column=self.cells_per_column,
+            duration=self.steps,
+        )
 
 
 class InherentNoise(Behavior):

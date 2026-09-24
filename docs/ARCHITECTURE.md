@@ -30,7 +30,7 @@ cortical structures.
 | `core/network.py` | `Network`, `NeuronGroup`, `SynapseGroup`, `Compartment` |
 | `neurons/dynamics.py` | pure LIF / ELIF / AdEx equations and threshold crossing |
 | `neurons/models.py` | `LIF`, `ELIF`, `AdaptiveELIF`, `Fire` |
-| `neurons/competition.py` | `KWTA`, `InherentNoise` |
+| `neurons/competition.py` | `KWTA`, `MinicolumnInhibition`, `InherentNoise` |
 | `neurons/axon.py` | `Axon` (spike history for delays) |
 | `neurons/dendrite.py` | `DendriteStructure`, `DendriteIntegration` |
 | `neurons/homeostasis.py` | `ActivityHomeostasis`, `VoltageHomeostasis` |
@@ -38,6 +38,7 @@ cortical structures.
 | `synapses/init.py` | `WeightInit`, `DelayInit`, `sparse_random` |
 | `synapses/currents.py` | pure current functions + `DenseInput`, `OneToOneInput`, `SparseInput`, `Conv2dInput`, `Local2dInput`, `LateralInput`, `AvgPool2dInput` |
 | `synapses/traces.py` | `SpikeGather`, `Traces`, `trace_step` |
+| `synapses/segments.py` | `ActiveSegments`, `segment_counts`, `plateau_step` |
 | `synapses/bounds.py` | `soft_bound`, `hard_bound`, `no_bound` (directional learning gates) |
 | `synapses/plasticity.py` | pure STDP / iSTDP kernels per connectivity + `STDP`, `RSTDP`, `ISTDP` |
 | `synapses/constraints.py` | `WeightClip`, `WeightNormalization`, `CurrentNormalization` |
@@ -157,3 +158,22 @@ offending value in the message, and a batch dimension where the algorithm allows
   is an `&` with the feature map and moving is a `roll`.
 - **Predictive coding.** All updates are the closed-form gradients of the free energy;
   the tests compare them with autograd.
+
+## Spiking temporal memory
+
+A minicolumn layer computes the temporal memory with spikes. Every element is shown for a
+window of `W` steps, every `P` steps.
+
+- **Prediction** is a plateau: `ActiveSegments` (on a distal synapse group) counts the
+  connected synapses whose presynaptic cell fired within the coincidence window, and a
+  segment over threshold holds `amplitude` on the distal compartment for the plateau.
+  `DendriteIntegration(distal_gain=g)` turns it into priming towards
+  `v_rest + g (theta - v_rest)`, below threshold.
+- **Activation** is a race: under the same proximal drive a primed cell reaches threshold
+  after `a` steps and an unprimed one after `b > a`; `MinicolumnInhibition` holds the rest of
+  a minicolumn at `v_reset` once some of its cells fire, for the rest of the window.
+- **Equivalence** with `TemporalMemory` needs `a < b <= W`, a plateau that covers the next
+  element's crossing (`b + plateau >= P + a`) and ends before the element after it
+  (`a + plateau <= 2 P`), and a coincidence window of at least `b - a + 1` steps when an
+  element mixes predicted and bursting minicolumns. `tests/validation/test_sequence_math.py`
+  derives `a` and `b` from the exact Euler map and checks all of it.

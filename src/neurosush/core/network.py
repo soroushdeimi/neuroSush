@@ -164,6 +164,8 @@ class NeuronGroup:
     spike_history: HistoryBuffer
     # VoltageHomeostasis sets exhaustion.
     exhaustion: torch.Tensor
+    # MinicolumnInhibition sets the steps of inhibition left per minicolumn.
+    column_inhibition: torch.Tensor
 
     def __init__(
         self,
@@ -290,6 +292,13 @@ class SynapseGroup:
     post_trace: torch.Tensor
     # RSTDP sets the eligibility trace.
     eligibility: torch.Tensor
+    # ActiveSegments sets the segments, their plateaus and their activity.
+    presynaptic: torch.Tensor
+    permanence: torch.Tensor
+    plateau_steps: torch.Tensor
+    active_segments: torch.Tensor
+    segment_potential: torch.Tensor
+    pre_recent: torch.Tensor
 
     def __init__(
         self,

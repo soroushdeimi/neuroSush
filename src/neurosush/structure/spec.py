@@ -16,7 +16,7 @@ from neurosush.core.behavior import Behavior
 from neurosush.core.network import Compartment, Network, NeuronGroup, SynapseGroup
 from neurosush.modulation import Dopamine
 from neurosush.neurons.axon import Axon
-from neurosush.neurons.competition import KWTA, InherentNoise
+from neurosush.neurons.competition import KWTA, InherentNoise, MinicolumnInhibition
 from neurosush.neurons.dendrite import DendriteIntegration, DendriteStructure
 from neurosush.neurons.homeostasis import ActivityHomeostasis, VoltageHomeostasis
 from neurosush.neurons.models import ELIF, LIF, AdaptiveELIF, Fire
@@ -35,6 +35,7 @@ from neurosush.synapses.currents import (
 )
 from neurosush.synapses.init import DelayInit, WeightInit
 from neurosush.synapses.plasticity import ISTDP, RSTDP, STDP
+from neurosush.synapses.segments import ActiveSegments
 from neurosush.synapses.traces import SpikeGather, Traces
 
 _REGISTRY: dict[str, type[Behavior]] = {}
@@ -60,6 +61,7 @@ for _cls in (
     AdaptiveELIF,
     Fire,
     KWTA,
+    MinicolumnInhibition,
     InherentNoise,
     Axon,
     DendriteStructure,
@@ -75,6 +77,7 @@ for _cls in (
     Local2dInput,
     LateralInput,
     AvgPool2dInput,
+    ActiveSegments,
     SpikeGather,
     Traces,
     STDP,

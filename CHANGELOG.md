@@ -6,6 +6,10 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- Spiking temporal memory: `ActiveSegments` (distal dendritic segments with NMDA-like
+  plateaus and a coincidence window) and `MinicolumnInhibition`; a layer built from them
+  activates exactly the cells `TemporalMemory` activates, checked by
+  `tests/validation/test_segment_math.py` and `test_sequence_math.py`.
 - `SpatialPooler.state_dict()`/`load_state_dict()` and the same for `TemporalMemory`
   (including its random generator), so both resume exactly.
 - More of `tests/validation`: conv2d, local2d, lateral and pooling currents and the conv and

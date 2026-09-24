@@ -192,13 +192,14 @@ streams (`SpikeInput`) are not part of it: resume them yourself.
 |---|---|
 | `neurosush.core` | `Network`, `NeuronGroup`, `SynapseGroup`, `Behavior`, `Order`, delay buffers |
 | `neurosush.neurons.models` | `LIF`, `ELIF`, `AdaptiveELIF`, `Fire` (equations in `dynamics`) |
-| `neurosush.neurons.competition` | `KWTA`, `InherentNoise` |
+| `neurosush.neurons.competition` | `KWTA`, `MinicolumnInhibition`, `InherentNoise` |
 | `neurosush.neurons.axon`, `.dendrite` | `Axon`; `DendriteStructure`, `DendriteIntegration` |
 | `neurosush.neurons.homeostasis` | `ActivityHomeostasis`, `VoltageHomeostasis` |
 | `neurosush.neurons.inputs` | `SpikeInput` |
 | `neurosush.synapses.init` | `WeightInit` (dense or sparse), `DelayInit` |
 | `neurosush.synapses.currents` | `DenseInput`, `OneToOneInput`, `SparseInput`, `Conv2dInput`, `Local2dInput`, `LateralInput`, `AvgPool2dInput` |
 | `neurosush.synapses.traces` | `SpikeGather`, `Traces` |
+| `neurosush.synapses.segments` | `ActiveSegments` (dendritic segments with NMDA-like plateaus) |
 | `neurosush.synapses.plasticity` | `STDP`, `RSTDP`, `ISTDP` (bounds in `bounds`) |
 | `neurosush.synapses.constraints` | `WeightClip`, `WeightNormalization`, `CurrentNormalization` |
 | `neurosush.modulation` | `Payoff`, `Dopamine` |
@@ -315,6 +316,17 @@ assert torch.equal(tm.predicted_columns(), c)  # after A B it expects C
 spatial pooler, temporal memory and a classifier on sequences that differ only in their
 first symbol; [`examples/object_recognition.py`](examples/object_recognition.py) shows voting
 columns recognizing objects in fewer touches.
+
+## Spiking temporal memory
+
+The same sequence memory also runs as a spiking network. `ActiveSegments` gives every cell
+distal segments that fire a dendritic spike when enough of their synapses see input within a
+coincidence window, and hold a plateau that primes the cell below threshold.
+`MinicolumnInhibition` lets the first cells of a minicolumn to reach threshold silence the
+rest. A primed (predicted) cell therefore fires alone, and a minicolumn without one fires
+all at once (a burst). `tests/validation/test_sequence_math.py` checks that such a layer
+activates exactly the cells `TemporalMemory` activates, element by element, under timing
+conditions it also checks.
 
 ## Validation
 
