@@ -5,6 +5,8 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-24
+
 ### Added
 - Package metadata for PyPI (summary, keywords, project links, classifiers) and
   `CITATION.cff`.
