@@ -3,6 +3,7 @@ import torch
 
 from neurosush.synapses.bounds import BOUNDS, hard_bound, no_bound, soft_bound
 from neurosush.synapses.plasticity import (
+    apply_stdp_dense_,
     istdp_dense,
     stdp_conv2d,
     stdp_dense,
@@ -170,3 +171,36 @@ def test_istdp_dense():
         alpha=0.2,
     )
     torch.testing.assert_close(dw, torch.tensor([[0.05, -0.05], [0.0, 0.2]]))
+
+
+@pytest.mark.parametrize("bound", ["none", "soft", "hard"])
+def test_in_place_dense_stdp_matches_the_reference(bound):
+    g = torch.Generator().manual_seed(0)
+    weights = torch.rand(30, 20, generator=g) * 1.2 - 0.1
+    activity = {
+        "pre_spike": torch.rand(30, generator=g) < 0.3,
+        "pre_trace": torch.rand(30, generator=g),
+        "post_spike": torch.rand(20, generator=g) < 0.3,
+        "post_trace": torch.rand(20, generator=g),
+    }
+    ltp_gate, ltd_gate = BOUNDS[bound](weights, 0.0, 1.0)
+    expected = weights + stdp_dense(
+        **activity, a_plus=0.3, a_minus=0.2, ltp_gate=ltp_gate, ltd_gate=ltd_gate
+    )
+    apply_stdp_dense_(weights, **activity, a_plus=0.3, a_minus=0.2, bound=bound)
+    torch.testing.assert_close(weights, expected)
+
+
+def test_in_place_dense_stdp_without_spikes_changes_nothing():
+    weights = torch.rand(4, 3)
+    before = weights.clone()
+    apply_stdp_dense_(
+        weights,
+        pre_spike=torch.zeros(4, dtype=torch.bool),
+        pre_trace=torch.ones(4),
+        post_spike=torch.zeros(3, dtype=torch.bool),
+        post_trace=torch.ones(3),
+        a_plus=1.0,
+        a_minus=1.0,
+    )
+    assert torch.equal(weights, before)

@@ -191,7 +191,8 @@ print([group.name for group in column.output_port("out")])  # ['C1.L23.exc']
 
 ## Development
 
-`bash scripts/check.sh` runs ruff (lint and format check) and the full test suite. See
+`bash scripts/check.sh` runs ruff (lint and format check) and the full test suite;
+`python benchmarks/dense_stdp.py [--device cuda]` measures simulation speed. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and code standards.
 
 ## Releases

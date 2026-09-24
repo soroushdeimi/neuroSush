@@ -138,3 +138,33 @@ class TestArrivalBuffer:
 
     def test_default_dtype_is_float32(self):
         assert ArrivalBuffer(depth=1, size=1).current().dtype == torch.float32
+
+
+def test_delays_are_validated_again_after_they_change():
+    buf = HistoryBuffer(depth=2, size=2)
+    delay = torch.tensor([0, 1])
+    buf.read(delay)
+    delay[1] = 5
+    with pytest.raises(ValueError, match="delay"):
+        buf.read(delay)
+
+
+def test_several_delay_tensors_share_one_buffer():
+    buf = HistoryBuffer(depth=3, size=1)
+    for value in (True, False, False):
+        buf.push(torch.tensor([value]))
+    near, far = torch.tensor([0]), torch.tensor([2])
+    for _ in range(2):
+        assert buf.read(near).tolist() == [False]
+        assert buf.read(far).tolist() == [True]
+
+
+def test_ring_wraps_many_times():
+    buf = ArrivalBuffer(depth=3, size=1)
+    seen = []
+    for step in range(10):
+        buf.advance()
+        buf.add(torch.tensor([float(step)]), torch.tensor([2]))
+        seen.append(buf.current().item())
+    # a value added with delay 2 arrives two steps later
+    assert seen == [0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]

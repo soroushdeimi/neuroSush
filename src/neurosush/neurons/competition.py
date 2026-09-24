@@ -71,7 +71,7 @@ class KWTA(Behavior):
     def forward(self, group: NeuronGroup) -> None:
         """Reset the losers of the competition."""
         losers = kwta_losers(group.v, group.threshold, self.k, shape=group.shape, dim=self.dim)
-        group.v = torch.where(losers, group.v_reset, group.v)
+        group.v = group.v.masked_fill(losers, group.v_reset)
 
 
 class InherentNoise(Behavior):

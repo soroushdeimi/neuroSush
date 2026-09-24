@@ -22,5 +22,7 @@ All notable changes to neuroSush are documented here, following the
 - Cortical structures: layers with ports, `connect`, `CorticalColumn`, and JSON specs built
   through a class registry.
 - `examples/two_patterns.py`, which learns two input patterns with STDP.
+- Fast paths: ring-buffer delays validated once, and event-driven in-place STDP for dense
+  synapses (5-6x faster on CPU); `benchmarks/dense_stdp.py` measures it.
 - CI (lint, tests on Python 3.10 to 3.13, coverage, build) and a tag-driven release workflow
   with PyPI trusted publishing.

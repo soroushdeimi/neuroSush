@@ -29,7 +29,11 @@ def euler_step(v: Scalar, tau_dv_dt: Scalar, *, tau: float, dt: float) -> Scalar
 def fire(v: Scalar, *, threshold: Scalar, v_reset: Scalar) -> tuple[torch.Tensor, torch.Tensor]:
     """Threshold crossing: the spikes and the voltage with spiking neurons reset."""
     spikes = v >= threshold
-    v_after = torch.where(spikes, torch.as_tensor(v_reset, dtype=v.dtype, device=v.device), v)
+    if isinstance(v_reset, torch.Tensor):
+        v_after = torch.where(spikes, v_reset, v)
+    else:
+        # masked_fill takes the scalar directly: no host-to-device copy every step
+        v_after = v.masked_fill(spikes, v_reset)
     return spikes, v_after
 
 

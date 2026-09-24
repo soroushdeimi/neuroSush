@@ -43,6 +43,43 @@ def stdp_dense(
     return a_plus * ltp * ltp_gate - a_minus * ltd * ltd_gate
 
 
+def apply_stdp_dense_(
+    weights: torch.Tensor,
+    *,
+    pre_spike: torch.Tensor,
+    pre_trace: torch.Tensor,
+    post_spike: torch.Tensor,
+    post_trace: torch.Tensor,
+    a_plus: float,
+    a_minus: float,
+    bound: str = "none",
+    w_min: float = 0.0,
+    w_max: float = 1.0,
+) -> None:
+    """Apply :func:`stdp_dense` to ``weights`` in place, touching only active rows and columns.
+
+    Potentiation changes only the columns of spiking postsynaptic neurons and depression only
+    the rows of spiking presynaptic neurons, so a step costs O(active * size) instead of
+    O(n_src * n_dst). Both changes are computed from the weights before the update, which
+    gives exactly the result of ``weights + stdp_dense(...)``.
+    """
+    post_idx = post_spike.nonzero().squeeze(1)
+    pre_idx = pre_spike.nonzero().squeeze(1)
+    ltp = ltd = None
+    if post_idx.numel() and a_plus:
+        columns = weights.index_select(1, post_idx)
+        gate = BOUNDS[bound](columns, w_min, w_max)[0]
+        ltp = gate.mul_(pre_trace.unsqueeze(1)).mul_(a_plus)
+    if pre_idx.numel() and a_minus:
+        rows = weights.index_select(0, pre_idx)
+        gate = BOUNDS[bound](rows, w_min, w_max)[1]
+        ltd = gate.mul_(post_trace.unsqueeze(0)).mul_(-a_minus)
+    if ltp is not None:
+        weights.index_add_(1, post_idx, ltp)
+    if ltd is not None:
+        weights.index_add_(0, pre_idx, ltd)
+
+
 def stdp_one_to_one(
     *,
     pre_spike: torch.Tensor,
@@ -269,8 +306,22 @@ class STDP(Behavior):
         )
 
     def forward(self, syn: SynapseGroup) -> None:
-        """Apply this step's weight change."""
-        syn.weights = syn.weights + self.compute(syn)
+        """Apply this step's weight change (in place and event-driven for dense synapses)."""
+        if syn.connectivity == "dense":
+            apply_stdp_dense_(
+                syn.weights,
+                pre_spike=syn.pre_spike,
+                pre_trace=syn.pre_trace,
+                post_spike=syn.post_spike,
+                post_trace=syn.post_trace,
+                a_plus=self.a_plus,
+                a_minus=self.a_minus,
+                bound=self.bound,
+                w_min=self.w_min,
+                w_max=self.w_max,
+            )
+        else:
+            syn.weights = syn.weights + self.compute(syn)
 
 
 class RSTDP(STDP):
