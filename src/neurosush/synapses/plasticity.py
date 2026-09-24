@@ -59,14 +59,16 @@ class _Geometry(TypedDict):
     dst_shape: tuple[int, int, int]
 
 
-def _f(x: torch.Tensor) -> torch.Tensor:
-    return x.to(torch.get_default_dtype()) if not x.is_floating_point() else x
+def _float_dtype(*values: torch.Tensor) -> torch.dtype:
+    """The dtype of the first floating point tensor (a trace): the network's precision."""
+    return next((v.dtype for v in values if v.is_floating_point()), torch.get_default_dtype())
 
 
 def _pairs(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """Batch mean of the outer products ``a[n] x b[n]``, shape ``(len_a, len_b)``."""
-    a2 = _f(a).reshape(-1, a.shape[-1])
-    b2 = _f(b).to(a2.dtype).reshape(-1, b.shape[-1])
+    dtype = _float_dtype(a, b)
+    a2 = a.to(dtype).reshape(-1, a.shape[-1])
+    b2 = b.to(dtype).reshape(-1, b.shape[-1])
     return a2.T @ b2 / a2.shape[0]
 
 
@@ -174,13 +176,14 @@ def stdp_sparse(
 
 def _patches(
     values: torch.Tensor,
+    dtype: torch.dtype,
     shape: tuple[int, int, int],
     kernel_size: Pair,
     stride: Pair,
     padding: Pair,
 ) -> torch.Tensor:
     """Unfolded source patches, shape ``(samples, in_channels * kh * kw, positions)``."""
-    image = values.to(torch.get_default_dtype()).reshape(-1, *shape)
+    image = values.to(dtype).reshape(-1, *shape)
     return F.unfold(image, kernel_size=kernel_size, stride=stride, padding=padding)
 
 
@@ -204,10 +207,11 @@ def stdp_conv2d(
     geometry = (src_shape, kernel_size, stride, padding)
     out_channels, positions = dst_shape[0], dst_shape[1] * dst_shape[2]
     weight_shape = (out_channels, src_shape[0], *kernel_size)
-    post_s = post_spike.to(torch.get_default_dtype()).reshape(-1, out_channels, positions)
-    post_t = post_trace.to(torch.get_default_dtype()).reshape(-1, out_channels, positions)
+    dtype = pre_trace.dtype
+    post_s = post_spike.to(dtype).reshape(-1, out_channels, positions)
+    post_t = post_trace.to(dtype).reshape(-1, out_channels, positions)
     samples = post_s.shape[0]
-    pre_t, pre_s = _patches(pre_trace, *geometry), _patches(pre_spike, *geometry)
+    pre_t, pre_s = _patches(pre_trace, dtype, *geometry), _patches(pre_spike, dtype, *geometry)
     ltp = torch.einsum("nol,nkl->ok", post_s, pre_t).reshape(weight_shape) / samples
     ltd = torch.einsum("nol,nkl->ok", post_t, pre_s).reshape(weight_shape) / samples
     return (a_plus * ltp * ltp_gate - a_minus * ltd * ltd_gate) / positions
@@ -232,10 +236,11 @@ def stdp_local2d(
     """Weight change ``(out, positions, in * kh * kw)`` of unshared local kernels."""
     geometry = (src_shape, kernel_size, stride, padding)
     out_channels, positions = dst_shape[0], dst_shape[1] * dst_shape[2]
-    post_s = post_spike.to(torch.get_default_dtype()).reshape(-1, out_channels, positions)
-    post_t = post_trace.to(torch.get_default_dtype()).reshape(-1, out_channels, positions)
+    dtype = pre_trace.dtype
+    post_s = post_spike.to(dtype).reshape(-1, out_channels, positions)
+    post_t = post_trace.to(dtype).reshape(-1, out_channels, positions)
     samples = post_s.shape[0]
-    pre_t, pre_s = _patches(pre_trace, *geometry), _patches(pre_spike, *geometry)
+    pre_t, pre_s = _patches(pre_trace, dtype, *geometry), _patches(pre_spike, dtype, *geometry)
     ltp = torch.einsum("nol,nkl->olk", post_s, pre_t) / samples
     ltd = torch.einsum("nol,nkl->olk", post_t, pre_s) / samples
     return a_plus * ltp * ltp_gate - a_minus * ltd * ltd_gate
