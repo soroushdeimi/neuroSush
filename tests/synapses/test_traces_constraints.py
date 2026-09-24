@@ -93,6 +93,26 @@ class TestSpikeGatherAndTraces:
             net.initialize()
         assert syn.name == "sg0"
 
+    def test_postsynaptic_spikes_need_an_axon_on_the_destination(self):
+        net = Network()
+        src = NeuronGroup(net, 1, [Axon()])
+        syn = SynapseGroup(net, src, NeuronGroup(net, 1), behaviors=[SpikeGather()])
+        net.initialize()
+        assert syn.pre_spike.tolist() == [False]
+        assert not hasattr(syn, "post_spike")
+
+    def test_traces_need_postsynaptic_spikes(self):
+        net = Network()
+        src = NeuronGroup(net, 1, [Axon()])
+        SynapseGroup(
+            net,
+            src,
+            NeuronGroup(net, 1, name="out"),
+            behaviors=[SpikeGather(), Traces(tau_pre=5.0)],
+        )
+        with pytest.raises(RuntimeError, match="an Axon on out"):
+            net.initialize()
+
     def test_traces_need_gathered_spikes(self):
         net = Network()
         SynapseGroup(net, NeuronGroup(net, 1), NeuronGroup(net, 1), behaviors=[Traces(tau_pre=5.0)])
@@ -107,7 +127,10 @@ class TestSpikeGatherAndTraces:
 def with_weights(src, dst, init, input_behavior, *extra):
     net = Network()
     syn = SynapseGroup(
-        net, NeuronGroup(net, src), NeuronGroup(net, dst), behaviors=[init, input_behavior, *extra]
+        net,
+        NeuronGroup(net, src, [Axon()]),
+        NeuronGroup(net, dst),
+        behaviors=[init, input_behavior, *extra, SpikeGather()],
     )
     net.initialize()
     return syn
@@ -138,12 +161,13 @@ class TestWeightNormalization:
         net = Network()
         syn = SynapseGroup(
             net,
-            NeuronGroup(net, (1, 3, 3)),
+            NeuronGroup(net, (1, 3, 3), [Axon()]),
             NeuronGroup(net, (2, 2, 2)),
             behaviors=[
                 WeightInit(mode="ones", shape=(2, 1, 2, 2)),
                 Conv2dInput(),
                 WeightNormalization(norm=1.0),
+                SpikeGather(),
             ],
         )
         net.initialize()
@@ -169,12 +193,13 @@ class TestWeightNormalization:
         net = Network()
         syn = SynapseGroup(
             net,
-            NeuronGroup(net, (1, 2, 2)),
+            NeuronGroup(net, (1, 2, 2), [Axon()]),
             NeuronGroup(net, (1, 1, 2)),
             behaviors=[
                 WeightInit(mode="ones", shape=(1, 2, 2)),
                 Local2dInput(kernel_size=(2, 1)),
                 WeightNormalization(),
+                SpikeGather(),
             ],
         )
         net.initialize()

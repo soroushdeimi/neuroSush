@@ -17,25 +17,27 @@ def trace_step(
 
 
 class SpikeGather(Behavior):
-    """Reads ``syn.pre_spike`` and ``syn.post_spike`` through the synapse delays.
+    """Reads ``syn.pre_spike`` (and ``syn.post_spike``) through the synapse delays.
 
-    Both groups need an :class:`~neurosush.neurons.axon.Axon`; the presynaptic spike is read
-    with ``src_delay`` and the postsynaptic one with ``dst_delay``.
+    The source group needs an :class:`~neurosush.neurons.axon.Axon`; its spikes are read
+    with ``src_delay``. When the destination has an Axon too, its spikes are read with
+    ``dst_delay`` into ``syn.post_spike``, which traces and plasticity need.
     """
 
     order = Order.SPIKE_GATHER
 
     def initialize(self, syn: SynapseGroup) -> None:
-        """Check for axons and read the initial spikes."""
-        for group in (syn.src, syn.dst):
-            if not hasattr(group, "spike_history"):
-                raise RuntimeError(f"SpikeGather on {syn.name} needs an Axon on {group.name}")
+        """Check for the source axon and read the initial spikes."""
+        if not hasattr(syn.src, "spike_history"):
+            raise RuntimeError(f"SpikeGather on {syn.name} needs an Axon on {syn.src.name}")
+        self.post = hasattr(syn.dst, "spike_history")
         self.forward(syn)
 
     def forward(self, syn: SynapseGroup) -> None:
         """Read this step's delayed spikes."""
         syn.pre_spike = syn.src.spike_history.read(syn.src_delay)
-        syn.post_spike = syn.dst.spike_history.read(syn.dst_delay)
+        if self.post:
+            syn.post_spike = syn.dst.spike_history.read(syn.dst_delay)
 
 
 class Traces(Behavior):
@@ -59,7 +61,9 @@ class Traces(Behavior):
     def initialize(self, syn: SynapseGroup) -> None:
         """Allocate both traces."""
         if not hasattr(syn, "post_spike"):
-            raise RuntimeError(f"Traces on {syn.name} needs SpikeGather")
+            raise RuntimeError(
+                f"Traces on {syn.name} needs SpikeGather and an Axon on {syn.dst.name}"
+            )
         syn.pre_trace = syn.src.state()
         syn.post_trace = syn.dst.state()
 

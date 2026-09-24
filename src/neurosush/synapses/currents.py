@@ -15,6 +15,7 @@ import torch.nn.functional as F
 from neurosush.core.behavior import Behavior
 from neurosush.core.network import SynapseGroup
 from neurosush.core.order import Order
+from neurosush.synapses.traces import SpikeGather
 
 
 def conv_output_size(size: int, *, kernel: int, stride: int, padding: int) -> int:
@@ -201,6 +202,11 @@ class _SynapticInput(Behavior, ABC):
         """
         if self.needs_weights and syn.weights is None:
             raise RuntimeError(f"{type(self).__name__} on {syn.name} needs weights (WeightInit)")
+        if not any(isinstance(behavior, SpikeGather) for behavior in syn.behaviors):
+            # without it pre_spike would stay silent forever
+            raise RuntimeError(
+                f"{type(self).__name__} on {syn.name} needs SpikeGather to receive spikes"
+            )
         self.validate(syn)
         syn.connectivity = self.connectivity
         syn.input = self

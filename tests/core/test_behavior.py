@@ -23,6 +23,7 @@ def test_order_values_follow_the_step_sequence():
         Order.PLASTICITY,
         Order.WEIGHT_NORMALIZATION,
         Order.WEIGHT_CLIP,
+        Order.RECORD,
     ]
     assert list(Order) == sequence
     assert [int(o) for o in sequence] == sorted(int(o) for o in sequence)

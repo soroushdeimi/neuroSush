@@ -25,11 +25,16 @@ class Axon(Behavior):
         self.max_delay = max_delay
 
     def initialize(self, group: NeuronGroup) -> None:
-        """Allocate spike history buffer on the group."""
-        for synapses in group.efferent.values():
-            for syn in synapses:
-                if int(syn.src_delay.max()) >= self.max_delay:
-                    raise ValueError(f"src_delay must be less than {self.max_delay} for {syn.name}")
+        """Check the delays this history must serve and allocate it on the group."""
+        for kind, links in (("src_delay", group.efferent), ("dst_delay", group.afferent)):
+            for synapses in links.values():
+                for syn in synapses:
+                    longest = int(getattr(syn, kind).max())
+                    if longest >= self.max_delay:
+                        raise ValueError(
+                            f"{kind} must be less than max_delay={self.max_delay} for "
+                            f"{syn.name}, got {longest}"
+                        )
         group.spike_history = HistoryBuffer(
             self.max_delay,
             group.size,

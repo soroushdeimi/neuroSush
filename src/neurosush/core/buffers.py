@@ -51,6 +51,19 @@ class _Buffer:
         self._storage.zero_()
         self._head = 0
 
+    def state_dict(self) -> dict[str, Tensor | int]:
+        """A copy of the slots and the head position."""
+        return {"storage": self._storage.clone(), "head": self._head}
+
+    def load_state_dict(self, state: dict[str, Tensor | int]) -> None:
+        """Restore slots and head saved by :meth:`state_dict`."""
+        storage = state["storage"]
+        if not isinstance(storage, Tensor) or storage.shape != self._storage.shape:
+            shape = getattr(storage, "shape", None)
+            raise ValueError(f"storage shape must be {tuple(self._storage.shape)}, got {shape}")
+        self._storage.copy_(storage)
+        self._head = int(state["head"])
+
     def _slots(self, delay: int | Tensor) -> Tensor:
         """Storage rows for per-neuron delays, shape ``(1, size)``; validates new delays."""
         if isinstance(delay, int):

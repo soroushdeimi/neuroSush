@@ -179,7 +179,11 @@ neurons = (
     BehaviorSpec("Fire"),
     BehaviorSpec("Axon"),
 )
-dense = (BehaviorSpec("WeightInit", {"mode": "uniform"}), BehaviorSpec("DenseInput"))
+dense = (
+    BehaviorSpec("WeightInit", {"mode": "uniform"}),
+    BehaviorSpec("DenseInput"),
+    BehaviorSpec("SpikeGather"),
+)
 layer = LayerSpec(
     groups={"exc": GroupSpec(8, neurons), "inh": GroupSpec(2, neurons, inhibitory=True)},
     synapses=(SynapseSpec("exc", "inh", dense), SynapseSpec("inh", "exc", dense)),

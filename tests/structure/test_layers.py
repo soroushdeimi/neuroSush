@@ -1,11 +1,23 @@
 import pytest
+import torch
 
+from neurosush.core.behavior import Behavior
 from neurosush.core.network import Network, NeuronGroup
+from neurosush.core.order import Order
+from neurosush.neurons.axon import Axon
 from neurosush.structure.column import CorticalColumn
 from neurosush.structure.connect import connect
 from neurosush.structure.layer import CorticalLayer, Layer
 from neurosush.synapses.currents import DenseInput
 from neurosush.synapses.init import WeightInit
+from neurosush.synapses.traces import SpikeGather
+
+
+class AlwaysFire(Behavior):
+    order = Order.FIRE
+
+    def initialize(self, group):
+        group.spikes = group.state(True, dtype=torch.bool)
 
 
 def groups(net, *names, inhibitory=()):
@@ -67,7 +79,7 @@ class TestCorticalLayer:
 
 
 def dense_factory():
-    return [WeightInit(mode="ones"), DenseInput()]
+    return [WeightInit(mode="ones"), DenseInput(), SpikeGather()]
 
 
 class TestConnect:
@@ -87,10 +99,11 @@ class TestConnect:
 
     def test_connected_network_runs(self):
         net = Network()
-        a, b = NeuronGroup(net, 2), NeuronGroup(net, 3)
+        a, b = NeuronGroup(net, 2, [AlwaysFire(), Axon()]), NeuronGroup(net, 3)
         (syn,) = connect(net, [a], [b], dense_factory)
         net.run(2)
-        assert syn.I.shape == (3,)
+        # spikes gathered in step 1 drive step 2: two sources with weight 1 each
+        assert syn.I.tolist() == [2.0, 2.0, 2.0]
 
 
 class TestCorticalColumn:

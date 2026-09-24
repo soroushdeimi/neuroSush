@@ -58,6 +58,20 @@ class ActivityHomeostasis(Behavior):
             self.activity.zero_()
             self.rate *= self.decay
 
+    def state_dict(self) -> dict[str, torch.Tensor | float]:
+        """The activity counter and the decayed rate."""
+        return {"activity": self.activity.clone(), "rate": self.rate}
+
+    def load_state_dict(self, state: dict[str, torch.Tensor | float]) -> None:
+        """Restore the counter and rate saved by :meth:`state_dict`."""
+        activity = torch.as_tensor(state["activity"])
+        if activity.shape != self.activity.shape:
+            raise ValueError(
+                f"activity shape must be {tuple(self.activity.shape)}, got {tuple(activity.shape)}"
+            )
+        self.activity = activity.to(self.activity)
+        self.rate = float(state["rate"])
+
 
 class VoltageHomeostasis(Behavior):
     """Pushes voltages back into ``[v_min, v_max]`` through an accumulating exhaustion term.

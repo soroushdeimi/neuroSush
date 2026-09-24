@@ -27,3 +27,4 @@ class Order(IntEnum):
     PLASTICITY = 500
     WEIGHT_NORMALIZATION = 520
     WEIGHT_CLIP = 540
+    RECORD = 1000

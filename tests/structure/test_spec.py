@@ -25,7 +25,11 @@ LIF = BehaviorSpec("LIF", {"tau": 10.0, "threshold": -50.0, "v_reset": -70.0, "v
 def column_spec():
     exc = GroupSpec(4, (LIF, BehaviorSpec("Fire"), BehaviorSpec("Axon")))
     inh = GroupSpec(2, (LIF, BehaviorSpec("Fire"), BehaviorSpec("Axon")), inhibitory=True)
-    dense = (BehaviorSpec("WeightInit", {"mode": "uniform"}), BehaviorSpec("DenseInput"))
+    dense = (
+        BehaviorSpec("WeightInit", {"mode": "uniform"}),
+        BehaviorSpec("DenseInput"),
+        BehaviorSpec("SpikeGather"),
+    )
     layer = LayerSpec(
         groups={"exc": exc, "inh": inh},
         synapses=(SynapseSpec("exc", "inh", dense), SynapseSpec("inh", "exc", dense)),

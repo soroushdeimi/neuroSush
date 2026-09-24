@@ -94,7 +94,12 @@ class TestSTDP:
             net,
             src,
             src,
-            behaviors=[WeightInit(mode=0.5), DenseInput(), STDP(a_plus=0.1, a_minus=0.1)],
+            behaviors=[
+                WeightInit(mode=0.5),
+                DenseInput(),
+                SpikeGather(),
+                STDP(a_plus=0.1, a_minus=0.1),
+            ],
         )
         with pytest.raises(RuntimeError, match="Traces"):
             net.initialize()

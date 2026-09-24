@@ -2,6 +2,7 @@ import pytest
 import torch
 
 from neurosush.core.network import Network, NeuronGroup, SynapseGroup
+from neurosush.neurons.axon import Axon
 from neurosush.synapses.currents import (
     AvgPool2dInput,
     Conv2dInput,
@@ -12,13 +13,15 @@ from neurosush.synapses.currents import (
     SparseInput,
 )
 from neurosush.synapses.init import WeightInit
+from neurosush.synapses.traces import SpikeGather
 
 
 def build(src_shape, dst_shape, init, input_behavior, inhibitory=False, same_group=False):
     net = Network()
-    src = NeuronGroup(net, src_shape, inhibitory=inhibitory)
+    src = NeuronGroup(net, src_shape, [Axon()], inhibitory=inhibitory)
     dst = src if same_group else NeuronGroup(net, dst_shape)
     behaviors = [input_behavior] if init is None else [init, input_behavior]
+    behaviors.append(SpikeGather())
     syn = SynapseGroup(net, src, dst, behaviors=behaviors)
     net.initialize()
     return syn
@@ -183,3 +186,12 @@ class TestAvgPool2dInput:
     def test_depth_must_match(self):
         with pytest.raises(ValueError, match="depth"):
             build((2, 4, 4), (3, 2, 2), None, AvgPool2dInput())
+
+
+def test_input_without_spike_gather_is_an_error():
+    # the input would otherwise read an all-silent pre_spike forever
+    net = Network()
+    src, dst = NeuronGroup(net, 2, [Axon()]), NeuronGroup(net, 2)
+    SynapseGroup(net, src, dst, behaviors=[WeightInit(mode="ones"), DenseInput()])
+    with pytest.raises(RuntimeError, match="needs SpikeGather"):
+        net.initialize()

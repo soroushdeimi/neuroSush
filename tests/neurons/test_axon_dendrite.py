@@ -68,6 +68,18 @@ class TestAxon:
         with pytest.raises(ValueError, match=syn.name):
             net.initialize()
 
+    def test_afferent_delays_must_fit(self):
+        # dst_delay reads the destination's own history, so it has to fit that Axon too
+        net = Network()
+        a = NeuronGroup(net, 1)
+        b = NeuronGroup(net, 2, behaviors=[ScriptedSpikes([]), Axon(max_delay=2)])
+        syn = SynapseGroup(net, a, b)
+        syn.dst_delay = torch.tensor([2, 0])
+        with pytest.raises(
+            ValueError, match=r"dst_delay must be less than max_delay=2 for sg0, got 2"
+        ):
+            net.initialize()
+
 
 def dendrite_net(values, delay=0, compartment="proximal", depth=2):
     net = Network()
