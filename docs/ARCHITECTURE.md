@@ -33,19 +33,22 @@ accidental complexity.
 | `neurons/axon.py` | `Axon` (spike history for delays) |
 | `neurons/dendrite.py` | `DendriteStructure`, `DendriteIntegration` |
 | `neurons/homeostasis.py` | `ActivityHomeostasis`, `VoltageHomeostasis` |
-| `neurons/inputs.py` | `SpikeInput` (drives a group from a spike stream) |
+| `neurons/inputs.py` | `SpikeInput` (drives a group from a stream of spike frames) |
 | `synapses/init.py` | `WeightInit`, `DelayInit`, `sparse_random` |
 | `synapses/currents.py` | pure current functions + `DenseInput`, `OneToOneInput`, `SparseInput`, `Conv2dInput`, `Local2dInput`, `LateralInput`, `AvgPool2dInput` |
 | `synapses/traces.py` | `SpikeGather`, `Traces`, `trace_step` |
-| `synapses/bounds.py` | `soft_bound`, `hard_bound`, `no_bound` |
+| `synapses/bounds.py` | `soft_bound`, `hard_bound`, `no_bound` (directional learning gates) |
 | `synapses/plasticity.py` | pure STDP / iSTDP kernels per connectivity + `STDP`, `RSTDP`, `ISTDP` |
 | `synapses/constraints.py` | `WeightClip`, `WeightNormalization`, `CurrentNormalization` |
 | `modulation.py` | `Payoff`, `Dopamine` |
 | `encoding.py` | `rate_poisson`, `interval_poisson`, `intensity_to_latency` |
 | `filters.py` | `dog_kernel`, `gabor_kernel` |
-| `transforms.py` | `grid_erase`, `grid_keep`, `grid_crop`, `split_polarity`, `FilterBank` |
-| `data.py` | `LocationDataset`, `SampleSchedule` |
-| `structure/` | `Layer`, `CorticalLayer`, `Port`, `Connection`, `CorticalColumn`, spec serialization |
+| `transforms.py` | `grid_boxes`, `GridErase`, `GridKeep`, `GridCrop`, `split_polarity`, `FilterBank` |
+| `data.py` | `LocationDataset`, `spike_frames` |
+| `structure/layer.py` | `Layer`, `CorticalLayer` (named groups and ports) |
+| `structure/connect.py` | `connect` (one synapse group per source/destination pair) |
+| `structure/column.py` | `CorticalColumn` |
+| `structure/spec.py` | `ColumnSpec` and friends, `build_column`, `to_json`/`from_json`, `register` |
 
 ## Simulation model
 
@@ -82,3 +85,15 @@ Synaptic input at step t uses spikes gathered at step t-1 (one step of transmiss
 - Every tensor lives on `net.device` with float dtype `net.dtype`; spikes are `torch.bool`.
 - Time constants and `dt` share one unit (ms by convention). Every decay uses `dt / tau`.
 - Inhibitory source groups (`NeuronGroup(..., inhibitory=True)`) make currents negative.
+
+## Decisions from the review
+
+- Time constants share the unit of `dt`; decays use `dt / tau`; STDP updates are per spike
+  pair; reward modulation is a rate, `dw/dt = dopamine * eligibility`.
+- Learning bounds only gate potentiation (by `w_max`) and depression (by `w_min`); clipping
+  is the separate `WeightClip`.
+- Weights are magnitudes; the source group's `inhibitory` flag gives the current its sign.
+- Sparse weights are a values vector with `src_idx`/`dst_idx`, not torch sparse tensors, so
+  currents are one `index_add` and learning updates the values directly.
+- Specs describe construction only; learned tensors are saved separately.
+
