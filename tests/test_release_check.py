@@ -91,3 +91,19 @@ def test_main_fails_with_messages(tmp_path, capsys):
     code = release_check.main(["--tag", "v9.9.9", "--root", str(tmp_path)])
     assert code == 1
     assert "does not match" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("version", "expected"),
+    [("0.1.0", True), ("1.2.3rc1", True), ("0.2.0.dev0", False), ("1.0", False)],
+)
+def test_is_release_version(version, expected):
+    assert release_check.is_release_version(version) is expected
+    assert release_check.main(["--is-release", version]) == (0 if expected else 1)
+
+
+def test_print_version(tmp_path, capsys):
+    (tmp_path / "src" / "neurosush").mkdir(parents=True)
+    (tmp_path / "src" / "neurosush" / "__init__.py").write_text('__version__ = "0.3.0"\n')
+    assert release_check.main(["--print-version", "--root", str(tmp_path)]) == 0
+    assert capsys.readouterr().out == "0.3.0\n"

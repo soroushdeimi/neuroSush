@@ -8,6 +8,11 @@ import sys
 from pathlib import Path
 
 
+def is_release_version(version: str) -> bool:
+    """Whether ``version`` is a final or pre-release version (not a development version)."""
+    return re.fullmatch(r"\d+\.\d+\.\d+((a|b|rc)\d+)?", version) is not None
+
+
 def read_version(init_file: Path) -> str:
     """Read the package version without importing the package."""
     match = re.search(
@@ -35,7 +40,7 @@ def check(tag: str, version: str, changelog: str) -> list[str]:
     errors = []
     if tag != f"v{version}":
         errors.append(f"tag {tag!r} does not match version {version!r}")
-    if re.fullmatch(r"\d+\.\d+\.\d+((a|b|rc)\d+)?", version) is None:
+    if not is_release_version(version):
         errors.append(f"cannot release development version {version!r}")
     section = changelog_section(changelog, version)
     if section is None:
@@ -48,11 +53,19 @@ def check(tag: str, version: str, changelog: str) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     """Check release metadata and optionally write release notes."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tag", required=True)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--tag", help="check that this tag can be released")
+    mode.add_argument("--print-version", action="store_true", help="print the package version")
+    mode.add_argument("--is-release", metavar="VERSION", help="exit 0 for a release version")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--notes-out", type=Path)
     args = parser.parse_args(argv)
+    if args.is_release is not None:
+        return 0 if is_release_version(args.is_release) else 1
     try:
+        if args.print_version:
+            print(read_version(args.root / "src" / "neurosush" / "__init__.py"))
+            return 0
         version = read_version(args.root / "src" / "neurosush" / "__init__.py")
         changelog = (args.root / "CHANGELOG.md").read_text(encoding="utf-8")
         errors = check(args.tag, version, changelog)

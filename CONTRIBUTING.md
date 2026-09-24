@@ -31,15 +31,22 @@ Use Conventional Commits with a scope: `feat`, `fix`, `docs`, `test`, `build`,
 
 ## Releasing
 
-1. Bump `__version__` in `src/neurosush/__init__.py` to the release version.
+Releases are automatic:
+
+1. Set `__version__` in `src/neurosush/__init__.py` to the release version.
 2. Move the Unreleased notes under `## [X.Y.Z] - YYYY-MM-DD`, keeping an
    Unreleased section for future changes.
-3. Run `bash scripts/check.sh` and commit the version and changelog changes.
-4. Create the tag with `git tag -a vX.Y.Z -m vX.Y.Z` and push the commit and tag
-   (`git push origin main`, then `git push origin vX.Y.Z`).
+3. Run `bash scripts/check.sh`, commit, and push to `main`.
 
-The Release workflow verifies the tag, version and changelog, runs CI, publishes
-to PyPI via trusted publishing, and creates a GitHub release with the changelog
-notes and distribution files. One-time setup: add this GitHub repository as a
-trusted publisher on PyPI, selecting the `release.yml` workflow and environment
-`pypi`, and create that environment in the repository settings.
+On that push the Release workflow sees a release version without a GitHub
+release, checks the version and changelog, runs the full CI, and creates the tag
+`vX.Y.Z` and a GitHub release with the wheel, the sdist and the changelog notes.
+Development versions (`X.Y.Z.devN`) are never released. Pushing a tag `vX.Y.Z`
+by hand does the same.
+
+PyPI publishing is a separate job that is off until it is set up once: add this
+repository as a trusted publisher on PyPI (workflow `release.yml`, environment
+`pypi`), create the `pypi` environment in the repository settings, and set the
+repository variable `PYPI_PUBLISH` to `true`. After that every release is also
+published to PyPI.
+

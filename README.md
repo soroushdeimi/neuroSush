@@ -193,10 +193,12 @@ print([group.name for group in column.output_port("out")])  # ['C1.L23.exc']
 
 ## Releases
 
-Pushing a tag `vX.Y.Z` runs the Release workflow: it checks that the tag, the package version
-and the changelog agree, runs the full CI, publishes to PyPI with trusted publishing and
-creates a GitHub release from the changelog. The steps are in
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Releases are automatic. A commit on `main` that sets a new release version (for example
+`0.2.0`) with its changelog section triggers the Release workflow: it checks the version and
+the changelog, runs the full CI, and creates the tag and a GitHub release with the wheel and
+the sdist. Publishing to PyPI is switched on with the `PYPI_PUBLISH` repository variable after
+a one-time trusted-publisher setup. The steps are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 
 ## License
 
