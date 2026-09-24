@@ -118,6 +118,7 @@ def test_stdp_conv2d_averages_over_positions():
 
 
 def test_stdp_local2d_potentiation_needs_a_post_spike():
+    # potentiation must use the postsynaptic spike, not the presynaptic one
     common = {
         "pre_trace": B([2.0, 2.0, 2.0, 2.0]),
         "post_trace": torch.zeros(2),

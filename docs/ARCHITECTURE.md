@@ -1,7 +1,8 @@
 # neuroSush architecture
 
-plasticity, dopamine modulation, spike encoders, cortical structures) and drops its
-accidental complexity.
+neuroSush simulates spiking cortical networks on PyTorch: LIF-family neurons, dendritic
+compartments, axonal delays, STDP-family plasticity, dopamine modulation, spike encoders and
+cortical structures.
 
 ## Principles
 
@@ -86,7 +87,7 @@ Synaptic input at step t uses spikes gathered at step t-1 (one step of transmiss
 - Time constants and `dt` share one unit (ms by convention). Every decay uses `dt / tau`.
 - Inhibitory source groups (`NeuronGroup(..., inhibitory=True)`) make currents negative.
 
-## Decisions from the review
+## Design decisions
 
 - Time constants share the unit of `dt`; decays use `dt / tau`; STDP updates are per spike
   pair; reward modulation is a rate, `dw/dt = dopamine * eligibility`.

@@ -2,7 +2,9 @@
 
 Spiking cortical networks on PyTorch: LIF-family neurons with dendritic compartments and
 delays, STDP-family plasticity with dopamine modulation, spike encoders, and cortical
+structures.
 
+## Design
 
 - **Pure math, thin behaviors.** Every equation is a small function that returns new tensors
   and has tests with hand-computed values; behaviors only hold state and call them.
@@ -11,7 +13,8 @@ delays, STDP-family plasticity with dopamine modulation, spike encoders, and cor
 - **Reproducible.** All randomness comes from the network's seeded generator.
 - **One dependency.** `torch` only at runtime.
 - **Safe serialization.** Structure specs load through a registry of classes, never `eval`.
-  test. See [docs/REVIEW.md](docs/REVIEW.md).
+- **Tested.** Every equation has tests with hand-computed values, and an example network
+  that learns runs in CI.
 
 ## Install
 
@@ -199,6 +202,6 @@ the changelog, runs the full CI, and creates the tag and a GitHub release with t
 the sdist. Publishing to PyPI is switched on with the `PYPI_PUBLISH` repository variable after
 a one-time trusted-publisher setup. The steps are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-
 ## License
 
+MIT, see [LICENSE](LICENSE).
