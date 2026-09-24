@@ -5,6 +5,8 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-24
+
 ### Added
 - Spiking temporal memory: `ActiveSegments` (distal dendritic segments with NMDA-like
   plateaus and a coincidence window) and `MinicolumnInhibition`; a layer built from them
