@@ -39,7 +39,7 @@ class ScriptedSpikes(Behavior):
 
 
 class BernoulliSpikes(Behavior):
-    """Every neuron fires independently with probability ``p`` per step."""
+    """Every neuron fires independently with probability ``p`` (one value, or one per neuron)."""
 
     order = Order.FIRE
 
