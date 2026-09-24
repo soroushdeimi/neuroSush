@@ -50,7 +50,8 @@ class ActivityHomeostasis(Behavior):
 
     def forward(self, group: NeuronGroup) -> None:
         """Count activity and adjust the threshold at the end of each window."""
-        s = group.spikes.to(self.activity.dtype)
+        # the threshold is shared by all samples, so a batch counts its mean activity
+        s = group.spikes.to(self.activity.dtype).reshape(-1, group.size).mean(0)
         self.activity = self.activity + s - (1 - s) * self.silent_penalty
         if group.net.iteration % self.window == 0:
             group.threshold = group.threshold + self.activity * self.rate
@@ -99,7 +100,7 @@ class VoltageHomeostasis(Behavior):
 
     def initialize(self, group: NeuronGroup) -> None:
         """Allocate the exhaustion term."""
-        group.exhaustion = group.vector()
+        group.exhaustion = group.state()
 
     def forward(self, group: NeuronGroup) -> None:
         """Update the exhaustion term and apply it to the membrane."""

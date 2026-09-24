@@ -31,6 +31,9 @@ class Network:
         dtype: Floating point dtype for network tensors.
         device: Device for network tensors and the random generator.
         seed: Random seed; None draws a nondeterministic seed.
+        batch_size: Number of samples simulated in parallel. ``None`` (default) keeps state
+            unbatched, shaped ``(size,)``; an int ``B`` shapes every state ``(B, size)``
+            while weights and thresholds stay shared.
         behaviors: Behaviors attached to the network.
     """
 
@@ -41,8 +44,11 @@ class Network:
         dtype: torch.dtype = torch.float32,
         device: str | torch.device = "cpu",
         seed: int | None = None,
+        batch_size: int | None = None,
         behaviors: Iterable[Behavior] = (),
     ) -> None:
+        if batch_size is not None and (isinstance(batch_size, bool) or batch_size < 1):
+            raise ValueError(f"batch_size must be a positive int or None, got {batch_size!r}")
         if dt <= 0:
             raise ValueError(f"dt must be positive, got {dt}")
         if not dtype.is_floating_point:
@@ -50,6 +56,7 @@ class Network:
         self.dt = float(dt)
         self.dtype = dtype
         self.device = torch.device(device)
+        self.batch_size = batch_size
         self.generator = torch.Generator(device=self.device)
         if seed is None:
             self.generator.seed()
@@ -181,23 +188,35 @@ class NeuronGroup:
         """Total number of neurons."""
         return self.depth * self.height * self.width
 
+    @property
+    def state_shape(self) -> tuple[int, ...]:
+        """Shape of per-sample state: ``(size,)``, or ``(batch_size, size)`` when batched."""
+        batch = self.net.batch_size
+        return (self.size,) if batch is None else (batch, self.size)
+
     def vector(self, fill: float = 0.0, dtype: torch.dtype | None = None) -> torch.Tensor:
-        """Create a constant vector with one entry per neuron."""
+        """A per-neuron parameter tensor of shape ``(size,)``, shared by every sample."""
         return torch.full((self.size,), fill, dtype=dtype or self.net.dtype, device=self.net.device)
 
+    def state(self, fill: float | bool = 0.0, dtype: torch.dtype | None = None) -> torch.Tensor:
+        """A per-sample state tensor of shape :attr:`state_shape` filled with ``fill``."""
+        return torch.full(
+            self.state_shape, fill, dtype=dtype or self.net.dtype, device=self.net.device
+        )
+
     def rand(self) -> torch.Tensor:
-        """Draw a uniform random vector using the network generator."""
+        """Uniform samples in ``[0, 1)`` of shape :attr:`state_shape`."""
         return torch.rand(
-            (self.size,),
+            self.state_shape,
             generator=self.net.generator,
             dtype=self.net.dtype,
             device=self.net.device,
         )
 
     def randn(self) -> torch.Tensor:
-        """Draw a standard normal vector using the network generator."""
+        """Standard normal samples of shape :attr:`state_shape`."""
         return torch.randn(
-            (self.size,),
+            self.state_shape,
             generator=self.net.generator,
             dtype=self.net.dtype,
             device=self.net.device,

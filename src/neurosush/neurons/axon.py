@@ -31,7 +31,11 @@ class Axon(Behavior):
                 if int(syn.src_delay.max()) >= self.max_delay:
                     raise ValueError(f"src_delay must be less than {self.max_delay} for {syn.name}")
         group.spike_history = HistoryBuffer(
-            self.max_delay, group.size, dtype=torch.bool, device=group.net.device
+            self.max_delay,
+            group.size,
+            dtype=torch.bool,
+            device=group.net.device,
+            batch=group.net.batch_size,
         )
 
     def forward(self, group: NeuronGroup) -> None:

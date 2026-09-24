@@ -78,21 +78,23 @@ class LIF(Behavior):
             group.threshold = self.threshold.to(group.net.dtype).to(group.net.device)
         else:
             group.threshold = group.vector(self.threshold)
-        group.spikes = group.vector(False, dtype=torch.bool)
+        group.spikes = group.state(False, dtype=torch.bool)
 
         if not hasattr(group, "I") or group.I is None:
-            group.I = group.vector()
+            group.I = group.state()
 
         if self.v_init is None:
-            group.v = group.vector(self.v_rest)
+            group.v = group.state(self.v_rest)
         elif isinstance(self.v_init, torch.Tensor):
-            if self.v_init.shape != (group.size,):
+            if self.v_init.shape not in ((group.size,), group.state_shape):
                 raise ValueError(
-                    f"v_init must have shape ({group.size},), got {self.v_init.shape!r}"
+                    f"v_init must have shape ({group.size},) or {group.state_shape}, "
+                    f"got {tuple(self.v_init.shape)}"
                 )
-            group.v = self.v_init.to(group.net.dtype).to(group.net.device).clone()
+            v_init = self.v_init.to(dtype=group.net.dtype, device=group.net.device)
+            group.v = v_init.expand(group.state_shape).clone()
         else:
-            group.v = group.vector(self.v_init)
+            group.v = group.state(self.v_init)
 
         group.model = self
 
@@ -189,7 +191,7 @@ class AdaptiveELIF(ELIF):
     def initialize(self, group: NeuronGroup) -> None:
         """Set the ELIF state and the adaptation current ``omega``."""
         super().initialize(group)
-        group.omega = group.vector(self.omega_init)
+        group.omega = group.state(self.omega_init)
 
     def derivative(self, group: NeuronGroup) -> torch.Tensor:
         """``tau * dv/dt`` including the adaptation current."""

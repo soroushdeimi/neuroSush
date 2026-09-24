@@ -12,7 +12,11 @@ from torch import Tensor
 
 
 class _Buffer:
-    """Ring storage of shape ``(depth, size)``: one row per slot, one column per neuron."""
+    """Ring storage of shape ``(depth, *batch, size)``: one row per slot.
+
+    Values have shape ``(size,)``, or ``(batch, size)`` when ``batch`` is given; delays are
+    per neuron and shared by every sample.
+    """
 
     def __init__(
         self,
@@ -21,10 +25,14 @@ class _Buffer:
         *,
         dtype: torch.dtype,
         device: torch.device | str | None = None,
+        batch: int | None = None,
     ) -> None:
         if depth < 1 or size < 1:
             raise ValueError(f"depth and size must be positive, got depth={depth}, size={size}")
-        self._storage = torch.zeros((depth, size), dtype=dtype, device=device)
+        if batch is not None and batch < 1:
+            raise ValueError(f"batch must be positive or None, got {batch}")
+        self._value_shape = (size,) if batch is None else (batch, size)
+        self._storage = torch.zeros((depth, *self._value_shape), dtype=dtype, device=device)
         self._head = 0
         self._checked: dict[int, int] = {}  # id(delay tensor) -> its version when validated
 
@@ -36,7 +44,7 @@ class _Buffer:
     @property
     def size(self) -> int:
         """Number of neurons."""
-        return self._storage.shape[1]
+        return self._storage.shape[-1]
 
     def reset(self) -> None:
         """Clear every slot."""
@@ -49,18 +57,18 @@ class _Buffer:
             if not 0 <= delay < self.depth:
                 raise ValueError(f"delay must be in [0, {self.depth}), got {delay}")
             slot = torch.tensor((self._head + delay) % self.depth, device=self._storage.device)
-            return slot.expand(1, self.size)
+            return slot.expand(1, *self._value_shape)
         if self._checked.get(id(delay)) != delay._version:
             if delay.shape != (self.size,):
                 raise ValueError(f"delay shape must be ({self.size},), got {tuple(delay.shape)}")
             if bool(((delay < 0) | (delay >= self.depth)).any()):
                 raise ValueError(f"delay must be in [0, {self.depth}), got {delay.tolist()}")
             self._checked[id(delay)] = delay._version
-        return ((delay + self._head) % self.depth).unsqueeze(0)
+        return ((delay + self._head) % self.depth).expand(self._value_shape).unsqueeze(0)
 
     def _check_value(self, value: Tensor) -> None:
-        if value.shape != (self.size,):
-            raise ValueError(f"value shape must be ({self.size},), got {tuple(value.shape)}")
+        if value.shape != self._value_shape:
+            raise ValueError(f"value shape must be {self._value_shape}, got {tuple(value.shape)}")
 
 
 class HistoryBuffer(_Buffer):
@@ -73,8 +81,9 @@ class HistoryBuffer(_Buffer):
         *,
         dtype: torch.dtype = torch.bool,
         device: torch.device | str | None = None,
+        batch: int | None = None,
     ) -> None:
-        super().__init__(depth, size, dtype=dtype, device=device)
+        super().__init__(depth, size, dtype=dtype, device=device, batch=batch)
 
     def push(self, value: Tensor) -> None:
         """Store a copy of ``value`` as the newest entry, overwriting the oldest."""
@@ -97,8 +106,9 @@ class ArrivalBuffer(_Buffer):
         *,
         dtype: torch.dtype = torch.float32,
         device: torch.device | str | None = None,
+        batch: int | None = None,
     ) -> None:
-        super().__init__(depth, size, dtype=dtype, device=device)
+        super().__init__(depth, size, dtype=dtype, device=device, batch=batch)
 
     def add(self, value: Tensor, delay: int | Tensor) -> None:
         """Add ``value[i]`` to the slot ``delay[i]`` steps ahead, for each neuron ``i``."""

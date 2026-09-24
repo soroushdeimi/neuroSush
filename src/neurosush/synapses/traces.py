@@ -60,8 +60,8 @@ class Traces(Behavior):
         """Allocate both traces."""
         if not hasattr(syn, "post_spike"):
             raise RuntimeError(f"Traces on {syn.name} needs SpikeGather")
-        syn.pre_trace = syn.src.vector()
-        syn.post_trace = syn.dst.vector()
+        syn.pre_trace = syn.src.state()
+        syn.post_trace = syn.dst.state()
 
     def forward(self, syn: SynapseGroup) -> None:
         """Update both traces."""

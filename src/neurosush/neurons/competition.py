@@ -31,15 +31,17 @@ def kwta_losers(
         Flat bool mask of the neurons that must not spike. Ties keep the lower index.
     """
     candidates = v >= threshold
+    lead = v.shape[:-1]  # batch dimensions: every sample competes on its own
     if dim is None:
-        view_v, view_c, axis = v, candidates, 0
+        view_v, view_c, axis = v, candidates, -1
     elif shape is None:
         raise ValueError(f"shape is required when dim is given (dim={dim})")
     else:
-        view_v, view_c, axis = v.view(shape), candidates.view(shape), dim
+        view_v, view_c = v.view(*lead, *shape), candidates.view(*lead, *shape)
+        axis = len(lead) + dim
     masked = view_v.masked_fill(~view_c, -float("inf"))
     rank = masked.argsort(dim=axis, descending=True, stable=True).argsort(dim=axis, stable=True)
-    return (view_c & (rank >= k)).reshape(-1)
+    return (view_c & (rank >= k)).reshape(v.shape)
 
 
 class KWTA(Behavior):

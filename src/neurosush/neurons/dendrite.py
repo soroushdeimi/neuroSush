@@ -48,12 +48,16 @@ class DendriteStructure(Behavior):
 
         group.dendrite = {
             c: ArrivalBuffer(
-                self.depths[c], group.size, dtype=group.net.dtype, device=group.net.device
+                self.depths[c],
+                group.size,
+                dtype=group.net.dtype,
+                device=group.net.device,
+                batch=group.net.batch_size,
             )
             for c in Compartment
         }
         for c in Compartment:
-            setattr(group, f"I_{c.value}", group.vector())
+            setattr(group, f"I_{c.value}", group.state())
 
     def forward(self, group: NeuronGroup) -> None:
         """Advance buffers and accumulate synaptic currents."""
@@ -120,7 +124,7 @@ class DendriteIntegration(Behavior):
         """Allocate integrated current on the group."""
         if not hasattr(group, "dendrite"):
             raise RuntimeError(f"DendriteIntegration on {group.name} needs a DendriteStructure")
-        group.I = group.vector()
+        group.I = group.state()
 
     def forward(self, group: NeuronGroup) -> None:
         """Integrate dendritic currents using decay and priming.

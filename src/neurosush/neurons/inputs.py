@@ -29,7 +29,7 @@ class SpikeInput(Behavior):
     def initialize(self, group: NeuronGroup) -> None:
         """Allocate spikes and label on the group."""
         self._stream = iter(self.frames)
-        group.spikes = group.vector(False, dtype=torch.bool)
+        group.spikes = group.state(False, dtype=torch.bool)
         group.label = None
 
     def forward(self, group: NeuronGroup) -> None:
@@ -46,12 +46,12 @@ class SpikeInput(Behavior):
         else:
             frame, label = item, None
 
-        frame = frame.reshape(-1)
-        if frame.numel() != group.size:
+        if frame.numel() != group.size * (group.net.batch_size or 1):
             raise ValueError(
                 f"SpikeInput on {group.name}: frame size {frame.numel()} "
-                f"must match group size {group.size}"
+                f"must match the group's state shape {group.state_shape}"
             )
+        frame = frame.reshape(group.state_shape)
 
         group.spikes = frame.to(dtype=torch.bool, device=group.net.device)
         group.label = label

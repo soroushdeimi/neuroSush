@@ -65,7 +65,8 @@ def sparse_current(
         dst_idx: Destination index of each edge.
         n_dst: Number of destination neurons.
     """
-    return values.new_zeros(n_dst).index_add_(0, dst_idx, spikes[src_idx] * values)
+    contributions = spikes[..., src_idx] * values
+    return values.new_zeros(*spikes.shape[:-1], n_dst).index_add_(-1, dst_idx, contributions)
 
 
 def conv2d_current(
@@ -85,8 +86,9 @@ def conv2d_current(
         stride: Spatial kernel step.
         padding: Spatial zero padding.
     """
-    image = spikes.to(weights.dtype).view(1, *src_shape)
-    return F.conv2d(image, weights, stride=stride, padding=padding).flatten()
+    image = spikes.to(weights.dtype).reshape(-1, *src_shape)
+    out = F.conv2d(image, weights, stride=stride, padding=padding)
+    return out.reshape(*spikes.shape[:-1], -1)
 
 
 def local2d_current(
@@ -108,9 +110,10 @@ def local2d_current(
         stride: Spatial kernel step.
         padding: Spatial zero padding.
     """
-    image = spikes.to(weights.dtype).view(1, *src_shape)
-    patches = F.unfold(image, kernel_size, stride=stride, padding=padding)[0]
-    return (weights * patches.T.unsqueeze(0)).sum(-1).flatten()
+    image = spikes.to(weights.dtype).reshape(-1, *src_shape)
+    patches = F.unfold(image, kernel_size, stride=stride, padding=padding)  # (N, K, L)
+    out = torch.einsum("olk,nkl->nol", weights, patches)
+    return out.reshape(*spikes.shape[:-1], -1)
 
 
 def lateral_current(
@@ -123,9 +126,9 @@ def lateral_current(
         weights: Odd kernels shaped (1, 1, kd, kh, kw).
         shape: Group depth, height and width.
     """
-    image = spikes.to(weights.dtype).view(1, 1, *shape)
+    image = spikes.to(weights.dtype).reshape(-1, 1, *shape)
     padding = tuple((size - 1) // 2 for size in weights.shape[2:])
-    return F.conv3d(image, weights, padding=padding).flatten()
+    return F.conv3d(image, weights, padding=padding).reshape(*spikes.shape[:-1], -1)
 
 
 def avg_pool_current(
@@ -143,7 +146,8 @@ def avg_pool_current(
         out_size: Destination height and width.
         dtype: Floating point dtype for pooling and the result.
     """
-    return F.adaptive_avg_pool2d(spikes.to(dtype).view(src_shape), out_size).flatten()
+    image = spikes.to(dtype).reshape(-1, *src_shape)
+    return F.adaptive_avg_pool2d(image, out_size).reshape(*spikes.shape[:-1], -1)
 
 
 def _pair(value: int | tuple[int, int], name: str, minimum: int) -> tuple[int, int]:
@@ -200,9 +204,9 @@ class _SynapticInput(Behavior, ABC):
         self.validate(syn)
         syn.connectivity = self.connectivity
         syn.input = self
-        syn.I = syn.dst.vector()
+        syn.I = syn.dst.state()
         if not hasattr(syn, "pre_spike"):
-            syn.pre_spike = syn.src.vector(False, dtype=torch.bool)
+            syn.pre_spike = syn.src.state(False, dtype=torch.bool)
         self.sign = -1.0 if syn.src.inhibitory else 1.0
 
     def validate(self, syn: SynapseGroup) -> None:

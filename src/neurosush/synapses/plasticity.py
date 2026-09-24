@@ -3,6 +3,9 @@
 Kernels return the weight change in the layout of the weights. Potentiation pairs the
 presynaptic trace with a postsynaptic spike; depression pairs a presynaptic spike with the
 postsynaptic trace. Updates are per spike pair and are not scaled by ``dt``.
+
+Activity may carry leading batch dimensions; the weights are shared, so a batch contributes
+the mean of the per-sample changes.
 """
 
 from __future__ import annotations
@@ -26,6 +29,18 @@ def _f(x: torch.Tensor) -> torch.Tensor:
     return x.to(torch.get_default_dtype()) if not x.is_floating_point() else x
 
 
+def _pairs(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+    """Batch mean of the outer products ``a[n] x b[n]``, shape ``(len_a, len_b)``."""
+    a2 = _f(a).reshape(-1, a.shape[-1])
+    b2 = _f(b).to(a2.dtype).reshape(-1, b.shape[-1])
+    return a2.T @ b2 / a2.shape[0]
+
+
+def _batch_mean(x: torch.Tensor) -> torch.Tensor:
+    """Mean over leading batch dimensions, keeping the last one."""
+    return x.reshape(-1, x.shape[-1]).mean(0)
+
+
 def stdp_dense(
     *,
     pre_spike: torch.Tensor,
@@ -38,8 +53,8 @@ def stdp_dense(
     ltd_gate: Gate = 1.0,
 ) -> torch.Tensor:
     """Weight change ``(n_src, n_dst)`` of all-to-all synapses."""
-    ltp = torch.outer(pre_trace, _f(post_spike).to(pre_trace.dtype))
-    ltd = torch.outer(_f(pre_spike).to(post_trace.dtype), post_trace)
+    ltp = _pairs(pre_trace, post_spike)
+    ltd = _pairs(pre_spike, post_trace)
     return a_plus * ltp * ltp_gate - a_minus * ltd * ltd_gate
 
 
@@ -92,8 +107,8 @@ def stdp_one_to_one(
     ltd_gate: Gate = 1.0,
 ) -> torch.Tensor:
     """Weight change ``(size,)`` of one-to-one synapses."""
-    ltp = pre_trace * post_spike.to(pre_trace.dtype)
-    ltd = pre_spike.to(post_trace.dtype) * post_trace
+    ltp = _batch_mean(pre_trace * post_spike.to(pre_trace.dtype))
+    ltd = _batch_mean(pre_spike.to(post_trace.dtype) * post_trace)
     return a_plus * ltp * ltp_gate - a_minus * ltd * ltd_gate
 
 
@@ -112,10 +127,10 @@ def stdp_sparse(
 ) -> torch.Tensor:
     """Weight change of a connection list ``src_idx[k] -> dst_idx[k]``."""
     return stdp_one_to_one(
-        pre_spike=pre_spike[src_idx],
-        pre_trace=pre_trace[src_idx],
-        post_spike=post_spike[dst_idx],
-        post_trace=post_trace[dst_idx],
+        pre_spike=pre_spike[..., src_idx],
+        pre_trace=pre_trace[..., src_idx],
+        post_spike=post_spike[..., dst_idx],
+        post_trace=post_trace[..., dst_idx],
         a_plus=a_plus,
         a_minus=a_minus,
         ltp_gate=ltp_gate,
@@ -130,9 +145,9 @@ def _patches(
     stride: Pair,
     padding: Pair,
 ) -> torch.Tensor:
-    """Unfolded source patches, shape ``(in_channels * kh * kw, positions)``."""
-    image = values.to(torch.get_default_dtype()).view(1, *shape)
-    return F.unfold(image, kernel_size=kernel_size, stride=stride, padding=padding)[0]
+    """Unfolded source patches, shape ``(samples, in_channels * kh * kw, positions)``."""
+    image = values.to(torch.get_default_dtype()).reshape(-1, *shape)
+    return F.unfold(image, kernel_size=kernel_size, stride=stride, padding=padding)
 
 
 def stdp_conv2d(
@@ -155,10 +170,12 @@ def stdp_conv2d(
     geometry = (src_shape, kernel_size, stride, padding)
     out_channels, positions = dst_shape[0], dst_shape[1] * dst_shape[2]
     weight_shape = (out_channels, src_shape[0], *kernel_size)
-    post_s = post_spike.to(torch.get_default_dtype()).view(out_channels, positions)
-    post_t = post_trace.to(torch.get_default_dtype()).view(out_channels, positions)
-    ltp = (post_s @ _patches(pre_trace, *geometry).T).view(weight_shape)
-    ltd = (post_t @ _patches(pre_spike, *geometry).T).view(weight_shape)
+    post_s = post_spike.to(torch.get_default_dtype()).reshape(-1, out_channels, positions)
+    post_t = post_trace.to(torch.get_default_dtype()).reshape(-1, out_channels, positions)
+    samples = post_s.shape[0]
+    pre_t, pre_s = _patches(pre_trace, *geometry), _patches(pre_spike, *geometry)
+    ltp = torch.einsum("nol,nkl->ok", post_s, pre_t).reshape(weight_shape) / samples
+    ltd = torch.einsum("nol,nkl->ok", post_t, pre_s).reshape(weight_shape) / samples
     return (a_plus * ltp * ltp_gate - a_minus * ltd * ltd_gate) / positions
 
 
@@ -181,10 +198,12 @@ def stdp_local2d(
     """Weight change ``(out, positions, in * kh * kw)`` of unshared local kernels."""
     geometry = (src_shape, kernel_size, stride, padding)
     out_channels, positions = dst_shape[0], dst_shape[1] * dst_shape[2]
-    post_s = post_spike.to(torch.get_default_dtype()).view(out_channels, positions, 1)
-    post_t = post_trace.to(torch.get_default_dtype()).view(out_channels, positions, 1)
-    ltp = post_s * _patches(pre_trace, *geometry).T.unsqueeze(0)
-    ltd = post_t * _patches(pre_spike, *geometry).T.unsqueeze(0)
+    post_s = post_spike.to(torch.get_default_dtype()).reshape(-1, out_channels, positions)
+    post_t = post_trace.to(torch.get_default_dtype()).reshape(-1, out_channels, positions)
+    samples = post_s.shape[0]
+    pre_t, pre_s = _patches(pre_trace, *geometry), _patches(pre_spike, *geometry)
+    ltp = torch.einsum("nol,nkl->olk", post_s, pre_t) / samples
+    ltd = torch.einsum("nol,nkl->olk", post_t, pre_s) / samples
     return a_plus * ltp * ltp_gate - a_minus * ltd * ltd_gate
 
 
@@ -202,9 +221,7 @@ def istdp_dense(
     A presynaptic spike adds ``lr * (post_trace - alpha)``; a postsynaptic spike adds
     ``lr * pre_trace``.
     """
-    on_pre = torch.outer(pre_spike.to(post_trace.dtype), post_trace - alpha)
-    on_post = torch.outer(pre_trace, post_spike.to(pre_trace.dtype))
-    return lr * (on_pre + on_post)
+    return lr * (_pairs(pre_spike, post_trace - alpha) + _pairs(pre_trace, post_spike))
 
 
 def istdp_one_to_one(
@@ -219,7 +236,7 @@ def istdp_one_to_one(
     """Symmetric inhibitory STDP for one-to-one synapses."""
     on_pre = pre_spike.to(post_trace.dtype) * (post_trace - alpha)
     on_post = pre_trace * post_spike.to(pre_trace.dtype)
-    return lr * (on_pre + on_post)
+    return lr * _batch_mean(on_pre + on_post)
 
 
 class STDP(Behavior):
@@ -307,7 +324,7 @@ class STDP(Behavior):
 
     def forward(self, syn: SynapseGroup) -> None:
         """Apply this step's weight change (in place and event-driven for dense synapses)."""
-        if syn.connectivity == "dense":
+        if syn.connectivity == "dense" and syn.pre_spike.dim() == 1:
             apply_stdp_dense_(
                 syn.weights,
                 pre_spike=syn.pre_spike,
@@ -416,5 +433,7 @@ class ISTDP(Behavior):
                 "post_spike": syn.dst_idx,
                 "post_trace": syn.dst_idx,
             }
-            dw = istdp_one_to_one(**{k: (v[idx[k]] if k in idx else v) for k, v in args.items()})
+            dw = istdp_one_to_one(
+                **{k: (v[..., idx[k]] if k in idx else v) for k, v in args.items()}
+            )
         syn.weights = syn.weights + dw
