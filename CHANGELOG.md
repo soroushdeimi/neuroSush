@@ -5,6 +5,8 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-24
+
 ### Added
 - `neurosush.htm`: SDR operations with exact match probabilities, scalar, random
   distributed and category encoders, `SDRClassifier`, `SpatialPooler`, `TemporalMemory`,
