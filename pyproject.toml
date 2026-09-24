@@ -35,7 +35,11 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-q --strict-markers --strict-config"
 xfail_strict = true
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    # torch warns at import when the optional numpy is absent (as in CI); not our concern
+    "ignore:Failed to initialize NumPy:UserWarning",
+]
 
 [tool.coverage.run]
 source = ["neurosush"]
