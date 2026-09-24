@@ -16,7 +16,8 @@ All notable changes to neuroSush are documented here, following the
   local STDP rules against the dense synapse-by-synapse definition; reward-modulated STDP
   against its closed form, and the distal reward problem (Izhikevich 2007).
 - `benchmarks/suite.py` and `compare.py`, run weekly by the Benchmarks workflow: throughput
-  normalized by a calibration workload, compared with a baseline.
+  normalized by a calibration workload, compared with a baseline recorded on a GitHub
+  runner (a case that halves fails).
 
 ### Fixed
 - STDP computed in torch's default dtype instead of the traces' dtype, so a float64

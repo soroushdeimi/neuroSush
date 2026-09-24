@@ -34,7 +34,7 @@ def test_table_reports_every_case():
     assert "| c | n/a | missing on one side |" in report
 
 
-@pytest.mark.parametrize(("current", "code"), [(1.0, 0), (0.5, 1)])
+@pytest.mark.parametrize(("current", "code"), [(1.0, 0), (0.6, 0), (0.4, 1)])
 def test_exit_code(tmp_path, monkeypatch, current, code):
     (tmp_path / "base.json").write_text(json.dumps(results(a=1.0)))
     (tmp_path / "now.json").write_text(json.dumps(results(a=current)))

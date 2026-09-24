@@ -45,8 +45,10 @@ Use Conventional Commits with a scope: `feat`, `fix`, `docs`, `test`, `build`,
 `python benchmarks/suite.py` times the main workloads (dense STDP, batched simulation,
 spatial pooler and temporal memory learning). Each rate is also divided by a calibration
 workload measured on the same machine, which removes most of the difference between
-machines. The Benchmarks workflow runs the suite every Monday (or on demand) and compares
-it with `benchmarks/baseline.json`: a normalized drop of more than 30% fails the run.
+machines, though not all of it: the same code measured up to 27% apart on two GitHub
+runners. The Benchmarks workflow runs the suite every Monday (or on demand) and compares it
+with `benchmarks/baseline.json`; a case that loses half its normalized throughput fails
+the run, and the table in the run summary shows every change.
 
 To record or move the baseline after an intended change, download the `benchmark`
 artifact of a Benchmarks run on GitHub and commit it as `benchmarks/baseline.json`; a

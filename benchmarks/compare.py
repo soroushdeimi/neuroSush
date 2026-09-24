@@ -47,7 +47,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("baseline", type=Path)
     parser.add_argument("current", type=Path)
-    parser.add_argument("--tolerance", type=float, default=0.3)
+    # the same code measured 23-27% apart on two GitHub runners: only halving is a signal
+    parser.add_argument("--tolerance", type=float, default=0.5)
     args = parser.parse_args()
     current = json.loads(args.current.read_text(encoding="utf-8"))
     if not args.baseline.exists():
