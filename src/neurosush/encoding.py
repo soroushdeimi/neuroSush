@@ -115,12 +115,13 @@ def intensity_to_latency(
     if sparsity is not None and (sparsity <= 0 or sparsity > 1):
         raise ValueError(f"sparsity must be in (0, 1], got {sparsity}")
 
+    activity_threshold: float | torch.Tensor
     if sparsity is not None:
-        threshold = torch.quantile(x.flatten().float(), 1 - sparsity)
-    elif threshold is None:
-        threshold = low
+        activity_threshold = torch.quantile(x.flatten().float(), 1 - sparsity)
+    else:
+        activity_threshold = low if threshold is None else threshold
 
-    active = x >= threshold
+    active = x >= activity_threshold
     level = (x - low) / (high - low)
 
     if active.any():

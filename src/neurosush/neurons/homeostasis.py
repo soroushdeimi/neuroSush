@@ -103,6 +103,9 @@ class VoltageHomeostasis(Behavior):
 
         if target is not None:
             v_min = v_max = target
+        # Both bounds were required above.
+        assert v_min is not None
+        assert v_max is not None
         self.v_min, self.v_max = v_min, v_max
 
         if self.v_min > self.v_max:

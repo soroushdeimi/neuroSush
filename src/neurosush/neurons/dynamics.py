@@ -6,9 +6,27 @@ functions return ``tau * dv/dt``.
 
 from __future__ import annotations
 
+from typing import overload
+
 import torch
 
 Scalar = float | torch.Tensor
+
+
+@overload
+def lif_derivative(
+    v: torch.Tensor, current: Scalar, *, v_rest: float, resistance: float
+) -> torch.Tensor: ...
+
+
+@overload
+def lif_derivative(
+    v: float, current: torch.Tensor, *, v_rest: float, resistance: float
+) -> torch.Tensor: ...
+
+
+@overload
+def lif_derivative(v: float, current: float, *, v_rest: float, resistance: float) -> float: ...
 
 
 def lif_derivative(v: Scalar, current: Scalar, *, v_rest: float, resistance: float) -> Scalar:
@@ -16,9 +34,21 @@ def lif_derivative(v: Scalar, current: Scalar, *, v_rest: float, resistance: flo
     return (v_rest - v) + resistance * current
 
 
-def exponential_boost(v: Scalar, *, delta: float, theta_rh: float) -> Scalar:
+def exponential_boost(v: torch.Tensor, *, delta: float, theta_rh: float) -> torch.Tensor:
     """Spike-initiation term of the exponential LIF, ``delta * exp((v - theta_rh) / delta)``."""
     return delta * torch.exp((v - theta_rh) / delta)
+
+
+@overload
+def euler_step(v: torch.Tensor, tau_dv_dt: Scalar, *, tau: float, dt: float) -> torch.Tensor: ...
+
+
+@overload
+def euler_step(v: float, tau_dv_dt: torch.Tensor, *, tau: float, dt: float) -> torch.Tensor: ...
+
+
+@overload
+def euler_step(v: float, tau_dv_dt: float, *, tau: float, dt: float) -> float: ...
 
 
 def euler_step(v: Scalar, tau_dv_dt: Scalar, *, tau: float, dt: float) -> Scalar:
@@ -26,7 +56,9 @@ def euler_step(v: Scalar, tau_dv_dt: Scalar, *, tau: float, dt: float) -> Scalar
     return v + tau_dv_dt * (dt / tau)
 
 
-def fire(v: Scalar, *, threshold: Scalar, v_reset: Scalar) -> tuple[torch.Tensor, torch.Tensor]:
+def fire(
+    v: torch.Tensor, *, threshold: Scalar, v_reset: Scalar
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Threshold crossing: the spikes and the voltage with spiking neurons reset."""
     spikes = v >= threshold
     if isinstance(v_reset, torch.Tensor):
@@ -38,7 +70,7 @@ def fire(v: Scalar, *, threshold: Scalar, v_reset: Scalar) -> tuple[torch.Tensor
 
 
 def adaptation_step(
-    omega: Scalar,
+    omega: torch.Tensor,
     v: Scalar,
     spikes: torch.Tensor,
     *,
@@ -47,7 +79,7 @@ def adaptation_step(
     beta: float,
     tau_w: float,
     dt: float,
-) -> Scalar:
+) -> torch.Tensor:
     """Adaptation current update of the adaptive exponential LIF.
 
     ``tau_w * d(omega)/dt = alpha * (v - v_rest) - omega``, plus a jump of ``beta`` per spike.

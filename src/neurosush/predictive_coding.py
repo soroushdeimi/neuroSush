@@ -21,11 +21,13 @@ learning ``dW_l = eps_l^T f(mu_{l+1})``, ``dprior = eps_L`` and
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from itertools import pairwise
 
 import torch
 
-_ACTIVATIONS = {
+_Activation = Callable[[torch.Tensor], torch.Tensor]
+_ACTIVATIONS: dict[str, tuple[_Activation, _Activation]] = {
     "linear": (lambda x: x, torch.ones_like),
     "tanh": (torch.tanh, lambda x: 1 - torch.tanh(x) ** 2),
 }
@@ -91,10 +93,12 @@ class PredictiveCodingNetwork:
 
     def free_energy(self, mu: list[torch.Tensor]) -> torch.Tensor:
         """``F`` of every sample, shape ``(batch,)`` (or a scalar for one sample)."""
-        return sum(
+        energy = sum(
             0.5 * (e**2 / v + v.log()).sum(-1)
             for e, v in zip(self.errors(mu), self.variances, strict=True)
         )
+        assert isinstance(energy, torch.Tensor)  # The hierarchy has at least one layer.
+        return energy
 
     def _eps(self, mu: list[torch.Tensor]) -> list[torch.Tensor]:
         return [e / v for e, v in zip(self.errors(mu), self.variances, strict=True)]

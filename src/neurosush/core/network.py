@@ -4,10 +4,16 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from enum import Enum
+from typing import TYPE_CHECKING
 
 import torch
 
 from neurosush.core.behavior import Behavior
+
+if TYPE_CHECKING:
+    from neurosush.core.buffers import ArrivalBuffer, HistoryBuffer
+    from neurosush.neurons.models import LIF
+    from neurosush.synapses.currents import _SynapticInput
 
 
 class Compartment(str, Enum):
@@ -36,6 +42,10 @@ class Network:
             while weights and thresholds stay shared.
         behaviors: Behaviors attached to the network.
     """
+
+    # Payoff and Dopamine set the network's modulation state.
+    payoff: float
+    dopamine: float
 
     def __init__(
         self,
@@ -129,6 +139,31 @@ class NeuronGroup:
         tags: Labels stored as a frozenset.
         inhibitory: Whether outgoing currents are made negative.
     """
+
+    # LIF and its subclasses set membrane state and parameters.
+    v: torch.Tensor
+    tau: float
+    resistance: float
+    v_rest: float
+    v_reset: float
+    threshold: torch.Tensor
+    model: LIF
+    # LIF and SpikeInput set spikes; SpikeInput also sets the label.
+    spikes: torch.Tensor
+    label: object
+    # AdaptiveELIF sets the adaptation current.
+    omega: torch.Tensor
+    # LIF and DendriteIntegration set the input current.
+    I: torch.Tensor  # noqa: E741 - Existing public name for current.
+    # DendriteStructure sets the compartment currents.
+    dendrite: dict[Compartment, ArrivalBuffer]
+    I_proximal: torch.Tensor
+    I_distal: torch.Tensor
+    I_apical: torch.Tensor
+    # Axon records spike history.
+    spike_history: HistoryBuffer
+    # VoltageHomeostasis sets exhaustion.
+    exhaustion: torch.Tensor
 
     def __init__(
         self,
@@ -238,6 +273,23 @@ class SynapseGroup:
         name: Unique synapse group name; None generates a name.
         tags: Labels stored as a frozenset.
     """
+
+    # WeightInit sets sparse edge indices.
+    src_idx: torch.Tensor
+    dst_idx: torch.Tensor
+    # Synaptic input behaviors set connectivity, input and destination current.
+    connectivity: str
+    input: _SynapticInput
+    I: torch.Tensor  # noqa: E741 - Existing public name for current.
+    # SpikeGather and synaptic inputs set presynaptic spikes.
+    pre_spike: torch.Tensor
+    # SpikeGather sets postsynaptic spikes.
+    post_spike: torch.Tensor
+    # Traces sets the pre- and postsynaptic traces.
+    pre_trace: torch.Tensor
+    post_trace: torch.Tensor
+    # RSTDP sets the eligibility trace.
+    eligibility: torch.Tensor
 
     def __init__(
         self,

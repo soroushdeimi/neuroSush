@@ -10,19 +10,53 @@ the mean of the per-sample changes.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, TypedDict
 
 import torch
 import torch.nn.functional as F
+from typing_extensions import NotRequired, Unpack
 
 from neurosush.core.behavior import Behavior
 from neurosush.core.network import SynapseGroup
 from neurosush.core.order import Order
 from neurosush.synapses.bounds import BOUNDS
+from neurosush.synapses.currents import Conv2dInput, Local2dInput
 from neurosush.synapses.traces import Traces
 
 Gate = float | torch.Tensor
 Pair = tuple[int, int]
+
+
+class _STDPOptions(TypedDict):
+    a_plus: float
+    a_minus: float
+    w_min: NotRequired[float]
+    w_max: NotRequired[float]
+    bound: NotRequired[Literal["none", "soft", "hard"]]
+
+
+class _SpikeArgs(TypedDict):
+    pre_spike: torch.Tensor
+    pre_trace: torch.Tensor
+    post_spike: torch.Tensor
+    post_trace: torch.Tensor
+
+
+class _STDPArgs(_SpikeArgs):
+    a_plus: float
+    a_minus: float
+    ltp_gate: Gate
+    ltd_gate: Gate
+
+
+class _ISTDPArgs(_SpikeArgs):
+    lr: float
+    alpha: float
+
+
+class _Geometry(TypedDict):
+    src_shape: tuple[int, int, int]
+    dst_shape: tuple[int, int, int]
 
 
 def _f(x: torch.Tensor) -> torch.Tensor:
@@ -286,8 +320,9 @@ class STDP(Behavior):
 
     def compute(self, syn: SynapseGroup) -> torch.Tensor:
         """Weight change of this step."""
+        assert syn.weights is not None  # Supported inputs require weights at initialization.
         ltp_gate, ltd_gate = BOUNDS[self.bound](syn.weights, self.w_min, self.w_max)
-        args = {
+        args: _STDPArgs = {
             "pre_spike": syn.pre_spike,
             "pre_trace": syn.pre_trace,
             "post_spike": syn.post_spike,
@@ -304,9 +339,10 @@ class STDP(Behavior):
             return stdp_one_to_one(**args)
         if kind == "sparse":
             return stdp_sparse(**args, src_idx=syn.src_idx, dst_idx=syn.dst_idx)
-        geometry = {"src_shape": syn.src.shape, "dst_shape": syn.dst.shape}
+        geometry: _Geometry = {"src_shape": syn.src.shape, "dst_shape": syn.dst.shape}
         if kind == "conv2d":
-            kernel = tuple(syn.weights.shape[2:])
+            assert isinstance(syn.input, Conv2dInput)  # Sets the conv2d connectivity.
+            kernel = (syn.weights.shape[2], syn.weights.shape[3])
             return stdp_conv2d(
                 **args,
                 **geometry,
@@ -314,6 +350,7 @@ class STDP(Behavior):
                 stride=syn.input.stride,
                 padding=syn.input.padding,
             )
+        assert isinstance(syn.input, Local2dInput)  # The remaining supported connectivity.
         return stdp_local2d(
             **args,
             **geometry,
@@ -324,6 +361,7 @@ class STDP(Behavior):
 
     def forward(self, syn: SynapseGroup) -> None:
         """Apply this step's weight change (in place and event-driven for dense synapses)."""
+        assert syn.weights is not None  # Supported inputs require weights at initialization.
         if syn.connectivity == "dense" and syn.pre_spike.dim() == 1:
             apply_stdp_dense_(
                 syn.weights,
@@ -352,7 +390,7 @@ class RSTDP(STDP):
         **kwargs: :class:`STDP` arguments.
     """
 
-    def __init__(self, *, tau_c: float, **kwargs) -> None:
+    def __init__(self, *, tau_c: float, **kwargs: Unpack[_STDPOptions]) -> None:
         super().__init__(**kwargs)
         if tau_c <= 0:
             raise ValueError(f"tau_c must be positive, got {tau_c}")
@@ -365,10 +403,12 @@ class RSTDP(STDP):
             raise ValueError(f"tau_c ({self.tau_c}) must exceed dt ({syn.net.dt})")
         if not hasattr(syn.net, "dopamine"):
             raise RuntimeError(f"RSTDP on {syn.name} needs Dopamine on the network")
+        assert syn.weights is not None  # Supported inputs require weights at initialization.
         syn.eligibility = torch.zeros_like(syn.weights)
 
     def forward(self, syn: SynapseGroup) -> None:
         """Update the eligibility trace and the weights."""
+        assert syn.weights is not None  # initialize() allocates eligibility from weights.
         dt = syn.net.dt
         syn.eligibility = syn.eligibility * (1 - dt / self.tau_c) + self.compute(syn)
         syn.weights = syn.weights + dt * syn.net.dopamine * syn.eligibility
@@ -390,7 +430,7 @@ class ISTDP(Behavior):
     order = Order.PLASTICITY
     supported = ("dense", "one_to_one", "sparse")
 
-    def __init__(self, *, lr: float, rho: float | None = None, alpha: float | None = None):
+    def __init__(self, *, lr: float, rho: float | None = None, alpha: float | None = None) -> None:
         if lr <= 0:
             raise ValueError(f"lr must be positive, got {lr}")
         if (rho is None) == (alpha is None):
@@ -410,11 +450,14 @@ class ISTDP(Behavior):
                 f"({syn.name})"
             )
         if self.alpha is None:
+            assert self.rho is not None  # __init__ requires exactly one of rho and alpha.
             self.alpha = 2 * self.rho * traces.tau_pre * traces.scale
 
     def forward(self, syn: SynapseGroup) -> None:
         """Apply this step's weight change."""
-        args = {
+        assert syn.weights is not None  # Supported inputs require weights at initialization.
+        assert self.alpha is not None  # initialize() derives alpha when omitted.
+        args: _ISTDPArgs = {
             "pre_spike": syn.pre_spike,
             "pre_trace": syn.pre_trace,
             "post_spike": syn.post_spike,
@@ -427,13 +470,12 @@ class ISTDP(Behavior):
         elif syn.connectivity == "one_to_one":
             dw = istdp_one_to_one(**args)
         else:
-            idx = {
-                "pre_spike": syn.src_idx,
-                "pre_trace": syn.src_idx,
-                "post_spike": syn.dst_idx,
-                "post_trace": syn.dst_idx,
-            }
             dw = istdp_one_to_one(
-                **{k: (v[..., idx[k]] if k in idx else v) for k, v in args.items()}
+                pre_spike=syn.pre_spike[..., syn.src_idx],
+                pre_trace=syn.pre_trace[..., syn.src_idx],
+                post_spike=syn.post_spike[..., syn.dst_idx],
+                post_trace=syn.post_trace[..., syn.dst_idx],
+                lr=self.lr,
+                alpha=self.alpha,
             )
         syn.weights = syn.weights + dw

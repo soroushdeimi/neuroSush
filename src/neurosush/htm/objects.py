@@ -52,7 +52,7 @@ class ObjectLibrary:
     @property
     def shape(self) -> tuple[int, int]:
         """Grid of locations of every object."""
-        return tuple(self.features.shape[1:])
+        return self.features.shape[1], self.features.shape[2]
 
 
 class SensorColumn:

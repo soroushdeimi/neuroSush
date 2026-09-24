@@ -10,10 +10,10 @@ from __future__ import annotations
 import dataclasses
 import json
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, TypedDict
 
 from neurosush.core.behavior import Behavior
-from neurosush.core.network import Compartment, Network, NeuronGroup
+from neurosush.core.network import Compartment, Network, NeuronGroup, SynapseGroup
 from neurosush.modulation import Dopamine
 from neurosush.neurons.axon import Axon
 from neurosush.neurons.competition import KWTA, InherentNoise
@@ -152,11 +152,19 @@ def _lookup(groups: dict[str, NeuronGroup], name: str, owner: str) -> NeuronGrou
     return groups[name]
 
 
-def _synapses(net: Network, specs: tuple[SynapseSpec, ...], groups: dict, owner: str) -> list:
+def _synapses(
+    net: Network,
+    specs: tuple[SynapseSpec, ...],
+    groups: dict[str, NeuronGroup],
+    owner: str,
+) -> list[SynapseGroup]:
     created = []
     for spec in specs:
         src, dst = _lookup(groups, spec.src, owner), _lookup(groups, spec.dst, owner)
-        factory = lambda spec=spec: [b.build() for b in spec.behaviors]  # noqa: E731
+
+        def factory(spec: SynapseSpec = spec) -> list[Behavior]:
+            return [b.build() for b in spec.behaviors]
+
         created += connect(net, [src], [dst], factory, compartment=Compartment(spec.compartment))
     return created
 
@@ -194,21 +202,37 @@ def to_json(spec: ColumnSpec) -> str:
         raise ValueError(f"spec parameters must be JSON-compatible: {error}") from None
 
 
-def _behaviors(items: list) -> tuple[BehaviorSpec, ...]:
+class _BehaviorData(TypedDict):
+    kind: str
+    params: dict[str, Any]
+
+
+class _SynapseData(TypedDict):
+    src: str
+    dst: str
+    behaviors: list[_BehaviorData]
+    compartment: str
+
+
+def _behaviors(items: list[_BehaviorData]) -> tuple[BehaviorSpec, ...]:
     return tuple(BehaviorSpec(b["kind"], dict(b["params"])) for b in items)
 
 
-def _shape(value: int | list) -> int | tuple[int, int, int]:
-    return value if isinstance(value, int) else tuple(value)
+def _shape(value: int | list[int]) -> int | tuple[int, int, int]:
+    if isinstance(value, int):
+        return value
+    shape = tuple(value)
+    assert len(shape) == 3  # Serialized group shapes have depth, height and width.
+    return shape
 
 
-def _synapse_specs(items: list) -> tuple[SynapseSpec, ...]:
+def _synapse_specs(items: list[_SynapseData]) -> tuple[SynapseSpec, ...]:
     return tuple(
         SynapseSpec(s["src"], s["dst"], _behaviors(s["behaviors"]), s["compartment"]) for s in items
     )
 
 
-def _ports(value: dict | None) -> dict[str, tuple[str, ...]] | None:
+def _ports(value: dict[str, list[str]] | None) -> dict[str, tuple[str, ...]] | None:
     return None if value is None else {k: tuple(v) for k, v in value.items()}
 
 

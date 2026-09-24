@@ -39,7 +39,7 @@ class ScalarEncoder:
         self.n, self.w, self.minimum, self.maximum = n, w, minimum, maximum
         self.periodic, self.clip = periodic, clip
 
-    def bucket(self, x: torch.Tensor) -> torch.Tensor:
+    def bucket(self, x: torch.Tensor | float) -> torch.Tensor:
         """Bucket index of every value."""
         x = torch.as_tensor(x, dtype=torch.float64)
         low, high = self.minimum, self.maximum
@@ -98,7 +98,7 @@ class RandomDistributedScalarEncoder:
             raise ValueError(f"resolution must be positive, got {resolution}")
         self.n, self.w, self.resolution, self.seed = n, w, resolution, seed
 
-    def bucket(self, x: torch.Tensor) -> torch.Tensor:
+    def bucket(self, x: torch.Tensor | float) -> torch.Tensor:
         """Bucket index of every value."""
         return torch.floor(torch.as_tensor(x, dtype=torch.float64) / self.resolution).long()
 

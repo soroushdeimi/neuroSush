@@ -64,3 +64,10 @@ convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
 "scripts/**" = ["D"]
+
+[tool.mypy]
+files = ["src"]
+# checks run as 3.12 because NumPy's stubs need it; ruff (py310) and the 3.10 CI job
+# guard the package's own 3.10 compatibility
+python_version = "3.12"
+strict = true

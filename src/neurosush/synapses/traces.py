@@ -51,7 +51,9 @@ class Traces(Behavior):
 
     order = Order.TRACE
 
-    def __init__(self, *, tau_pre: float, tau_post: float | None = None, scale: float = 1.0):
+    def __init__(
+        self, *, tau_pre: float, tau_post: float | None = None, scale: float = 1.0
+    ) -> None:
         tau_post = tau_pre if tau_post is None else tau_post
         for name, tau in (("tau_pre", tau_pre), ("tau_post", tau_post)):
             if tau <= 0:

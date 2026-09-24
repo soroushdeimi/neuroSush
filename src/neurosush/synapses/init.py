@@ -60,7 +60,7 @@ class WeightInit(Behavior):
     def __init__(
         self,
         *,
-        mode: str | Number | None = None,
+        mode: str | float | complex | None = None,
         weights: torch.Tensor | None = None,
         scale: float = 1.0,
         offset: float = 0.0,
@@ -132,6 +132,7 @@ class WeightInit(Behavior):
             sample = torch.rand if self.mode == "uniform" else torch.randn
             return sample(shape, generator=net.generator, dtype=net.dtype, device=net.device)
         value = {"zeros": 0.0, "ones": 1.0}[self.mode] if isinstance(self.mode, str) else self.mode
+        assert value is not None  # Sampling is used only when mode, rather than weights, is set.
         return torch.full(shape, value, dtype=net.dtype, device=net.device)
 
 

@@ -12,6 +12,7 @@ from neurosush.core.order import Order
 def incoming_weight_sum(syn: SynapseGroup) -> torch.Tensor:
     """Sum of the weights reaching each destination neuron, shape ``(dst.size,)``."""
     w, kind = syn.weights, getattr(syn, "connectivity", None)
+    assert w is not None  # Weight normalization requires initialized weights.
     if kind == "dense":
         return w.sum(0)
     if kind == "one_to_one":
@@ -30,6 +31,7 @@ def incoming_weight_sum(syn: SynapseGroup) -> torch.Tensor:
 def _scale_weights(syn: SynapseGroup, factor: torch.Tensor) -> torch.Tensor:
     """Multiply the weights reaching destination neuron ``j`` by ``factor[j]``."""
     w, kind = syn.weights, syn.connectivity
+    assert w is not None  # Weight normalization requires initialized weights.
     if kind == "dense":
         return w * factor.unsqueeze(0)
     if kind == "one_to_one":
@@ -68,6 +70,7 @@ class WeightClip(Behavior):
 
     def forward(self, syn: SynapseGroup) -> None:
         """Clamp the weights."""
+        assert syn.weights is not None  # Weight clipping requires initialized weights.
         syn.weights = syn.weights.clamp(self.w_min, self.w_max)
 
 

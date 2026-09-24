@@ -7,7 +7,7 @@ from typing import Any
 import torch
 
 from neurosush.core.behavior import Behavior
-from neurosush.core.network import Network
+from neurosush.core.network import Network, NeuronGroup, SynapseGroup
 from neurosush.core.order import Order
 
 
@@ -41,13 +41,13 @@ class Recorder(Behavior):
         self.steps: list[int] = []
         self._values: dict[str, list[Any]] = {name: [] for name in self.attributes}
 
-    def initialize(self, host: Any) -> None:
+    def initialize(self, host: Network | NeuronGroup | SynapseGroup) -> None:
         """Check that every attribute exists once all other behaviors are initialized."""
         missing = [name for name in self.attributes if not hasattr(host, name)]
         if missing:
             raise RuntimeError(f"Recorder on {_name(host)}: no attribute(s) {missing}")
 
-    def forward(self, host: Any) -> None:
+    def forward(self, host: Network | NeuronGroup | SynapseGroup) -> None:
         """Copy the attributes on recording steps."""
         iteration = (host if isinstance(host, Network) else host.net).iteration
         if iteration % self.interval:
@@ -73,5 +73,5 @@ class Recorder(Behavior):
         return f"Recorder({names}, interval={self.interval})"
 
 
-def _name(host: Any) -> str:
+def _name(host: Network | NeuronGroup | SynapseGroup) -> str:
     return "the network" if isinstance(host, Network) else host.name

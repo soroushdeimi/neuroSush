@@ -8,14 +8,29 @@ voltage in between. State written on the group: ``v``, ``spikes``, ``I`` (if abs
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TypedDict
 
 import torch
+from typing_extensions import NotRequired, Unpack
 
 from neurosush.core.behavior import Behavior
 from neurosush.core.network import NeuronGroup
 from neurosush.core.order import Order
 from neurosush.neurons import dynamics
+
+
+class _LIFOptions(TypedDict):
+    tau: float
+    threshold: float | torch.Tensor
+    v_reset: float
+    v_rest: float
+    resistance: NotRequired[float]
+    v_init: NotRequired[float | torch.Tensor | None]
+
+
+class _ELIFOptions(_LIFOptions):
+    delta: float
+    theta_rh: float
 
 
 def _positive(**values: float | torch.Tensor) -> None:
@@ -138,7 +153,7 @@ class ELIF(LIF):
         *,
         delta: float,
         theta_rh: float,
-        **kwargs: Any,
+        **kwargs: Unpack[_LIFOptions],
     ) -> None:
         super().__init__(**kwargs)
         _positive(delta=delta)
@@ -179,7 +194,7 @@ class AdaptiveELIF(ELIF):
         beta: float,
         tau_w: float,
         omega_init: float = 0.0,
-        **kwargs: Any,
+        **kwargs: Unpack[_ELIFOptions],
     ) -> None:
         super().__init__(**kwargs)
         _positive(tau_w=tau_w)

@@ -163,6 +163,7 @@ def _pair(value: int | tuple[int, int], name: str, minimum: int) -> tuple[int, i
 
 
 def _check_shape(syn: SynapseGroup, expected: tuple[int, ...]) -> None:
+    assert syn.weights is not None  # Weighted inputs are checked before validate().
     if syn.weights.shape != expected:
         raise ValueError(
             f"weights of {syn.name} must have shape {expected}, got {tuple(syn.weights.shape)}"
@@ -262,6 +263,7 @@ class DenseInput(_SynapticInput):
         Args:
             syn: Synapse group providing spikes and weights.
         """
+        assert syn.weights is not None  # initialize() requires weights.
         return dense_current(syn.pre_spike, syn.weights)
 
 
@@ -292,6 +294,7 @@ class OneToOneInput(_SynapticInput):
         Args:
             syn: Synapse group providing spikes and weights.
         """
+        assert syn.weights is not None  # initialize() requires weights.
         return one_to_one_current(syn.pre_spike, syn.weights)
 
 
@@ -310,6 +313,7 @@ class SparseInput(_SynapticInput):
         Args:
             syn: Synapse group whose sparse storage is checked.
         """
+        assert syn.weights is not None  # initialize() requires weights.
         if not hasattr(syn, "src_idx") or syn.weights.ndim != 1:
             raise RuntimeError(f"SparseInput on {syn.name} needs sparse weights (sparse=True)")
 
@@ -319,6 +323,7 @@ class SparseInput(_SynapticInput):
         Args:
             syn: Synapse group providing spikes, weights and edge indices.
         """
+        assert syn.weights is not None  # initialize() requires weights.
         return sparse_current(syn.pre_spike, syn.weights, syn.src_idx, syn.dst_idx, syn.dst.size)
 
 
@@ -350,6 +355,7 @@ class Conv2dInput(_SynapticInput):
         Args:
             syn: Synapse group whose convolution geometry is checked.
         """
+        assert syn.weights is not None  # initialize() requires weights.
         shape = tuple(syn.weights.shape)
         if syn.weights.ndim != 4:
             raise ValueError(f"weights of {syn.name} must have a 4-D shape, got {shape}")
@@ -359,7 +365,7 @@ class Conv2dInput(_SynapticInput):
         ):
             if actual != expected:
                 raise ValueError(f"{label} of {syn.name} must be {expected}, got {actual}")
-        _check_grid(syn, shape[2:], self.stride, self.padding)
+        _check_grid(syn, (shape[2], shape[3]), self.stride, self.padding)
 
     def current(self, syn: SynapseGroup) -> torch.Tensor:
         """Return flattened spatial cross-correlations of the source spikes.
@@ -367,6 +373,7 @@ class Conv2dInput(_SynapticInput):
         Args:
             syn: Synapse group providing spikes, weights and source shape.
         """
+        assert syn.weights is not None  # initialize() requires weights.
         return conv2d_current(
             syn.pre_spike,
             syn.weights,
@@ -415,6 +422,7 @@ class Local2dInput(Conv2dInput):
         Args:
             syn: Synapse group providing spikes, weights and source shape.
         """
+        assert syn.weights is not None  # initialize() requires weights.
         return local2d_current(
             syn.pre_spike,
             syn.weights,
@@ -444,6 +452,7 @@ class LateralInput(_SynapticInput):
             raise ValueError(
                 f"{syn.name} requires the same group, got src={syn.src.name}, dst={syn.dst.name}"
             )
+        assert syn.weights is not None  # initialize() requires weights.
         shape = tuple(syn.weights.shape)
         if len(shape) != 5 or shape[:2] != (1, 1) or any(k % 2 != 1 for k in shape[2:]):
             raise ValueError(
@@ -457,6 +466,7 @@ class LateralInput(_SynapticInput):
         Args:
             syn: Synapse group providing spikes, weights and group shape.
         """
+        assert syn.weights is not None  # initialize() requires weights.
         return lateral_current(syn.pre_spike, syn.weights, shape=syn.src.shape)
 
 

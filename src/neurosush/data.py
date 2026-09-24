@@ -4,12 +4,18 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Callable, Generator, Iterable
-from typing import Any, TypeVar
+from typing import Any, Protocol, TypeVar
 
 import torch
 from torch.utils.data import Dataset
 
 T = TypeVar("T")
+
+
+class _ImageDataset(Protocol):
+    def __len__(self) -> int: ...
+
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, object]: ...
 
 
 class LocationDataset(Dataset[tuple[torch.Tensor, torch.Tensor | None, Any]]):
@@ -25,7 +31,7 @@ class LocationDataset(Dataset[tuple[torch.Tensor, torch.Tensor | None, Any]]):
 
     def __init__(
         self,
-        dataset: Dataset[tuple[torch.Tensor, Any]],
+        dataset: _ImageDataset,
         *,
         pre_transform: Callable[[torch.Tensor], tuple[torch.Tensor, torch.Tensor]] | None = None,
         post_transform: Callable[[torch.Tensor], torch.Tensor] | None = None,
