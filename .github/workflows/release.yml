@@ -1,58 +1,95 @@
 name: Release
 
+# A commit on main whose __version__ is a release version (for example 0.2.0) that has no
+# GitHub release yet is released automatically: verify, full CI, GitHub release with the
+# wheel and sdist, then PyPI once publishing is switched on. Pushing a tag vX.Y.Z by hand
+# works too.
+
 on:
   push:
+    branches: [main]
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.decide.outputs.release }}
+      tag: ${{ steps.decide.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(python3 scripts/release_check.py --print-version)
+          tag="v${version}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          if ! python3 scripts/release_check.py --is-release "$version"; then
+            echo "release=false" >> "$GITHUB_OUTPUT"; echo "${version} is a development version"
+          elif gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "release=false" >> "$GITHUB_OUTPUT"; echo "${tag} is already released"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"; echo "releasing ${tag}"
+          fi
+
   verify:
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: pip
-      - run: python scripts/release_check.py --tag "$GITHUB_REF_NAME" --notes-out notes.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/checkout@v7
+      - run: python3 scripts/release_check.py --tag "${{ needs.plan.outputs.tag }}" --notes-out notes.md
+      - uses: actions/upload-artifact@v7
         with:
           name: notes
+
           path: notes.md
 
   ci:
     needs: verify
     uses: ./.github/workflows/ci.yml
 
-  publish:
-    needs: [verify, ci]
+  github-release:
+    needs: [plan, ci]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: actions/download-artifact@v8
+        with:
+          name: notes
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: >
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA"
+          --title "$TAG" --notes-file notes.md
+
+  pypi:
+    needs: github-release
+    # Switch on after adding this repository as a PyPI trusted publisher:
+    # Settings > Secrets and variables > Actions > Variables > PYPI_PUBLISH = true
+    if: vars.PYPI_PUBLISH == 'true'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
-
-  github-release:
-    needs: publish
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-      - uses: actions/download-artifact@v4
-        with:
-          name: notes
-      - run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
