@@ -16,6 +16,11 @@ from itertools import product
 import torch
 import torch.nn.functional as F
 
+from neurosush.htm._state import checked
+
+# what learning changes, plus the random pools and tie-breaks it started from
+_STATE = ("potential", "permanences", "tie_break", "boost", "active_duty", "overlap_duty")
+
 
 def _as_shape(shape: int | tuple[int, ...]) -> tuple[int, ...]:
     shape = (shape,) if isinstance(shape, int) else tuple(shape)
@@ -216,3 +221,17 @@ class SpatialPooler:
         weak = self.overlap_duty < self.min_overlap_duty * reference
         bump = (0.1 * self.connected) * (weak.unsqueeze(-1) & self.potential)
         self.permanences = (self.permanences + bump).clamp(0, 1)
+
+    def state_dict(self) -> dict[str, torch.Tensor | int]:
+        """A copy of the learned state; with it a pooler of the same shape continues exactly."""
+        state: dict[str, torch.Tensor | int] = {
+            name: getattr(self, name).clone() for name in _STATE
+        }
+        state["iteration"] = self.iteration
+        return state
+
+    def load_state_dict(self, state: dict[str, torch.Tensor | int]) -> None:
+        """Restore a :meth:`state_dict` saved from a pooler with the same shapes."""
+        for name in _STATE:
+            setattr(self, name, checked(name, state[name], getattr(self, name)))
+        self.iteration = int(state["iteration"])

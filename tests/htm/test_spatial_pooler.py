@@ -246,3 +246,23 @@ class TestPaperProperties:
         without, weak, strong = busiest_share(0.0), busiest_share(3.0), busiest_share(20.0)
         assert strong < weak < without
         assert strong < 2 * 0.04
+
+
+class TestCheckpoint:
+    def test_resuming_continues_exactly(self, tmp_path):
+        data = random_sdr(400, 40, batch=(60,), generator=gen(5))
+        reference = pooler(boost_strength=2.0, duty_cycle_period=20)
+        reference.compute(data)
+        first = pooler(boost_strength=2.0, duty_cycle_period=20)
+        first.compute(data[:25])
+        torch.save(first.state_dict(), tmp_path / "sp.pt")
+        resumed = pooler(boost_strength=2.0, duty_cycle_period=20, seed=99)  # other pools
+        resumed.load_state_dict(torch.load(tmp_path / "sp.pt", weights_only=True))
+        resumed.compute(data[25:])
+        for key, value in reference.state_dict().items():
+            got = resumed.state_dict()[key]
+            assert torch.equal(got, value) if isinstance(value, torch.Tensor) else got == value, key
+
+    def test_shapes_must_match(self):
+        with pytest.raises(ValueError, match=r"potential must have shape \(256, 400\)"):
+            pooler().load_state_dict(SpatialPooler(100, 256).state_dict())

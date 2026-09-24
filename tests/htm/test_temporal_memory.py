@@ -174,3 +174,63 @@ class TestSequenceMemory:
         tm.reset()
         assert not tm.predictive_cells.any()
         assert torch.equal(predictions_along(tm, seq)[0], seq[1])
+
+
+class TestCheckpoint:
+    def save_and_load(self, tm, tmp_path):
+        torch.save(tm.state_dict(), tmp_path / "tm.pt")
+        resumed = memory(predicted_decrement=0.05)
+        resumed.load_state_dict(torch.load(tmp_path / "tm.pt", weights_only=True))
+        return resumed
+
+    def test_resuming_continues_exactly(self, tmp_path):
+        # growth draws from the generator, so its state is part of the checkpoint too
+        sequences = [patterns(5, seed=4), patterns(5, seed=5)]
+
+        def run(tm, stop_after=None):
+            """Three passes, half of a fourth sequence, then two more passes."""
+            train(tm, sequences, repeats=3)
+            tm.reset()
+            for index, step in enumerate(sequences[0]):
+                if index == stop_after:
+                    tm = self.save_and_load(tm, tmp_path)
+                tm.compute(step)
+            train(tm, sequences, repeats=2)
+            return tm
+
+        reference, resumed = (
+            run(memory(predicted_decrement=0.05)),
+            run(memory(predicted_decrement=0.05), stop_after=2),
+        )
+        state = resumed.state_dict()
+        for key, value in reference.state_dict().items():
+            if isinstance(value, torch.Tensor):
+                assert torch.equal(state[key], value), key
+            else:
+                assert state[key] == value, key
+
+    def test_state_keeps_the_context(self, tmp_path):
+        a, b, c = patterns(3, seed=6)
+        tm = memory()
+        train(tm, [[a, b, c]], repeats=4)
+        tm.reset()
+        tm.compute(a, learn=False)
+        resumed = self.save_and_load(tm, tmp_path)
+        assert torch.equal(resumed.predicted_columns(), b)
+
+    def test_shapes_must_match(self):
+        tm = memory()
+        tm.compute(patterns(1)[0])
+        state = tm.state_dict()
+        with pytest.raises(ValueError, match="must have shape"):
+            TemporalMemory(COLUMNS * 2, 8, activation_threshold=8, min_threshold=6).load_state_dict(
+                state
+            )
+
+    def test_segments_must_point_at_existing_cells(self):
+        tm = memory()
+        train(tm, [patterns(3)], repeats=1)
+        state = tm.state_dict()
+        state["presynaptic"][0, 0] = tm.n_cells
+        with pytest.raises(ValueError, match="presynaptic must index"):
+            memory().load_state_dict(state)

@@ -18,6 +18,14 @@ from __future__ import annotations
 
 import torch
 
+from neurosush.htm._state import checked
+
+# per-segment storage, grown by doubling; only the first n_segments rows are in use
+_STORAGE = ("segment_cell", "presynaptic", "permanence", "last_used")
+# the current context: cells and the dendrite activity computed from them
+_CELLS = ("active_cells", "winner_cells", "predictive_cells")
+_SEGMENTS = ("active_segments", "matching_segments", "potential_counts")
+
 
 class TemporalMemory:
     """Sequence memory over a sheet of columns with ``cells_per_column`` cells each.
@@ -77,11 +85,9 @@ class TemporalMemory:
             max_segments_per_cell,
         )
         self.generator = torch.Generator().manual_seed(seed)
-        capacity = 64
-        self.segment_cell = torch.full((capacity,), -1, dtype=torch.long)
-        self.presynaptic = torch.full((capacity, self.max_synapses), -1, dtype=torch.long)
-        self.permanence = torch.zeros(capacity, self.max_synapses)
-        self.last_used = torch.zeros(capacity, dtype=torch.long)
+        empty = self._empty_storage(64)
+        self.segment_cell, self.presynaptic = empty["segment_cell"], empty["presynaptic"]
+        self.permanence, self.last_used = empty["permanence"], empty["last_used"]
         self.n_segments = 0
         self.iteration = 0
         self.reset()
@@ -258,16 +264,71 @@ class TemporalMemory:
         self.last_used[segment] = self.iteration
         return segment
 
+    def _empty_storage(self, rows: int) -> dict[str, torch.Tensor]:
+        """Unused segment rows: no cell, no synapses (-1), zero permanence and use time."""
+        return {
+            "segment_cell": torch.full((rows,), -1, dtype=torch.long),
+            "presynaptic": torch.full((rows, self.max_synapses), -1, dtype=torch.long),
+            "permanence": torch.zeros(rows, self.max_synapses),
+            "last_used": torch.zeros(rows, dtype=torch.long),
+        }
+
     def _grow_storage(self) -> None:
-        extra = len(self.segment_cell)
-        self.segment_cell = torch.cat(
-            [self.segment_cell, torch.full((extra,), -1, dtype=torch.long)]
+        """Double the segment capacity."""
+        self._set_storage({name: getattr(self, name) for name in _STORAGE}, len(self.segment_cell))
+
+    def _set_storage(self, used: dict[str, torch.Tensor], extra: int) -> None:
+        """Make ``used`` the segment storage, followed by ``extra`` unused rows."""
+        empty = self._empty_storage(extra)
+        self.segment_cell = torch.cat([used["segment_cell"], empty["segment_cell"]])
+        self.presynaptic = torch.cat([used["presynaptic"], empty["presynaptic"]])
+        self.permanence = torch.cat([used["permanence"], empty["permanence"]])
+        self.last_used = torch.cat([used["last_used"], empty["last_used"]])
+
+    # --- checkpoints ------------------------------------------------------------------
+
+    def state_dict(self) -> dict[str, torch.Tensor | int | float]:
+        """A copy of the segments, the current context and the random generator.
+
+        A memory with the same arguments continues exactly after :meth:`load_state_dict`.
+        """
+        n = self.n_segments
+        state: dict[str, torch.Tensor | int | float] = {
+            name: getattr(self, name)[:n].clone() for name in _STORAGE
+        }
+        for name in (*_CELLS, *_SEGMENTS):
+            state[name] = getattr(self, name).clone()
+        state.update(
+            n_segments=n,
+            iteration=self.iteration,
+            anomaly=self.anomaly,
+            generator=self.generator.get_state(),
         )
-        self.presynaptic = torch.cat(
-            [self.presynaptic, torch.full((extra, self.max_synapses), -1, dtype=torch.long)]
-        )
-        self.permanence = torch.cat([self.permanence, torch.zeros(extra, self.max_synapses)])
-        self.last_used = torch.cat([self.last_used, torch.zeros(extra, dtype=torch.long)])
+        return state
+
+    def load_state_dict(self, state: dict[str, torch.Tensor | int | float]) -> None:
+        """Restore a :meth:`state_dict` saved from a memory with the same arguments."""
+        n = int(state["n_segments"])
+        storage = {
+            name: checked(name, state[name], getattr(self, name), rows=n) for name in _STORAGE
+        }
+        cells, synapses = storage["segment_cell"], storage["presynaptic"]
+        if bool(((cells < 0) | (cells >= self.n_cells)).any()):
+            raise ValueError(f"segment_cell must index {self.n_cells} cells")
+        if bool(((synapses < -1) | (synapses >= self.n_cells)).any()):
+            raise ValueError(f"presynaptic must index {self.n_cells} cells or be -1")
+        self._set_storage(storage, max(64 - n, 0))
+        self.n_segments = n
+        for name in _CELLS:
+            setattr(self, name, checked(name, state[name], getattr(self, name)))
+        for name in _SEGMENTS:
+            setattr(self, name, checked(name, state[name], getattr(self, name)[:0], rows=n))
+        self.iteration = int(state["iteration"])
+        self.anomaly = float(state["anomaly"])
+        generator = state["generator"]
+        if not isinstance(generator, torch.Tensor):
+            raise ValueError("generator must be a generator state tensor")
+        self.generator.set_state(generator.cpu())
 
     # --- read-outs --------------------------------------------------------------------
 
