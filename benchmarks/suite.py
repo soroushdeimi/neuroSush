@@ -122,6 +122,7 @@ def main() -> None:
     results = run(args.repeats)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
+        f.write("\n")
     for name, case in results["cases"].items():  # type: ignore[attr-defined]
         print(f"{name:24s} {case['rate']:10.1f}/s  normalized {case['normalized']:.4f}")
 

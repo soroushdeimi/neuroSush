@@ -25,4 +25,5 @@ jobs:
           name: benchmark
           path: benchmark.json
       - name: Compare with the baseline (fails on a regression over 30%)
+        shell: bash  # -eo pipefail: the comparison's exit code survives the pipe to tee
         run: python benchmarks/compare.py benchmarks/baseline.json benchmark.json | tee -a "$GITHUB_STEP_SUMMARY"

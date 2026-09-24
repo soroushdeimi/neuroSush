@@ -1,0 +1,25 @@
+{
+  "calibration": 100471.2099748115,
+  "cases": {
+    "dense_stdp": {
+      "rate": 1039.461222301346,
+      "normalized": 0.01034586149168446
+    },
+    "dense_stdp_batch32": {
+      "rate": 4717.435338209648,
+      "normalized": 0.04695310566472053
+    },
+    "spatial_pooler_learn": {
+      "rate": 100.27009203204962,
+      "normalized": 0.0009979982530038973
+    },
+    "temporal_memory_learn": {
+      "rate": 228.7321988136935,
+      "normalized": 0.002276594448011898
+    }
+  },
+  "machine": {
+    "python": "3.12.14",
+    "torch": "2.14.0+cpu"
+  }
+}
