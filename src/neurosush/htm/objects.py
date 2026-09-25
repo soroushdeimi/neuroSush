@@ -80,7 +80,7 @@ class SensorColumn:
 
     def candidates(self) -> torch.Tensor:
         """Bool ``(objects,)``: objects that still have a hypothesis."""
-        return self.hypotheses.any((1, 2))
+        return self.hypotheses.flatten(1).any(-1)  # any((1, 2)) needs torch 2.2
 
     def restrict(self, objects: torch.Tensor) -> None:
         """Drop the hypotheses on objects outside ``objects`` (bool ``(objects,)``)."""

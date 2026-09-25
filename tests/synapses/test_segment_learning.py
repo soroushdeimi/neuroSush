@@ -104,6 +104,14 @@ class TestRepeatedMinicolumns:
         learning.forward(syn)
         assert syn.last_spike[1].tolist() == [T + 7, T]
 
+    def test_segment_times_shift_where_a_segment_spikes(self):
+        # three segments per cell and two time slots: the mask and the slots differ in shape
+        from neurosush.synapses.segment_learning import _record
+
+        times = torch.tensor([[[5, 1], [6, 2], [7, 3]], [[8, 4], [9, 5], [10, 6]]])
+        _record(times, torch.tensor([[True, False, False], [False, False, True]]), 20)
+        assert times.tolist() == [[[20, 5], [6, 2], [7, 3]], [[8, 4], [9, 5], [20, 10]]]
+
 
 class TestBurstingColumns:
     def test_best_matching_segment_learns_and_its_cell_wins(self):

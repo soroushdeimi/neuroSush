@@ -68,6 +68,8 @@ filterwarnings = [
     "error",
     # torch warns at import when the optional numpy is absent (as in CI); not our concern
     "ignore:Failed to initialize NumPy:UserWarning",
+    # torch 2.1 warns about its own storage classes inside torch.save and torch.load
+    "ignore:TypedStorage is deprecated:UserWarning",
 ]
 
 [tool.coverage.run]

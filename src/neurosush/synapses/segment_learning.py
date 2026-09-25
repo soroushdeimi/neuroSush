@@ -42,8 +42,11 @@ _NEVER = -(10**9)
 
 def _record(times: torch.Tensor, where: torch.Tensor, t: int) -> None:
     """Make ``t`` the latest of the two times ``(..., 2)`` where ``where`` holds."""
-    times[where, 1] = times[where, 0]
-    times[where, 0] = t
+    # torch.where rather than times[where, 1]: older torch versions index a mask followed
+    # by an integer differently
+    latest, previous = times[..., 0], times[..., 1]
+    shifted = torch.stack([torch.where(where, t, latest), torch.where(where, latest, previous)], -1)
+    times.copy_(shifted)
 
 
 def _mask(like: torch.Tensor, index: torch.Tensor) -> torch.Tensor:

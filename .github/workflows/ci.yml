@@ -45,9 +45,15 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python: ['3.10', '3.11', '3.12', '3.13']
+        torch: [latest]
         include:
           - os: macos-latest
             python: '3.12'
+            torch: latest
+          # the oldest torch that pyproject.toml allows: catches newer-only APIs
+          - os: ubuntu-latest
+            python: '3.10'
+            torch: '2.1.0'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -55,7 +61,7 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
       - if: runner.os == 'Linux'
-        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+        run: pip install "${{ matrix.torch == 'latest' && 'torch' || format('torch=={0}', matrix.torch) }}" --index-url https://download.pytorch.org/whl/cpu
       - if: runner.os == 'macOS'
         run: pip install torch
       - run: pip install -e ".[dev]"
