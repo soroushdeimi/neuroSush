@@ -17,6 +17,7 @@ closed-form probabilities and expectations, and the results of its papers.
 | [Thousand Brains models](#thousand-brains-models) | SDRs, encoders, spatial pooler, temporal memory, grid cells, active dendrites, voting columns, predictive coding |
 | [Spiking temporal memory](#spiking-temporal-memory) | dendritic segments with NMDA-like plateaus, minicolumn inhibition, sequence learning in spike time |
 | [Validation](#validation) | the mathematics every part is checked against |
+| [Benchmarks](https://github.com/soroushdeimi/neuroSush/blob/main/docs/BENCHMARKS.md) | steps per second on a CPU and a GPU, with and without CUDA graphs and batching |
 
 ## Design
 
@@ -242,6 +243,13 @@ decision (a homeostasis window ending, a behavior being enabled) becomes a graph
 the stepper keeps one graph per key. Not ready yet: `Payoff`, `Dopamine`, `RSTDP` and
 transmission delays longer than one step; `GraphStepper` names every behavior that is not
 ready. A `Recorder` runs after each replayed step.
+
+On an RTX 3090 a 784-input, 400-neuron STDP network runs 5,538 steps per second as a graph,
+5.5 times eager stepping and 2.4 times the fastest CPU run on the same machine; batched, it
+reaches 2.4 million sample-steps per second. [Benchmarks](https://github.com/soroushdeimi/neuroSush/blob/main/docs/BENCHMARKS.md) has the full results, the
+method and the pitfalls.
+
+![Steps per second of one network on a CPU and on a GPU, eager and as a CUDA graph](https://raw.githubusercontent.com/soroushdeimi/neuroSush/main/docs/figures/single-network.svg)
 
 ## Modules
 
@@ -482,7 +490,8 @@ cite the papers of the models you use; each module names them.
 ## Development
 
 `bash scripts/check.sh` runs ruff (lint and format check), strict mypy and the full test
-suite. `python benchmarks/suite.py` measures throughput (the Benchmarks workflow runs it
+suite. `python benchmarks/scaling.py` measures steps per second across devices, threads,
+batch sizes and CUDA graphs; `python benchmarks/suite.py` measures throughput (the Benchmarks workflow runs it
 every week), and the scripts in [`experiments/`](https://github.com/soroushdeimi/neuroSush/blob/main/experiments) reproduce the numbers
 behind the validation claims. Tests marked `gpu` compare CUDA with CPU results and run only
 where a CUDA device exists. See [CONTRIBUTING.md](https://github.com/soroushdeimi/neuroSush/blob/main/CONTRIBUTING.md) for the workflow and

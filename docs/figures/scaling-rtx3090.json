@@ -1,0 +1,272 @@
+{
+  "machine": {
+    "python": "3.12.10",
+    "torch": "2.14.0+cu130",
+    "platform": "Windows-11-10.0.28000-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "gpu": "NVIDIA GeForce RTX 3090"
+  },
+  "steps": 300,
+  "results": [
+    {
+      "device": "cuda",
+      "mode": "eager",
+      "threads": null,
+      "batch": null,
+      "steps_per_s": 1012.9232119592475,
+      "sample_steps_per_s": 1012.9232119592475,
+      "runs": [
+        1012.9232119592475,
+        856.9335205207465,
+        1114.5107817580363
+      ]
+    },
+    {
+      "device": "cuda",
+      "mode": "eager",
+      "threads": null,
+      "batch": 8,
+      "steps_per_s": 1005.8763295107805,
+      "sample_steps_per_s": 8047.010636086244,
+      "runs": [
+        995.0582092558863,
+        1005.8763295107805,
+        1010.9216606354056
+      ]
+    },
+    {
+      "device": "cuda",
+      "mode": "eager",
+      "threads": null,
+      "batch": 32,
+      "steps_per_s": 952.9639243096726,
+      "sample_steps_per_s": 30494.845577909524,
+      "runs": [
+        799.1944120390597,
+        971.7968361535246,
+        952.9639243096726
+      ]
+    },
+    {
+      "device": "cuda",
+      "mode": "eager",
+      "threads": null,
+      "batch": 128,
+      "steps_per_s": 941.7262910195352,
+      "sample_steps_per_s": 120540.9652505005,
+      "runs": [
+        949.5215360748592,
+        941.7262910195352,
+        928.2887646425875
+      ]
+    },
+    {
+      "device": "cuda",
+      "mode": "eager",
+      "threads": null,
+      "batch": 512,
+      "steps_per_s": 829.6838765939576,
+      "sample_steps_per_s": 424798.1448161063,
+      "runs": [
+        829.6838765939576,
+        910.6207519532896,
+        775.2046152773669
+      ]
+    },
+    {
+      "device": "cuda",
+      "mode": "eager",
+      "threads": null,
+      "batch": 2048,
+      "steps_per_s": 769.2090735983858,
+      "sample_steps_per_s": 1575340.182729494,
+      "runs": [
+        758.6739188979495,
+        808.0522950019271,
+        769.2090735983858
+      ]
+    },
+    {
+      "device": "cuda",
+      "mode": "graph",
+      "threads": null,
+      "batch": null,
+      "steps_per_s": 5537.670928679248,
+      "sample_steps_per_s": 5537.670928679248,
+      "runs": [
+        5685.0590952659895,
+        5537.670928679248,
+        5495.2502715135715
+      ]
+    },
+    {
+      "device": "cuda",
+      "mode": "graph",
+      "threads": null,
+      "batch": 8,
+      "steps_per_s": 5453.6530397054585,
+      "sample_steps_per_s": 43629.22431764367,
+      "runs": [
+        5379.25543886253,
+        5453.6530397054585,
+        5503.395594990323
+      ]
+    },
+    {
+      "device": "cuda",
+      "mode": "graph",
+      "threads": null,
+      "batch": 32,
+      "steps_per_s": 5232.780228202781,
+      "sample_steps_per_s": 167448.96730248898,
+      "runs": [
+        5243.022846558532,
+        5232.780228202781,
+        5136.335463715113
+      ]
+    },
+    {
+      "device": "cuda",
+      "mode": "graph",
+      "threads": null,
+      "batch": 128,
+      "steps_per_s": 4139.152797837819,
+      "sample_steps_per_s": 529811.5581232408,
+      "runs": [
+        4114.718347812465,
+        4139.152797837819,
+        4148.574273881686
+      ]
+    },
+    {
+      "device": "cuda",
+      "mode": "graph",
+      "threads": null,
+      "batch": 512,
+      "steps_per_s": 2668.637900627034,
+      "sample_steps_per_s": 1366342.6051210414,
+      "runs": [
+        2655.9202231055833,
+        2672.708174966076,
+        2668.637900627034
+      ]
+    },
+    {
+      "device": "cuda",
+      "mode": "graph",
+      "threads": null,
+      "batch": 2048,
+      "steps_per_s": 1185.7782499841119,
+      "sample_steps_per_s": 2428473.855967461,
+      "runs": [
+        1183.727534378541,
+        1185.7782499841119,
+        1191.0414625391352
+      ]
+    },
+    {
+      "device": "cpu",
+      "mode": "eager",
+      "threads": 1,
+      "batch": null,
+      "steps_per_s": 2314.6969368683494,
+      "sample_steps_per_s": 2314.6969368683494,
+      "runs": [
+        1912.027609695265,
+        2314.6969368683494,
+        2442.123703394678
+      ]
+    },
+    {
+      "device": "cpu",
+      "mode": "eager",
+      "threads": 1,
+      "batch": 8,
+      "steps_per_s": 639.5148555023084,
+      "sample_steps_per_s": 5116.118844018467,
+      "runs": [
+        708.9351109189777,
+        639.5148555023084,
+        592.3949520878913
+      ]
+    },
+    {
+      "device": "cpu",
+      "mode": "eager",
+      "threads": 1,
+      "batch": 32,
+      "steps_per_s": 461.4537670237285,
+      "sample_steps_per_s": 14766.520544759313,
+      "runs": [
+        418.002008921719,
+        499.91876319590966,
+        461.4537670237285
+      ]
+    },
+    {
+      "device": "cpu",
+      "mode": "eager",
+      "threads": 1,
+      "batch": 128,
+      "steps_per_s": 208.52321979034667,
+      "sample_steps_per_s": 26690.972133164374,
+      "runs": [
+        212.54177862799224,
+        206.3777891270427,
+        208.52321979034667
+      ]
+    },
+    {
+      "device": "cpu",
+      "mode": "eager",
+      "threads": 6,
+      "batch": null,
+      "steps_per_s": 2327.4036263033845,
+      "sample_steps_per_s": 2327.4036263033845,
+      "runs": [
+        2327.4036263033845,
+        2276.486925432955,
+        2372.4567262908276
+      ]
+    },
+    {
+      "device": "cpu",
+      "mode": "eager",
+      "threads": 6,
+      "batch": 8,
+      "steps_per_s": 1210.3592225582743,
+      "sample_steps_per_s": 9682.873780466194,
+      "runs": [
+        1175.3519297303794,
+        1311.682985485648,
+        1210.3592225582743
+      ]
+    },
+    {
+      "device": "cpu",
+      "mode": "eager",
+      "threads": 6,
+      "batch": 32,
+      "steps_per_s": 831.857710211075,
+      "sample_steps_per_s": 26619.4467267544,
+      "runs": [
+        790.4384351025059,
+        831.857710211075,
+        840.8356897663103
+      ]
+    },
+    {
+      "device": "cpu",
+      "mode": "eager",
+      "threads": 6,
+      "batch": 128,
+      "steps_per_s": 448.036770076664,
+      "sample_steps_per_s": 57348.706569812995,
+      "runs": [
+        470.6692273121735,
+        448.036770076664,
+        417.5782050930201
+      ]
+    }
+  ]
+}

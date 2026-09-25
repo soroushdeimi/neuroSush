@@ -7,7 +7,27 @@ All notable changes to neuroSush are documented here, following the
 
 ### Added
 - `GraphStepper` (`neurosush.core.graph`) captures a network's step as a CUDA graph and
-  replays it, for networks whose behaviors are all graph-ready.
+  replays it, for networks whose behaviors are all graph-ready. On an RTX 3090 a 784-input,
+  400-neuron STDP network runs 5.5 times faster than eager stepping, with bit-for-bit the
+  same results.
+- A behavior protocol for it: `Behavior.graph_safe`, `graph_ready(host)`, `graph_key(host)`
+  and `prepare(host)`, which `Network.step` calls before the schedule for the behaviors that
+  override it.
+- `benchmarks/scaling.py` (steps per second across devices, threads, batch sizes and CUDA
+  graphs), `benchmarks/plot_scaling.py`, and `docs/BENCHMARKS.md` with results and figures
+  from an RTX 3090 machine.
+
+### Changed
+- Fewer operations per simulation step: dendrites of depth one pass their input through,
+  synaptic buffers without delays skip their ring, traces and homeostasis update in place,
+  KWTA sorts once, and STDP on a GPU no longer synchronizes with the host. Results are
+  unchanged bit for bit.
+- `SpatialPooler` learning updates only the rows of learning columns and caches the
+  connected synapses (8.7 times faster on the benchmark suite), and `TemporalMemory`'s work
+  per step no longer grows with its total number of cells and segments (1.6 times faster).
+  Results are unchanged bit for bit.
+- `ActivityHomeostasis.rate` is a 0-d float64 tensor on the network's device (its
+  `state_dict` still holds a float), and `SpikeInput` reads its next frame in `prepare`.
 
 ## [0.3.2] - 2026-09-25
 
