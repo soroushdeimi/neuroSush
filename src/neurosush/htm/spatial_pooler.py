@@ -105,6 +105,10 @@ class SpatialPooler:
         self.active_duty = torch.zeros(self.n_columns)
         self.overlap_duty = torch.zeros(self.n_columns)
         self.iteration = 0
+        # connected synapses as floats for the overlap product; kept in step with the rows
+        # that learning changes, and rebuilt when permanences are replaced from outside
+        self._connected = torch.empty(0)
+        self._connected_key: tuple[int, int] | None = None
 
     def _center(self, column: tuple[int, ...]) -> tuple[int, ...]:
         """Input coordinates at the center of a column's receptive field."""
@@ -134,10 +138,24 @@ class SpatialPooler:
         """
         return self._overlap(x.reshape(*x.shape[: x.dim() - len(self.input_shape)], -1))
 
+    def _connected_synapses(self) -> torch.Tensor:
+        """``permanences >= connected`` as floats, rebuilt only when permanences changed."""
+        key = (id(self.permanences), self.permanences._version)
+        if self._connected_key != key:
+            self._connected = (self.permanences >= self.connected).to(torch.float32)
+            self._connected_key = key
+        return self._connected
+
+    def _set_rows(self, rows: torch.Tensor, values: torch.Tensor) -> None:
+        """Write new permanences for ``rows`` and update their connected synapses."""
+        connected = self._connected_synapses()
+        self.permanences[rows] = values
+        connected[rows] = (values >= self.connected).to(torch.float32)
+        self._connected_key = (id(self.permanences), self.permanences._version)
+
     def _overlap(self, flat: torch.Tensor) -> torch.Tensor:
         """:meth:`overlap` of inputs already flattened to ``(..., n_inputs)``."""
-        connected = (self.permanences >= self.connected).to(torch.float32)
-        scores = flat.float() @ connected.T
+        scores = flat.float() @ self._connected_synapses().T
         return torch.where(scores >= self.stimulus_threshold, scores, torch.zeros_like(scores))
 
     def inhibit(self, scores: torch.Tensor) -> torch.Tensor:
@@ -188,10 +206,12 @@ class SpatialPooler:
     def _learn_one(self, x: torch.Tensor) -> torch.Tensor:
         overlaps = self._overlap(x)
         active = self.inhibit(overlaps * self.boost)
-        # Hebbian update of active columns' potential synapses (Cui et al. 2017, eq. 4)
-        delta = torch.where(x, self.active_inc, -self.inactive_dec).expand(self.n_columns, -1)
-        update = delta * (active.unsqueeze(-1) & self.potential)
-        self.permanences = (self.permanences + update).clamp(0, 1) * self.potential
+        # Hebbian update of active columns' potential synapses (Cui et al. 2017, eq. 4); the
+        # other rows would only be clamped and masked again, which leaves them unchanged
+        rows = active.nonzero().flatten()
+        delta = torch.where(x, self.active_inc, -self.inactive_dec)
+        pool = self.potential[rows]
+        self._set_rows(rows, (self.permanences[rows] + delta * pool).clamp(0, 1) * pool)
         self.iteration += 1
         period = min(self.iteration, self.duty_cycle_period)
         self.active_duty += (active.float() - self.active_duty) / period
@@ -218,9 +238,10 @@ class SpatialPooler:
             reference = self.overlap_duty.max().expand_as(self.overlap_duty)
         else:
             reference = self._neighborhoods(self.overlap_duty, 0.0).max(-1).values
-        weak = self.overlap_duty < self.min_overlap_duty * reference
-        bump = (0.1 * self.connected) * (weak.unsqueeze(-1) & self.potential)
-        self.permanences = (self.permanences + bump).clamp(0, 1)
+        weak = (self.overlap_duty < self.min_overlap_duty * reference).nonzero().flatten()
+        if len(weak):
+            bump = (0.1 * self.connected) * self.potential[weak]
+            self._set_rows(weak, (self.permanences[weak] + bump).clamp(0, 1))
 
     def state_dict(self) -> dict[str, torch.Tensor | int]:
         """A copy of the learned state; with it a pooler of the same shape continues exactly."""
