@@ -6,7 +6,8 @@ neuroSush simulates **spiking neural networks** (leaky, exponential and adaptive
 integrate-and-fire neurons with dendritic compartments and delays, STDP-family plasticity
 with dopamine modulation) on a CPU or GPU, in batches. It implements the **Thousand Brains
 and HTM models** (sparse distributed representations, spatial pooler, temporal memory, grid
-cells, active dendrites, voting columns) and **hierarchical predictive coding**, and it joins
+cells, active dendrites, voting columns) and **hierarchical predictive coding**, which run on
+the CPU, one sample at a time (the active-dendrites layer also runs on a GPU), and it joins
 the two worlds: a **spiking layer that provably computes the temporal memory** and learns
 the same sequences. Every model is tested against what it claims: exact solutions,
 closed-form probabilities and expectations, and the results of its papers.
@@ -335,7 +336,9 @@ print([group.name for group in column.output_port("out")])  # ['C1.L23.exc']
 ## Thousand Brains models
 
 `neurosush.htm` implements the algorithms of hierarchical temporal memory and the Thousand
-Brains theory as tensor code, each checked against the mathematics of its paper:
+Brains theory as tensor code, each checked against the mathematics of its paper. They run
+on the CPU and learn one sample at a time; `ActiveDendrites` is a `torch.nn.Module` and runs
+on any device, and SDRs and `SDRClassifier` accept tensors on any device.
 
 | model | reference | validated by the tests |
 |---|---|---|
@@ -472,11 +475,12 @@ distal reward problem of Izhikevich (2007).
 
 - **Alpha.** The API may still change between minor versions.
 - **Speed.** A simulation step is a sequence of small tensor operations driven from
-  Python: a few milliseconds per step on a CPU, whatever the network size up to thousands
-  of neurons. Batches spread that cost over many samples, especially on a GPU. The spatial
-  pooler learns one sample at a time.
-- **CPU-only HTM models.** The `neurosush.htm` models and `SegmentLearning` run unbatched
-  on the CPU.
+  Python, so small networks pay a fixed cost per step: for the 784-input, 400-neuron
+  benchmark network about 0.4 ms on a desktop CPU, 1 ms on a GPU stepped eagerly and 0.18 ms
+  replayed as a CUDA graph ([Benchmarks](https://github.com/soroushdeimi/neuroSush/blob/main/docs/BENCHMARKS.md)). Batches spread that cost over many samples,
+  especially on a GPU.
+- **CPU-only HTM models.** The spatial pooler, temporal memory, grid cells, voting columns,
+  `SegmentLearning` and `PredictiveCodingNetwork` run on the CPU, one sample at a time.
 - **Checkpoints** save a network's state but not the input streams feeding `SpikeInput`.
 - **The spiking temporal memory** equals the algorithm only under the timing conditions
   that `sequence_timing` checks; `sequence_memory` refuses other parameters.
