@@ -4,7 +4,9 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
+        exclude: ^docs/figures/.*\.svg$  # drawn by benchmarks/plot_scaling.py
       - id: end-of-file-fixer
+        exclude: ^docs/figures/.*\.svg$
       - id: check-yaml
       - id: check-toml
       - id: check-merge-conflict
