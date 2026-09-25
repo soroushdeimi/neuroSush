@@ -89,6 +89,7 @@ class TemporalMemory:
         self.segment_cell, self.presynaptic = empty["segment_cell"], empty["presynaptic"]
         self.permanence, self.last_used = empty["permanence"], empty["last_used"]
         self.n_segments = 0
+        self.cell_segments = torch.zeros(self.n_cells, dtype=torch.long)  # segments per cell
         self.iteration = 0
         self.reset()
 
@@ -142,19 +143,25 @@ class TemporalMemory:
         potential = self.potential_counts
         self.active_cells = torch.zeros(self.n_cells, dtype=torch.bool)
         self.winner_cells = torch.zeros(self.n_cells, dtype=torch.bool)
-        predicted_columns = torch.zeros(self.columns, dtype=torch.bool)
-        predicted_columns[segment_columns[active_segments]] = True
+        # the few active and matching segments, grouped by column once
+        by_column = _by_column(active_segments, segment_columns)
+        matching_by_column = _by_column(matching, segment_columns)
+        winners = prev_winners.nonzero().flatten()
         bursting = 0
         for column in active_columns.nonzero().flatten().tolist():
-            in_column = segment_columns == column
-            if bool(predicted_columns[column]):
+            if column in by_column:
                 self._activate_predicted_column(
-                    in_column & active_segments, potential, prev_active, prev_winners, learn
+                    by_column[column], potential, prev_active, winners, learn
                 )
             else:
                 bursting += 1
                 self._burst_column(
-                    column, in_column & matching, potential, prev_active, prev_winners, learn
+                    column,
+                    matching_by_column.get(column, []),
+                    potential,
+                    prev_active,
+                    winners,
+                    learn,
                 )
         if learn and self.predicted_decrement > 0:
             wrong = matching & ~active_columns[segment_columns]
@@ -167,13 +174,13 @@ class TemporalMemory:
 
     def _activate_predicted_column(
         self,
-        segments: torch.Tensor,
+        segments: list[int],
         potential: torch.Tensor,
         prev_active: torch.Tensor,
         prev_winners: torch.Tensor,
         learn: bool,
     ) -> None:
-        for segment in segments.nonzero().flatten().tolist():
+        for segment in segments:
             cell = int(self.segment_cell[segment])
             self.active_cells[cell] = self.winner_cells[cell] = True
             if learn:
@@ -183,7 +190,7 @@ class TemporalMemory:
     def _burst_column(
         self,
         column: int,
-        matching: torch.Tensor,
+        matching: list[int],
         potential: torch.Tensor,
         prev_active: torch.Tensor,
         prev_winners: torch.Tensor,
@@ -191,8 +198,8 @@ class TemporalMemory:
     ) -> None:
         start = column * self.cells_per_column
         self.active_cells[start : start + self.cells_per_column] = True
-        candidates = matching.nonzero().flatten()
-        if len(candidates):
+        if matching:
+            candidates = torch.tensor(matching)
             best = int(candidates[potential[candidates].argmax()])
             self.winner_cells[int(self.segment_cell[best])] = True
             if learn:
@@ -201,7 +208,7 @@ class TemporalMemory:
             return
         winner = self._least_used_cell(start)
         self.winner_cells[winner] = True
-        if learn and bool(prev_winners.any()):
+        if learn and len(prev_winners):
             segment = self._create_segment(winner)
             self._grow(segment, prev_winners, self.max_new_synapses)
 
@@ -209,11 +216,7 @@ class TemporalMemory:
 
     def _least_used_cell(self, start: int) -> int:
         """Cell of the column with the fewest segments; ties broken at random."""
-        cells = self.segment_cell[: self.n_segments]
-        counts = torch.bincount(
-            cells[(cells >= start) & (cells < start + self.cells_per_column)] - start,
-            minlength=self.cells_per_column,
-        )
+        counts = self.cell_segments[start : start + self.cells_per_column]
         fewest = (counts == counts.min()).nonzero().flatten()
         pick = torch.randint(len(fewest), (1,), generator=self.generator)
         return start + int(fewest[pick])
@@ -228,11 +231,12 @@ class TemporalMemory:
         self.last_used[segment] = self.iteration
 
     def _grow(self, segment: int, prev_winners: torch.Tensor, count: int) -> None:
-        """Add up to ``count`` synapses to previous winner cells not yet on the segment."""
+        """Add up to ``count`` synapses to previous winner cells not yet on the segment.
+
+        ``prev_winners`` holds the winner cells' indices in increasing order.
+        """
         pre = self.presynaptic[segment]
-        existing = torch.zeros(self.n_cells, dtype=torch.bool)
-        existing[pre[pre >= 0]] = True
-        candidates = (prev_winners & ~existing).nonzero().flatten()
+        candidates = prev_winners[~torch.isin(prev_winners, pre[pre >= 0])]
         count = min(count, len(candidates))
         if count <= 0:
             return
@@ -250,14 +254,15 @@ class TemporalMemory:
 
     def _create_segment(self, cell: int) -> int:
         """A new empty segment on ``cell``, evicting its least recently used one if full."""
-        on_cell = (self.segment_cell[: self.n_segments] == cell).nonzero().flatten()
-        if len(on_cell) >= self.max_segments_per_cell:
+        if int(self.cell_segments[cell]) >= self.max_segments_per_cell:
+            on_cell = (self.segment_cell[: self.n_segments] == cell).nonzero().flatten()
             segment = int(on_cell[self.last_used[on_cell].argmin()])
         else:
             if self.n_segments == len(self.segment_cell):
                 self._grow_storage()
             segment = self.n_segments
             self.n_segments += 1
+            self.cell_segments[cell] += 1
         self.segment_cell[segment] = cell
         self.presynaptic[segment] = -1
         self.permanence[segment] = 0.0
@@ -319,6 +324,7 @@ class TemporalMemory:
             raise ValueError(f"presynaptic must index {self.n_cells} cells or be -1")
         self._set_storage(storage, max(64 - n, 0))
         self.n_segments = n
+        self.cell_segments = torch.bincount(cells, minlength=self.n_cells)
         for name in _CELLS:
             setattr(self, name, checked(name, state[name], getattr(self, name)))
         for name in _SEGMENTS:
@@ -335,3 +341,12 @@ class TemporalMemory:
     def predicted_columns(self) -> torch.Tensor:
         """Columns containing at least one predictive cell: the prediction for the next input."""
         return self.predictive_cells.view(self.columns, self.cells_per_column).any(-1)
+
+
+def _by_column(segments: torch.Tensor, columns: torch.Tensor) -> dict[int, list[int]]:
+    """The segments where ``segments`` holds, by column, each list in increasing order."""
+    index = segments.nonzero().flatten()
+    groups: dict[int, list[int]] = {}
+    for segment, column in zip(index.tolist(), columns[index].tolist(), strict=True):
+        groups.setdefault(column, []).append(segment)
+    return groups
