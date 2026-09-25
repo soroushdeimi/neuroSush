@@ -13,7 +13,7 @@ def trace_step(
     trace: torch.Tensor, spikes: torch.Tensor, *, tau: float, dt: float, scale: float = 1.0
 ) -> torch.Tensor:
     """Decay the trace by ``dt / tau``, then add ``scale`` for each spike."""
-    return trace * (1 - dt / tau) + scale * spikes.to(trace.dtype)
+    return (trace * (1 - dt / tau)).add_(spikes, alpha=scale)
 
 
 class SpikeGather(Behavior):

@@ -34,7 +34,8 @@ class _Buffer:
         self._value_shape = (size,) if batch is None else (batch, size)
         self._storage = torch.zeros((depth, *self._value_shape), dtype=dtype, device=device)
         self._head = 0
-        self._checked: dict[int, int] = {}  # id(delay tensor) -> its version when validated
+        # id(delay tensor) -> (its version when validated, whether all delays are zero)
+        self._checked: dict[int, tuple[int, bool]] = {}
 
     @property
     def depth(self) -> int:
@@ -71,13 +72,22 @@ class _Buffer:
                 raise ValueError(f"delay must be in [0, {self.depth}), got {delay}")
             slot = torch.tensor((self._head + delay) % self.depth, device=self._storage.device)
             return slot.expand(1, *self._value_shape)
-        if self._checked.get(id(delay)) != delay._version:
+        self._no_delay(delay)  # validates
+        return ((delay + self._head) % self.depth).expand(self._value_shape).unsqueeze(0)
+
+    def _no_delay(self, delay: int | Tensor) -> bool:
+        """Whether every delay is zero; validates new delay tensors (once per version)."""
+        if isinstance(delay, int):
+            return delay == 0
+        cached = self._checked.get(id(delay))
+        if cached is None or cached[0] != delay._version:
             if delay.shape != (self.size,):
                 raise ValueError(f"delay shape must be ({self.size},), got {tuple(delay.shape)}")
             if bool(((delay < 0) | (delay >= self.depth)).any()):
                 raise ValueError(f"delay must be in [0, {self.depth}), got {delay.tolist()}")
-            self._checked[id(delay)] = delay._version
-        return ((delay + self._head) % self.depth).expand(self._value_shape).unsqueeze(0)
+            cached = (delay._version, not bool(delay.any()))
+            self._checked[id(delay)] = cached
+        return cached[1]
 
     def _check_value(self, value: Tensor) -> None:
         if value.shape != self._value_shape:
@@ -106,6 +116,8 @@ class HistoryBuffer(_Buffer):
 
     def read(self, delay: int | Tensor) -> Tensor:
         """Value pushed ``delay[i]`` pushes ago, for each neuron ``i`` (0 is the newest)."""
+        if self._no_delay(delay):  # the common case: one row, no index arithmetic
+            return self._storage[self._head].clone()
         return torch.gather(self._storage, 0, self._slots(delay)).squeeze(0)
 
 
@@ -126,6 +138,9 @@ class ArrivalBuffer(_Buffer):
     def add(self, value: Tensor, delay: int | Tensor) -> None:
         """Add ``value[i]`` to the slot ``delay[i]`` steps ahead, for each neuron ``i``."""
         self._check_value(value)
+        if self._no_delay(delay):
+            self._storage[self._head] += value.to(self._storage.dtype)
+            return
         source = value.to(self._storage.dtype).unsqueeze(0)
         self._storage.scatter_add_(0, self._slots(delay), source)
 

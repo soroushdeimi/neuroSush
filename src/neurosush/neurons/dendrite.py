@@ -58,15 +58,29 @@ class DendriteStructure(Behavior):
         }
         for c in Compartment:
             setattr(group, f"I_{c.value}", group.state())
+        self._silent = group.state()
 
     def forward(self, group: NeuronGroup) -> None:
-        """Advance buffers and accumulate synaptic currents."""
+        """Advance buffers and accumulate synaptic currents.
+
+        The compartment currents are read-only: a compartment without synapses shares one
+        zero tensor, and one without delays passes its synapse's current on as is.
+        """
         for c in Compartment:
-            buffer = group.dendrite[c]
-            buffer.advance()
-            for syn in group.afferent[c]:
-                buffer.add(syn.I, syn.dst_delay)
-            setattr(group, f"I_{c.value}", buffer.current())
+            synapses = group.afferent[c]
+            if not synapses:
+                current = self._silent
+            elif self.depths[c] == 1:  # no delays (checked at initialization): no buffer
+                current = synapses[0].I
+                for syn in synapses[1:]:
+                    current = current + syn.I
+            else:
+                buffer = group.dendrite[c]
+                buffer.advance()
+                for syn in synapses:
+                    buffer.add(syn.I, syn.dst_delay)
+                current = buffer.current()
+            setattr(group, f"I_{c.value}", current)
 
 
 def modulatory_drive(

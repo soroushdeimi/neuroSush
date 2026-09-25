@@ -47,12 +47,17 @@ class ActivityHomeostasis(Behavior):
         if not hasattr(group, "threshold") or not isinstance(group.threshold, torch.Tensor):
             raise RuntimeError(f"ActivityHomeostasis on {group.name} needs a threshold (LIF model)")
         self.activity = group.vector()
+        self._spike = torch.ones((), dtype=self.activity.dtype, device=self.activity.device)
+        self._silent = torch.full_like(self._spike, -self.silent_penalty)
 
     def forward(self, group: NeuronGroup) -> None:
         """Count activity and adjust the threshold at the end of each window."""
-        # the threshold is shared by all samples, so a batch counts its mean activity
-        s = group.spikes.to(self.activity.dtype).reshape(-1, group.size).mean(0)
-        self.activity = self.activity + s - (1 - s) * self.silent_penalty
+        if group.spikes.dim() == 1:  # +1 per spike, -penalty per silent step
+            step = torch.where(group.spikes, self._spike, self._silent)
+            self.activity = self.activity + step
+        else:  # the threshold is shared by all samples, so a batch counts its mean activity
+            s = group.spikes.to(self.activity.dtype).reshape(-1, group.size).mean(0)
+            self.activity = self.activity + s - (1 - s) * self.silent_penalty
         if group.net.iteration % self.window == 0:
             group.threshold = group.threshold + self.activity * self.rate
             self.activity.zero_()

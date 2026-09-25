@@ -67,6 +67,8 @@ def _float_dtype(*values: torch.Tensor) -> torch.dtype:
 def _pairs(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """Batch mean of the outer products ``a[n] x b[n]``, shape ``(len_a, len_b)``."""
     dtype = _float_dtype(a, b)
+    if a.dim() == 1:  # one sample: a single outer product, nothing to average
+        return torch.outer(a.to(dtype), b.to(dtype))
     a2 = a.to(dtype).reshape(-1, a.shape[-1])
     b2 = b.to(dtype).reshape(-1, b.shape[-1])
     return a2.T @ b2 / a2.shape[0]
@@ -367,7 +369,8 @@ class STDP(Behavior):
     def forward(self, syn: SynapseGroup) -> None:
         """Apply this step's weight change (in place and event-driven for dense synapses)."""
         assert syn.weights is not None  # Supported inputs require weights at initialization.
-        if syn.connectivity == "dense" and syn.pre_spike.dim() == 1:
+        # event-driven on the CPU; on a GPU the dense update avoids a host sync per step
+        if syn.connectivity == "dense" and syn.pre_spike.dim() == 1 and not syn.weights.is_cuda:
             apply_stdp_dense_(
                 syn.weights,
                 pre_spike=syn.pre_spike,

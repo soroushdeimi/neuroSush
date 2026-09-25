@@ -42,8 +42,12 @@ def kwta_losers(
         view_v, view_c = v.view(*lead, *shape), candidates.view(*lead, *shape)
         axis = len(lead) + dim
     masked = view_v.masked_fill(~view_c, -float("inf"))
-    rank = masked.argsort(dim=axis, descending=True, stable=True).argsort(dim=axis, stable=True)
-    return (view_c & (rank >= k)).reshape(v.shape)
+    # the first k of a stable descending order win (ties keep the lower index)
+    order = masked.argsort(dim=axis, descending=True, stable=True)
+    winners = torch.zeros_like(view_c).scatter_(
+        axis, order.narrow(axis, 0, min(k, order.shape[axis])), True
+    )
+    return (view_c & ~winners).reshape(v.shape)
 
 
 class KWTA(Behavior):
