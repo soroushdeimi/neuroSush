@@ -135,6 +135,16 @@ class TestSTDP:
         with pytest.raises(ValueError, match=match):
             STDP(**kwargs)
 
+    def test_not_graph_ready_on_cpu(self):
+        _, syn = learning_synapse(STDP(a_plus=0.1, a_minus=0.1))
+        assert syn.behaviors[-1].graph_ready(syn) is False
+
+    @pytest.mark.gpu
+    def test_graph_ready_on_cuda(self):
+        net = Network(device="cuda")
+        _, syn = learning_synapse(STDP(a_plus=0.1, a_minus=0.1), net=net)
+        assert syn.behaviors[-1].graph_ready(syn) is True
+
 
 class TestRSTDP:
     def make(self, payoff=1.0, dt=1.0):
@@ -169,6 +179,10 @@ class TestRSTDP:
         net = Network(dt=2.0, behaviors=[Payoff(constant(0.0)), Dopamine(tau=10.0)])
         with pytest.raises(ValueError, match="tau_c"):
             learning_synapse(RSTDP(a_plus=1.0, a_minus=1.0, tau_c=2.0), net=net)
+
+    def test_never_graph_ready(self):
+        _, syn = self.make()
+        assert syn.behaviors[-1].graph_ready(syn) is False
 
 
 class TestISTDP:

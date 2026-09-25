@@ -22,6 +22,23 @@ class Recorder(Behavior):
         self.log.append((self.label, "step", net.iteration))
 
 
+class PreparingRecorder(Behavior):
+    """Overrides prepare too, appending (label, phase, iteration) to a shared log."""
+
+    def __init__(self, label, log, order=Order.NEURON_DYNAMICS):
+        self.label = label
+        self.log = log
+        self.order = order
+
+    def prepare(self, host):
+        net = host if isinstance(host, Network) else host.net
+        self.log.append((self.label, "prepare", net.iteration))
+
+    def forward(self, host):
+        net = host if isinstance(host, Network) else host.net
+        self.log.append((self.label, "step", net.iteration))
+
+
 class TestNetwork:
     def test_defaults(self):
         net = Network()
@@ -136,6 +153,46 @@ class TestSchedule:
         net.initialize()
         with pytest.raises(RuntimeError, match="initialized"):
             NeuronGroup(net, 1)
+
+
+class TestPrepare:
+    def test_prepare_runs_before_every_forward_of_the_step(self):
+        log = []
+        net = Network(
+            behaviors=[
+                Recorder("early", log, order=Order.PAYOFF),
+                PreparingRecorder("late", log, order=Order.PLASTICITY),
+            ]
+        )
+        net.initialize()
+        log.clear()  # drop the "init" entries logged by initialize()
+        net.step()
+        assert log == [("late", "prepare", 1), ("early", "step", 1), ("late", "step", 1)]
+
+    def test_prepare_runs_once_per_step(self):
+        log = []
+        net = Network(behaviors=[PreparingRecorder("net", log)])
+        net.run(2)
+        assert [entry for entry in log if entry[1] == "prepare"] == [
+            ("net", "prepare", 1),
+            ("net", "prepare", 2),
+        ]
+
+    def test_only_behaviors_overriding_prepare_are_scheduled_for_it(self):
+        net = Network(behaviors=[Recorder("net", [], order=Order.PAYOFF)])
+        prep = PreparingRecorder("g", [], order=Order.FIRE)
+        NeuronGroup(net, 1, behaviors=[prep])
+        net.initialize()
+        assert [behavior for _, behavior in net._preparing] == [prep]
+
+    def test_disabled_behavior_prepare_is_skipped(self):
+        log = []
+        prep = PreparingRecorder("p", log)
+        net = Network(behaviors=[prep])
+        net.initialize()
+        prep.enabled = False
+        net.run(2)
+        assert log == []
 
 
 class TestNeuronGroup:

@@ -82,6 +82,14 @@ class DendriteStructure(Behavior):
                 current = buffer.current()
             setattr(group, f"I_{c.value}", current)
 
+    def graph_ready(self, group: NeuronGroup) -> bool:
+        """Ready when every compartment with synapses has depth 1 (no delay buffer to advance)."""
+        return all(
+            self.depths[compartment] == 1
+            for compartment, synapses in group.afferent.items()
+            if synapses
+        )
+
 
 def modulatory_drive(
     current: torch.Tensor,
@@ -120,6 +128,7 @@ class DendriteIntegration(Behavior):
     """
 
     order = Order.DENDRITE_INTEGRATION
+    graph_safe = True
 
     def __init__(
         self,

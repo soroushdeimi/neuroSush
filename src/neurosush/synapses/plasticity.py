@@ -386,6 +386,10 @@ class STDP(Behavior):
         else:
             syn.weights = syn.weights + self.compute(syn)
 
+    def graph_ready(self, syn: SynapseGroup) -> bool:
+        """Ready on a GPU only: the CPU dense path is event-driven with a ``nonzero()`` sync."""
+        return syn.weights is not None and syn.weights.is_cuda
+
 
 class RSTDP(STDP):
     """Reward-modulated STDP through an eligibility trace ``syn.eligibility``.
@@ -421,6 +425,10 @@ class RSTDP(STDP):
         syn.eligibility = syn.eligibility * (1 - dt / self.tau_c) + self.compute(syn)
         syn.weights = syn.weights + dt * syn.net.dopamine * syn.eligibility
 
+    def graph_ready(self, syn: SynapseGroup) -> bool:
+        """Never ready: ``forward`` multiplies by the Python float ``net.dopamine``."""
+        return False
+
 
 class ISTDP(Behavior):
     """Symmetric inhibitory STDP (Vogels et al. 2011) that drives postsynaptic rates to ``rho``.
@@ -436,6 +444,7 @@ class ISTDP(Behavior):
     """
 
     order = Order.PLASTICITY
+    graph_safe = True
     supported = ("dense", "one_to_one", "sparse")
 
     def __init__(self, *, lr: float, rho: float | None = None, alpha: float | None = None) -> None:

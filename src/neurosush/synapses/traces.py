@@ -39,6 +39,12 @@ class SpikeGather(Behavior):
         if self.post:
             syn.post_spike = syn.dst.spike_history.read(syn.dst_delay)
 
+    def graph_ready(self, syn: SynapseGroup) -> bool:
+        """Ready when the histories read from have depth 1: no per-neuron delay lookup."""
+        if syn.src.spike_history.depth != 1:
+            return False
+        return not self.post or syn.dst.spike_history.depth == 1
+
 
 class Traces(Behavior):
     """Exponential traces of the gathered pre- and postsynaptic spikes.
@@ -50,6 +56,7 @@ class Traces(Behavior):
     """
 
     order = Order.TRACE
+    graph_safe = True
 
     def __init__(
         self, *, tau_pre: float, tau_post: float | None = None, scale: float = 1.0

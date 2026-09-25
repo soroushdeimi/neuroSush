@@ -56,6 +56,7 @@ class WeightInit(Behavior):
     """
 
     order = Order.INITIALIZATION
+    graph_safe = True
 
     def __init__(
         self,
@@ -146,6 +147,7 @@ class DelayInit(Behavior):
     """
 
     order = Order.INITIALIZATION
+    graph_safe = True
 
     def __init__(
         self,

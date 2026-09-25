@@ -25,6 +25,7 @@ class ActivityHomeostasis(Behavior):
     """
 
     order = Order.ACTIVITY_HOMEOSTASIS
+    graph_safe = True
 
     def __init__(self, *, target_spikes: int, window: int, rate: float, decay: float = 1.0) -> None:
         if not 0 < target_spikes < window:
@@ -38,17 +39,24 @@ class ActivityHomeostasis(Behavior):
 
         self.target_spikes = target_spikes
         self.window = window
-        self.rate = rate
+        self._rate = rate  # kept for initialize(); self.rate becomes a float64 tensor there
         self.decay = decay
         self.silent_penalty = target_spikes / (window - target_spikes)
 
     def initialize(self, group: NeuronGroup) -> None:
-        """Check for a per-neuron threshold and allocate the activity counter."""
+        """Check for a per-neuron threshold and allocate the activity counter and rate.
+
+        ``rate`` becomes a 0-d float64 tensor: it is decayed in place every window and
+        multiplied into (possibly float32) tensors, and only float64 keeps that bit-exact
+        with the Python-float arithmetic of eager stepping (a 0-d tensor does not change the
+        result dtype of an operation, but a float32 one would lose precision).
+        """
         if not hasattr(group, "threshold") or not isinstance(group.threshold, torch.Tensor):
             raise RuntimeError(f"ActivityHomeostasis on {group.name} needs a threshold (LIF model)")
         self.activity = group.vector()
         self._spike = torch.ones((), dtype=self.activity.dtype, device=self.activity.device)
         self._silent = torch.full_like(self._spike, -self.silent_penalty)
+        self.rate = torch.tensor(self._rate, dtype=torch.float64, device=group.net.device)
 
     def forward(self, group: NeuronGroup) -> None:
         """Count activity and adjust the threshold at the end of each window."""
@@ -61,11 +69,15 @@ class ActivityHomeostasis(Behavior):
         if group.net.iteration % self.window == 0:
             group.threshold = group.threshold + self.activity * self.rate
             self.activity.zero_()
-            self.rate *= self.decay
+            self.rate.mul_(self.decay)
+
+    def graph_key(self, group: NeuronGroup) -> bool:
+        """Whether the upcoming step ends a window: the threshold update is Python-gated."""
+        return group.net.iteration % self.window == 0
 
     def state_dict(self) -> dict[str, torch.Tensor | float]:
-        """The activity counter and the decayed rate."""
-        return {"activity": self.activity.clone(), "rate": self.rate}
+        """The activity counter and the decayed rate, as a Python float."""
+        return {"activity": self.activity.clone(), "rate": float(self.rate)}
 
     def load_state_dict(self, state: dict[str, torch.Tensor | float]) -> None:
         """Restore the counter and rate saved by :meth:`state_dict`."""
@@ -75,7 +87,7 @@ class ActivityHomeostasis(Behavior):
                 f"activity shape must be {tuple(self.activity.shape)}, got {tuple(activity.shape)}"
             )
         self.activity = activity.to(self.activity)
-        self.rate = float(state["rate"])
+        self.rate.fill_(float(state["rate"]))
 
 
 class VoltageHomeostasis(Behavior):
@@ -92,6 +104,7 @@ class VoltageHomeostasis(Behavior):
     """
 
     order = Order.VOLTAGE_HOMEOSTASIS
+    graph_safe = True
 
     def __init__(
         self,

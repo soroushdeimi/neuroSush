@@ -46,3 +46,7 @@ class Axon(Behavior):
     def forward(self, group: NeuronGroup) -> None:
         """Push current spikes into the history buffer."""
         group.spike_history.push(group.spikes)
+
+    def graph_ready(self, group: NeuronGroup) -> bool:
+        """Ready without delays: the ring head is a Python int that a graph would freeze."""
+        return self.max_delay == 1

@@ -62,6 +62,7 @@ class KWTA(Behavior):
     """
 
     order = Order.COMPETITION
+    graph_safe = True
 
     def __init__(self, k: int, *, dim: int | None = None) -> None:
         if k < 1:
@@ -132,6 +133,7 @@ class MinicolumnInhibition(Behavior):
     """
 
     order = Order.COMPETITION
+    graph_safe = True
 
     def __init__(self, *, cells_per_column: int, duration: float) -> None:
         if cells_per_column < 1:

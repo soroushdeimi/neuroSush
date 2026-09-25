@@ -189,6 +189,7 @@ class _SynapticInput(Behavior, ABC):
     """Scale connectivity-specific currents by source sign and coefficient."""
 
     order = Order.SYNAPTIC_INPUT
+    graph_safe = True
     connectivity: str
     needs_weights = True
 

@@ -56,6 +56,28 @@ class TestActivityHomeostasis:
         # windows end at steps 2 and 4; each window: 2 spikes -> activity 2
         assert ng.threshold.tolist() == pytest.approx([-50.0 + 2 * 1.0 + 2 * 0.5])
 
+    def test_rate_decays_geometrically_and_state_dict_rate_is_a_float(self):
+        windows = 5
+        net, ng = activity_group([True], target_spikes=1, window=2, rate=1.0, decay=0.9)
+        net.run(2 * windows)
+        behavior = ng.behaviors[-1]
+        assert float(behavior.rate) == pytest.approx(1.0 * 0.9**windows)
+        state = behavior.state_dict()
+        assert isinstance(state["rate"], float)
+        assert state["rate"] == pytest.approx(1.0 * 0.9**windows)
+
+    def test_graph_key_is_whether_the_step_ends_a_window(self):
+        net, ng = activity_group([True], target_spikes=1, window=3, rate=0.1)
+        behavior = ng.behaviors[-1]
+        net.iteration = 2
+        assert behavior.graph_key(ng) is False
+        net.iteration = 3
+        assert behavior.graph_key(ng) is True
+
+    def test_graph_ready(self):
+        _, ng = activity_group([True], target_spikes=1, window=3, rate=0.1)
+        assert ng.behaviors[-1].graph_ready(ng) is True
+
     def test_needs_a_neuron_model(self):
         net = Network()
         NeuronGroup(net, 1, behaviors=[ActivityHomeostasis(target_spikes=1, window=2, rate=0.1)])

@@ -77,6 +77,7 @@ class Network:
         self.iteration = 0
         self.initialized = False
         self.schedule: list[tuple[Network | NeuronGroup | SynapseGroup, Behavior]] = []
+        self._preparing: list[tuple[Network | NeuronGroup | SynapseGroup, Behavior]] = []
         self._registrations: list[tuple[Network | NeuronGroup | SynapseGroup, Behavior]] = []
         self._attached_ids: set[int] = set()
         self.behaviors = self._attach(self, behaviors)
@@ -107,6 +108,11 @@ class Network:
             raise RuntimeError("network is already initialized")
         # Stable sorting preserves registration order for ties.
         self.schedule = sorted(self._registrations, key=lambda pair: pair[1].order)
+        self._preparing = [
+            (host, behavior)
+            for host, behavior in self.schedule
+            if type(behavior).prepare is not Behavior.prepare
+        ]
         self.initialized = True
         for host, behavior in self.schedule:
             behavior.initialize(host)
@@ -116,6 +122,9 @@ class Network:
         if not self.initialized:
             self.initialize()
         self.iteration += 1
+        for host, behavior in self._preparing:
+            if behavior.enabled:
+                behavior.prepare(host)
         for host, behavior in self.schedule:
             if behavior.enabled:
                 behavior.forward(host)

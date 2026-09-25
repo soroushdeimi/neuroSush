@@ -62,6 +62,7 @@ class WeightClip(Behavior):
     """
 
     order = Order.WEIGHT_CLIP
+    graph_safe = True
 
     def __init__(self, *, w_min: float = 0.0, w_max: float = 1.0) -> None:
         if w_min >= w_max:
@@ -84,6 +85,7 @@ class WeightNormalization(Behavior):
     """
 
     order = Order.WEIGHT_NORMALIZATION
+    graph_safe = True
 
     def __init__(self, *, norm: float = 1.0) -> None:
         self.norm = norm
@@ -105,6 +107,7 @@ class CurrentNormalization(Behavior):
     """
 
     order = Order.CURRENT_NORMALIZATION
+    graph_safe = True
 
     def __init__(self, *, norm: float = 1.0) -> None:
         self.norm = norm

@@ -22,18 +22,20 @@ class SpikeInput(Behavior):
     """
 
     order = Order.FIRE
+    graph_safe = True
 
     def __init__(self, frames: Iterable[torch.Tensor | tuple[torch.Tensor, Any]]) -> None:
         self.frames = frames
 
     def initialize(self, group: NeuronGroup) -> None:
-        """Allocate spikes and label on the group."""
+        """Allocate spikes, the staging tensor and the label on the group."""
         self._stream = iter(self.frames)
         group.spikes = group.state(False, dtype=torch.bool)
+        self._staged = group.state(False, dtype=torch.bool)
         group.label = None
 
-    def forward(self, group: NeuronGroup) -> None:
-        """Read the next frame."""
+    def prepare(self, group: NeuronGroup) -> None:
+        """Read the next frame and stage it into the fixed-address tensor."""
         try:
             item = next(self._stream)
         except StopIteration:
@@ -53,5 +55,9 @@ class SpikeInput(Behavior):
             )
         frame = frame.reshape(group.state_shape)
 
-        group.spikes = frame.to(dtype=torch.bool, device=group.net.device)
+        self._staged.copy_(frame)  # copy_ converts dtype and device
         group.label = label
+
+    def forward(self, group: NeuronGroup) -> None:
+        """Publish the staged frame."""
+        group.spikes = self._staged.clone()

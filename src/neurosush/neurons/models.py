@@ -58,6 +58,7 @@ class LIF(Behavior):
     """
 
     order = Order.NEURON_DYNAMICS
+    graph_safe = True
 
     def __init__(
         self,
@@ -232,6 +233,7 @@ class Fire(Behavior):
     """Calls the group's neuron model to emit spikes (after noise and competition)."""
 
     order = Order.FIRE
+    graph_safe = True
 
     def initialize(self, group: NeuronGroup) -> None:
         """Check that the group has a neuron model."""

@@ -55,6 +55,16 @@ class TestSpikeInput:
         group = run_input(itertools.cycle([torch.tensor([True, False])]), steps=5)
         assert group.spikes.tolist() == [True, False]
 
+    def test_published_spikes_are_not_aliased_to_the_staged_frame(self):
+        frames = [torch.tensor([True, False]), torch.tensor([False, True])]
+        net = Network()
+        group = NeuronGroup(net, 2, behaviors=[SpikeInput(frames)])
+        net.step()
+        first = group.spikes
+        net.step()  # stages the next frame into the same tensor prepare wrote before
+        assert first.tolist() == [True, False]
+        assert group.spikes.tolist() == [False, True]
+
     def test_drives_a_synapse(self):
         net = Network()
         src = NeuronGroup(

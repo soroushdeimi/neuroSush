@@ -68,6 +68,10 @@ class TestAxon:
         with pytest.raises(ValueError, match=syn.name):
             net.initialize()
 
+    def test_graph_ready_only_without_delay(self):
+        assert Axon(max_delay=1).graph_ready(None) is True
+        assert Axon(max_delay=2).graph_ready(None) is False
+
     def test_afferent_delays_must_fit(self):
         # dst_delay reads the destination's own history, so it has to fit that Axon too
         net = Network()
@@ -123,6 +127,14 @@ class TestDendriteStructure:
     def test_invalid_depth(self):
         with pytest.raises(ValueError, match="apical_depth"):
             DendriteStructure(apical_depth=0)
+
+    def test_not_graph_ready_with_a_deeper_compartment_that_has_synapses(self):
+        _, dst = dendrite_net([1.0], compartment="distal", depth=2)
+        assert dst.behaviors[0].graph_ready(dst) is False
+
+    def test_graph_ready_when_every_compartment_with_synapses_has_depth_1(self):
+        _, dst = dendrite_net([1.0], compartment="distal", depth=1)
+        assert dst.behaviors[0].graph_ready(dst) is True
 
 
 def test_modulatory_drive():
