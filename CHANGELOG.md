@@ -5,6 +5,10 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+### Added
+- `GraphStepper` (`neurosush.core.graph`) captures a network's step as a CUDA graph and
+  replays it, for networks whose behaviors are all graph-ready.
+
 ## [0.3.2] - 2026-09-25
 
 ### Fixed

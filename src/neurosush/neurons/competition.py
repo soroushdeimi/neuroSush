@@ -199,3 +199,9 @@ class InherentNoise(Behavior):
         """Perturb the membrane."""
         sample = group.rand() if self.distribution == "uniform" else group.randn()
         group.v = group.v + self.scale * sample + self.offset
+
+    def graph_ready(self, group: NeuronGroup) -> bool:
+        """Ready when the generator is on CUDA and this torch can replay its draws."""
+        from neurosush.core.graph import random_numbers_supported  # graph imports behaviors
+
+        return group.net.generator.device.type == "cuda" and random_numbers_supported()

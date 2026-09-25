@@ -14,6 +14,7 @@ import time
 
 import torch
 
+from neurosush.core.graph import GraphStepper
 from neurosush.core.network import Network, NeuronGroup, SynapseGroup
 from neurosush.neurons.axon import Axon
 from neurosush.neurons.competition import KWTA
@@ -64,14 +65,24 @@ def build(device: str, batch: int | None = None, inputs: int = 784, outputs: int
     return net
 
 
-def steps_per_second(device: str, steps: int, batch: int | None = None) -> float:
-    """Measured simulation speed after a short warm-up."""
+def steps_per_second(
+    device: str, steps: int, batch: int | None = None, *, graph: bool = False
+) -> float:
+    """Measured simulation speed after a short warm-up.
+
+    Args:
+        device: Device to build the network on.
+        steps: Number of timed steps.
+        batch: Samples simulated in parallel, or None for unbatched.
+        graph: Replay a captured CUDA graph instead of stepping eagerly.
+    """
     net = build(device, batch)
-    net.run(20)
+    stepper = GraphStepper(net) if graph else net
+    stepper.run(20)
     if device.startswith("cuda"):
         torch.cuda.synchronize()
     start = time.perf_counter()
-    net.run(steps)
+    stepper.run(steps)
     if device.startswith("cuda"):
         torch.cuda.synchronize()
     return steps / (time.perf_counter() - start)
@@ -83,8 +94,11 @@ def main() -> None:
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--steps", type=int, default=500)
     parser.add_argument("--batch", type=int, default=None, help="samples in parallel")
+    parser.add_argument(
+        "--graph", action="store_true", help="replay a captured CUDA graph instead of stepping"
+    )
     args = parser.parse_args()
-    rate = steps_per_second(args.device, args.steps, args.batch)
+    rate = steps_per_second(args.device, args.steps, args.batch, graph=args.graph)
     samples = rate * (args.batch or 1)
     print(f"{args.device} batch={args.batch}: {rate:.0f} steps/s, {samples:.0f} sample-steps/s")
 

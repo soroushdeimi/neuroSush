@@ -203,6 +203,46 @@ assert torch.equal(resumed.groups[0].v, net.groups[0].v)  # continues exactly
 Loading uses `torch.load(weights_only=True)`, so a checkpoint cannot run code. Input
 streams (`SpikeInput`) are not part of it: resume them yourself.
 
+## CUDA graphs
+
+On a GPU, a step of a small network is dozens of tiny kernels, and launching them costs
+more than running them. `GraphStepper` captures a step once as a CUDA graph and replays
+it; the results are bit-for-bit those of `net.run` (the tests check this):
+
+```python
+import torch
+
+from neurosush.core.network import Network, NeuronGroup
+from neurosush.neurons.axon import Axon
+from neurosush.neurons.competition import InherentNoise
+from neurosush.neurons.models import LIF, Fire
+
+if torch.cuda.is_available():
+    from neurosush.core.graph import GraphStepper
+
+    net = Network(device="cuda", seed=0)
+    NeuronGroup(
+        net,
+        100,
+        [
+            LIF(tau=10.0, threshold=-55.0, v_reset=-70.0, v_rest=-65.0),
+            InherentNoise(scale=8.0),
+            Fire(),
+            Axon(),
+        ],
+    )
+    stepper = GraphStepper(net)  # initializes the network if needed
+    stepper.run(100)  # a few eager warm-up steps, then it captures and replays a graph
+    assert net.iteration == 100  # exactly as net.run(100) would leave it
+```
+
+It needs a network on a CUDA device whose behaviors are all graph-ready: their `forward`
+makes no host-device synchronization and changes no Python-side state. A Python-side
+decision (a homeostasis window ending, a behavior being enabled) becomes a graph key, and
+the stepper keeps one graph per key. Not ready yet: `Payoff`, `Dopamine`, `RSTDP` and
+transmission delays longer than one step; `GraphStepper` names every behavior that is not
+ready. A `Recorder` runs after each replayed step.
+
 ## Modules
 
 | module | contents |

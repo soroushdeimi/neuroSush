@@ -141,6 +141,40 @@ stores on its host is therefore saved without extra code; state kept on a behavi
 library's behaviors set (as annotations without values, so `hasattr` still tells whether a
 behavior is present), which is what lets strict mypy check behavior code.
 
+## CUDA graphs
+
+`neurosush.core.graph.GraphStepper` replaces `Network.step` with a captured-and-replayed
+version of the same step, for behaviors below `Order.RECORD` (`net.schedule` split into
+`captured` and `after`; `after` runs eagerly, since it only reads state). Three things make
+this possible:
+
+- **Fixed addresses.** A behavior assigns a new tensor to a host attribute every step
+  (`group.v = ...`); a captured graph instead has to keep reading and writing the same
+  memory. Before capturing, the stepper remembers the identity of every tensor attribute of
+  the network, its neuron and synapse groups and the captured behaviors. It runs the step's
+  `forward` calls inside `torch.cuda.graph(graph)`, and for every attribute whose identity
+  changed, copies the new tensor into the original one (a captured `copy_`) before restoring
+  the attribute to that original tensor. A later replay therefore recomputes into the same
+  "new" address every time and copies into the same "old" address every time; the Python
+  reassignment itself happens only once, during capture.
+- **Keys.** A step's Python-side decisions (a homeostasis window ending, a behavior's
+  `enabled` flag) are frozen into whichever graph is captured for them. The stepper computes
+  a key, `tuple((behavior.enabled, behavior.graph_key(host)) for host, behavior in captured)`,
+  and captures a new graph the first time a key is seen, in its own memory pool (the
+  default for `torch.cuda.graph`), since graphs for different keys may then replay in either
+  order. `prepare(host)` runs before every step, eager or replayed, for behaviors that
+  override it, so host-side work that must happen every step (`SpikeInput` staging the next
+  frame into a fixed tensor) still does.
+- **Warm-up.** The first few steps (`warmup`, default 3) run the captured behaviors' `forward`
+  eagerly on a side stream (`s.wait_stream(current)` before, `current.wait_stream(s)` after),
+  as the CUDA graphs documentation recommends, so that one-time library initialization
+  (cuDNN, cuBLAS workspaces) happens outside any capture.
+
+Randomness draws from `net.generator`, a CUDA generator; when
+`torch.cuda.CUDAGraph.register_generator_state` exists, the stepper registers it with each
+graph before capturing, which is what makes `InherentNoise` graph-ready (its own
+`graph_ready` checks for a CUDA generator and that method).
+
 ## Thousand Brains models
 
 The `htm` package and `predictive_coding` are plain tensor algorithms, not behaviors: they
