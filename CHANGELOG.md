@@ -5,6 +5,8 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-09-25
+
 ### Fixed
 - `SegmentLearning` failed on torch before 2.6 (a boolean mask followed by an index), and
   `SensorColumn.candidates` needed torch 2.2; both now run on torch 2.1, the oldest version
