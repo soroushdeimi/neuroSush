@@ -99,7 +99,7 @@ class TestLearningRules:
         tm.permanence[segment] = torch.linspace(0.1, 0.9, 12)
         winners = torch.zeros(tm.n_cells, dtype=torch.bool)
         winners[[200, 201]] = True
-        tm._grow(segment, winners, 2)
+        tm._grow(segment, winners.nonzero().flatten(), 2)  # winners as increasing indices
         kept = set(tm.presynaptic[segment].tolist())
         assert {200, 201} <= kept
         assert 100 not in kept  # the two weakest were removed
