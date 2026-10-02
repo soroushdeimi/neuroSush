@@ -60,6 +60,17 @@ class DendriteStructure(Behavior):
             setattr(group, f"I_{c.value}", group.state())
         self._silent = group.state()
 
+    def reset_state(self, group: NeuronGroup) -> None:
+        """Clear the delay buffers and the compartment currents.
+
+        A compartment current may be the (read-only) current of its synapse, which is cleared
+        too, so zeroing it in place is safe.
+        """
+        for buffer in group.dendrite.values():
+            buffer.reset()
+        for c in Compartment:
+            getattr(group, f"I_{c.value}").zero_()
+
     def forward(self, group: NeuronGroup) -> None:
         """Advance buffers and accumulate synaptic currents.
 
@@ -149,6 +160,10 @@ class DendriteIntegration(Behavior):
             raise RuntimeError(f"DendriteIntegration on {group.name} needs a DendriteStructure")
         group.I = group.state()
 
+    def reset_state(self, group: NeuronGroup) -> None:
+        """Zero the integrated current."""
+        group.I.zero_()
+
     def forward(self, group: NeuronGroup) -> None:
         """Integrate dendritic currents using decay and priming.
 
@@ -173,3 +188,129 @@ class DendriteIntegration(Behavior):
                     gain=gain,
                 )
         group.I = current
+
+
+def conductance_step(
+    v: torch.Tensor,
+    g_exc: torch.Tensor,
+    g_inh: torch.Tensor,
+    *,
+    v_rest: float,
+    e_exc: float,
+    e_inh: float,
+    resistance: float,
+    tau: float,
+    dt: float,
+) -> torch.Tensor:
+    """Exact voltage after ``dt`` with the conductances held constant over the step.
+
+    Solves ``tau dv/dt = (v_rest - v) + R g_exc (e_exc - v) + R g_inh (e_inh - v)``, which is
+    linear in ``v``: ``v_inf + (v - v_inf) exp(-(1 + R g) dt / tau)`` with
+    ``g = g_exc + g_inh`` and ``v_inf = (v_rest + R (g_exc e_exc + g_inh e_inh)) / (1 + R g)``.
+    Unlike a forward Euler step it stays between the reversal potentials for any
+    conductance.
+    """
+    g = resistance * (g_exc + g_inh)
+    v_inf = (v_rest + resistance * (g_exc * e_exc + g_inh * e_inh)) / (1 + g)
+    return v_inf + (v - v_inf) * torch.exp(-(1 + g) * (dt / tau))
+
+
+class ConductanceIntegration(Behavior):
+    """Conductance-based synapses: input pulls the membrane towards a reversal potential.
+
+    Proximal synaptic input from excitatory groups adds to the conductance ``g_exc``, from
+    inhibitory groups (negative currents) to ``g_inh``; each conductance decays with its
+    own time constant, ``g = g (1 - dt / tau_g) + input``, so a spike's conductance
+    integrates to ``weight * tau_g`` as in the continuous model. The synaptic current is
+    ``g_exc (e_exc - v) + g_inh (e_inh - v)``: it shrinks as the voltage approaches the
+    reversal potential, so excitation saturates.
+
+    It replaces :class:`DendriteIntegration` (no :class:`DendriteStructure` is needed) and
+    sets ``group.I`` to the current with which the neuron model's Euler step lands exactly
+    on :func:`conductance_step`: integration is exact for :class:`~neurosush.neurons.models.LIF`
+    and stays stable under strong conductances. Synapses need no dendritic delay and must
+    target the proximal compartment.
+
+    Args:
+        e_exc: Excitatory reversal potential.
+        e_inh: Inhibitory reversal potential.
+        tau_exc: Decay time constant of ``g_exc``, at least ``dt``.
+        tau_inh: Decay time constant of ``g_inh``, at least ``dt``.
+    """
+
+    order = Order.DENDRITE_INTEGRATION
+    graph_safe = True
+
+    def __init__(
+        self,
+        *,
+        e_exc: float = 0.0,
+        e_inh: float = -100.0,
+        tau_exc: float = 1.0,
+        tau_inh: float = 1.0,
+    ) -> None:
+        if e_inh >= e_exc:
+            raise ValueError(f"e_inh ({e_inh}) must be below e_exc ({e_exc})")
+        for name, tau in (("tau_exc", tau_exc), ("tau_inh", tau_inh)):
+            if tau <= 0:
+                raise ValueError(f"{name} must be positive, got {tau}")
+        self.e_exc, self.e_inh = e_exc, e_inh
+        self.tau_exc, self.tau_inh = tau_exc, tau_inh
+
+    def initialize(self, group: NeuronGroup) -> None:
+        """Check the synapses and time constants; allocate the conductances."""
+        dt = group.net.dt
+        for name, tau in (("tau_exc", self.tau_exc), ("tau_inh", self.tau_inh)):
+            if tau < dt:
+                raise ValueError(f"{name} ({tau}) must be at least dt ({dt})")
+        for compartment, synapses in group.afferent.items():
+            for syn in synapses:
+                if compartment is not Compartment.PROXIMAL:
+                    raise ValueError(
+                        f"ConductanceIntegration on {group.name} takes proximal synapses "
+                        f"only, got {syn.name} on {compartment.value}"
+                    )
+                if int(syn.dst_delay.max()) > 0:
+                    raise ValueError(
+                        f"ConductanceIntegration on {group.name} does not support dst_delay "
+                        f"({syn.name})"
+                    )
+        if any(isinstance(b, DendriteIntegration) for b in group.behaviors):
+            raise ValueError(
+                f"{group.name} has both ConductanceIntegration and DendriteIntegration"
+            )
+        group.g_exc = group.state()
+        group.g_inh = group.state()
+        group.I = group.state()
+
+    def reset_state(self, group: NeuronGroup) -> None:
+        """Zero both conductances and the current."""
+        group.g_exc.zero_()
+        group.g_inh.zero_()
+        group.I.zero_()
+
+    def forward(self, group: NeuronGroup) -> None:
+        """Update the conductances and set the equivalent current ``group.I``."""
+        dt = group.net.dt
+        g_exc = group.g_exc * (1 - dt / self.tau_exc)
+        g_inh = group.g_inh * (1 - dt / self.tau_inh)
+        for syn in group.afferent[Compartment.PROXIMAL]:
+            if syn.src.inhibitory:
+                g_inh = g_inh - syn.I
+            else:
+                g_exc = g_exc + syn.I
+        group.g_exc, group.g_inh = g_exc, g_inh
+        v, tau, resistance = group.v, group.tau, group.resistance
+        v_next = conductance_step(
+            v,
+            g_exc,
+            g_inh,
+            v_rest=group.v_rest,
+            e_exc=self.e_exc,
+            e_inh=self.e_inh,
+            resistance=resistance,
+            tau=tau,
+            dt=dt,
+        )
+        # the current whose Euler step, v + dt/tau ((v_rest - v) + R I), gives v_next
+        group.I = ((v_next - v) * (tau / dt) - (group.v_rest - v)) / resistance

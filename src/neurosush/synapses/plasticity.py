@@ -418,6 +418,10 @@ class RSTDP(STDP):
         assert syn.weights is not None  # Supported inputs require weights at initialization.
         syn.eligibility = torch.zeros_like(syn.weights)
 
+    def reset_state(self, syn: SynapseGroup) -> None:
+        """Zero the eligibility trace."""
+        syn.eligibility.zero_()
+
     def forward(self, syn: SynapseGroup) -> None:
         """Update the eligibility trace and the weights."""
         assert syn.weights is not None  # initialize() allocates eligibility from weights.

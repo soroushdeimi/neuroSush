@@ -161,6 +161,10 @@ class MinicolumnInhibition(Behavior):
         )
         self.steps = max(1, math.ceil(self.duration / net.dt - 1e-9))
 
+    def reset_state(self, group: NeuronGroup) -> None:
+        """End the inhibition of every minicolumn."""
+        group.column_inhibition.zero_()
+
     def forward(self, group: NeuronGroup) -> None:
         """Hold inhibited minicolumns down and start inhibition where cells cross."""
         group.v, group.column_inhibition = minicolumn_inhibition(

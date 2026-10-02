@@ -15,13 +15,17 @@ from neurosush.core.order import Order
 from neurosush.modulation import Dopamine, Payoff
 from neurosush.neurons.axon import Axon
 from neurosush.neurons.competition import KWTA, InherentNoise
-from neurosush.neurons.dendrite import DendriteIntegration, DendriteStructure
-from neurosush.neurons.homeostasis import ActivityHomeostasis
-from neurosush.neurons.inputs import SpikeInput
-from neurosush.neurons.models import LIF, Fire
+from neurosush.neurons.dendrite import (
+    ConductanceIntegration,
+    DendriteIntegration,
+    DendriteStructure,
+)
+from neurosush.neurons.homeostasis import ActivityHomeostasis, AdaptiveThreshold
+from neurosush.neurons.inputs import PoissonInput, SpikeInput
+from neurosush.neurons.models import LIF, Fire, Refractory
 from neurosush.recording import Recorder
-from neurosush.synapses.constraints import WeightNormalization
-from neurosush.synapses.currents import DenseInput
+from neurosush.synapses.constraints import WeightClip, WeightNormalization
+from neurosush.synapses.currents import DenseInput, OneToOneInput
 from neurosush.synapses.init import WeightInit
 from neurosush.synapses.plasticity import STDP
 from neurosush.synapses.traces import SpikeGather, Traces
@@ -101,6 +105,112 @@ class TestExactness:
         assert expected.keys() == got.keys()
         for key in expected:
             assert _equal(expected[key], got[key]), key
+
+    @pytest.mark.parametrize("batch_size", [None, 4])
+    def test_reset_state_between_samples_matches_eager(self, batch_size):
+        def run(net, stepper):
+            for _ in range(5):  # samples of 8 steps (two periods of the input frames)
+                net.reset_state()
+                stepper.run(8)
+
+        eager = build("cuda", batch_size, seed=1)
+        run(eager, eager)
+        graphed = build("cuda", batch_size, seed=1)
+        run(graphed, GraphStepper(graphed))
+
+        expected, got = checkpoint.state_dict(eager), checkpoint.state_dict(graphed)
+        assert expected.keys() == got.keys()
+        for key in expected:
+            assert _equal(expected[key], got[key]), key
+
+
+def build_competition(device, batch_size=None, seed=0):
+    """A Diehl and Cook style network: Poisson input, conductances, refractoriness, theta."""
+    net = Network(device=device, seed=seed, batch_size=batch_size)
+    lif = {"tau": 10.0, "threshold": -55.0, "v_reset": -70.0, "v_rest": -65.0}
+    src = NeuronGroup(net, 10, [PoissonInput(0.2), Axon()], name="src")
+    exc = NeuronGroup(
+        net,
+        6,
+        [
+            ConductanceIntegration(tau_exc=1.0, tau_inh=2.0),
+            LIF(**lif),
+            Refractory(3.0),
+            Fire(),
+            AdaptiveThreshold(increment=0.5, tau=50.0),
+            Axon(),
+        ],
+        name="exc",
+    )
+    inh = NeuronGroup(
+        net,
+        6,
+        [
+            ConductanceIntegration(tau_exc=1.0, tau_inh=2.0),
+            LIF(**lif),
+            Refractory(2.0),
+            Fire(),
+            Axon(),
+        ],
+        inhibitory=True,
+        name="inh",
+    )
+    SynapseGroup(
+        net,
+        src,
+        exc,
+        [
+            WeightInit(mode="uniform"),
+            DenseInput(coef=2.0),
+            SpikeGather(),
+            Traces(tau_pre=5.0),
+            STDP(a_plus=0.02, a_minus=0.01, bound="soft"),
+            WeightClip(w_min=0.0, w_max=1.0),
+        ],
+        name="in_exc",
+    )
+    SynapseGroup(
+        net,
+        exc,
+        inh,
+        [
+            WeightInit(weights=torch.full((6,), 3.0), shape=(6,)),
+            OneToOneInput(),
+            SpikeGather(),
+        ],
+        name="exc_inh",
+    )
+    SynapseGroup(
+        net,
+        inh,
+        exc,
+        [WeightInit(mode=0.5), DenseInput(), SpikeGather()],
+        name="inh_exc",
+    )
+    net.initialize()
+    return net
+
+
+class TestCompetitionNetwork:
+    @pytest.mark.parametrize("batch_size", [None, 4])
+    def test_matches_eager_bit_for_bit(self, batch_size):
+        eager = build_competition("cuda", batch_size, seed=1)
+        eager.run(80)
+
+        graphed = build_competition("cuda", batch_size, seed=1)
+        GraphStepper(graphed).run(80)
+
+        expected, got = checkpoint.state_dict(eager), checkpoint.state_dict(graphed)
+        assert expected.keys() == got.keys()
+        for key in expected:
+            assert _equal(expected[key], got[key]), key
+        assert bool((eager.groups[1].theta > 0).any())  # the excitatory group did fire
+
+    def test_the_new_behaviors_are_graph_ready(self):
+        net = build_competition("cuda")
+        for group in net.groups:
+            for behavior in group.behaviors:
+                assert behavior.graph_ready(group), (group.name, type(behavior).__name__)
 
 
 class TestGraphCount:

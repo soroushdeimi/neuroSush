@@ -56,6 +56,24 @@ class Behavior:
         """
         return None
 
+    def reset_state(self, host: Any) -> None:
+        """Clear the per-sample dynamic state this behavior keeps on ``host``.
+
+        Clears voltages, currents, traces, spike histories and countdowns in place, and keeps
+        learned and parameter state (weights, thresholds, theta, homeostasis counters,
+        permanences). In place matters: a captured CUDA graph keeps tensor addresses. A
+        buffer reset (:meth:`~neurosush.core.buffers.HistoryBuffer.reset`) also moves a
+        Python head index, which a graph would freeze: that is harmless for depth-1 buffers
+        (the only ones a graph can capture), but a deeper buffer is reset correctly only
+        between eager steps.
+
+        Called by :meth:`~neurosush.core.network.Network.reset_state` for every behavior,
+        enabled or not. The default keeps nothing per sample and does nothing.
+
+        Args:
+            host: The network, neuron group or synapse group this behavior is attached to.
+        """
+
     def prepare(self, host: Any) -> None:
         """Do host-side work before a step, such as staging the next input frame.
 

@@ -43,6 +43,10 @@ class Axon(Behavior):
             batch=group.net.batch_size,
         )
 
+    def reset_state(self, group: NeuronGroup) -> None:
+        """Clear the spike history."""
+        group.spike_history.reset()
+
     def forward(self, group: NeuronGroup) -> None:
         """Push current spikes into the history buffer."""
         group.spike_history.push(group.spikes)

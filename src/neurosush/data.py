@@ -1,9 +1,13 @@
-"""dataset helpers: image-location-label samples and per-step spike frames."""
+"""dataset helpers: image-location-label samples, per-step spike frames and MNIST."""
 
 from __future__ import annotations
 
+import gzip
 import itertools
+import struct
+import urllib.request
 from collections.abc import Callable, Generator, Iterable
+from pathlib import Path
 from typing import Any, Protocol, TypeVar
 
 import torch
@@ -120,3 +124,112 @@ def _batches(
         if len(lengths) != 1:
             raise ValueError(f"trains in one batch must have equal length, got {sorted(lengths)}")
         yield torch.stack([train for train, _ in chunk], dim=1), [label for _, label in chunk]
+
+
+MNIST_URL = "https://ossci-datasets.s3.amazonaws.com/mnist/"
+_MNIST_FILES = (
+    ("train-images-idx3-ubyte", 3),
+    ("train-labels-idx1-ubyte", 1),
+    ("t10k-images-idx3-ubyte", 3),
+    ("t10k-labels-idx1-ubyte", 1),
+)
+_IDX_UBYTE = 0x08
+
+
+def read_idx(path: str | Path) -> torch.Tensor:
+    """Read an IDX file of unsigned bytes, plain or gzip-compressed (``.gz``).
+
+    Args:
+        path: The file.
+
+    Returns:
+        A uint8 tensor with the dimensions the header declares.
+
+    Raises:
+        ValueError: If the magic number, the data type (only unsigned bytes) or the size is
+            not that of a valid IDX file.
+    """
+    path = Path(path)
+    raw = path.read_bytes()
+    if path.suffix == ".gz":
+        raw = gzip.decompress(raw)
+    if len(raw) < 4 or raw[0] != 0 or raw[1] != 0:
+        raise ValueError(f"{path} is not an IDX file: bad magic number {raw[:4].hex()}")
+    if raw[2] != _IDX_UBYTE:
+        raise ValueError(
+            f"{path}: only unsigned byte IDX data (0x08) is supported, got {raw[2]:#04x}"
+        )
+    dims = raw[3]
+    header = 4 + 4 * dims
+    if dims < 1 or len(raw) < header:
+        raise ValueError(f"{path}: truncated IDX header ({dims} dimensions)")
+    shape = struct.unpack(f">{dims}I", raw[4:header])
+    count = 1
+    for size in shape:
+        count *= size
+    if len(raw) - header != count:
+        raise ValueError(f"{path}: header declares {count} values, file holds {len(raw) - header}")
+    if count == 0:
+        return torch.zeros(shape, dtype=torch.uint8)
+    return torch.frombuffer(bytearray(raw[header:]), dtype=torch.uint8).reshape(shape)
+
+
+def load_mnist(
+    root: str | Path, *, download: bool = False
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Load MNIST from its IDX files, with pure torch.
+
+    Reads ``train-images-idx3-ubyte``, ``train-labels-idx1-ubyte``, ``t10k-images-idx3-ubyte``
+    and ``t10k-labels-idx1-ubyte`` from ``root``, plain or with a ``.gz`` suffix.
+
+    Args:
+        root: Folder with the files.
+        download: Fetch missing files as ``.gz`` from ``MNIST_URL`` into ``root`` (written
+            atomically, so an interrupted download leaves no partial file).
+
+    Returns:
+        ``(train_images, train_labels, test_images, test_labels)``: images are uint8
+        ``(60000, 28, 28)`` and ``(10000, 28, 28)``, labels int64.
+
+    Raises:
+        FileNotFoundError: If a file is missing and ``download`` is false (or the download
+            fails).
+        ValueError: If a file is not a valid IDX file of the expected kind.
+    """
+    root = Path(root)
+    tensors = []
+    for name, dims in _MNIST_FILES:
+        path = next((p for p in (root / name, root / f"{name}.gz") if p.is_file()), None)
+        if path is None:
+            path = _fetch(name, root, download)
+        tensor = read_idx(path)
+        if tensor.dim() != dims:
+            raise ValueError(f"{path} must have {dims} dimension(s), got {tensor.dim()}")
+        tensors.append(tensor)
+    train_images, train_labels, test_images, test_labels = tensors
+    for images, labels in ((train_images, train_labels), (test_images, test_labels)):
+        if len(images) != len(labels):
+            raise ValueError(f"{len(images)} images but {len(labels)} labels")
+    return train_images, train_labels.long(), test_images, test_labels.long()
+
+
+def _fetch(name: str, root: Path, download: bool) -> Path:
+    """Download ``name`` as ``root/name.gz``, or explain how to get it."""
+    target = root / f"{name}.gz"
+    if not download:
+        raise FileNotFoundError(
+            f"MNIST file {name} (or {name}.gz) not found in {root}; "
+            "pass download=True or put the IDX files there"
+        )
+    root.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_suffix(".gz.tmp")
+    try:
+        with urllib.request.urlopen(f"{MNIST_URL}{name}.gz", timeout=60) as response:
+            temporary.write_bytes(response.read())
+        temporary.replace(target)
+    except OSError as error:
+        temporary.unlink(missing_ok=True)
+        raise FileNotFoundError(
+            f"could not download {MNIST_URL}{name}.gz ({error}); fetch it manually into {root}"
+        ) from error
+    return target

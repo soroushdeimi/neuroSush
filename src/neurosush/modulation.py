@@ -27,6 +27,10 @@ class Payoff(Behavior):
         """Set the initial payoff: net.payoff = float(initial)."""
         net.payoff = float(self.initial)
 
+    def reset_state(self, net: Network) -> None:
+        """Return the payoff to its initial value."""
+        net.payoff = float(self.initial)
+
     def forward(self, net: Network) -> None:
         """Update the payoff: net.payoff = float(self.fn(net))."""
         net.payoff = float(self.fn(net))
@@ -56,6 +60,10 @@ class Dopamine(Behavior):
         """
         if not hasattr(net, "payoff"):
             raise RuntimeError("Dopamine needs a Payoff behavior on the network")
+        net.dopamine = float(self.initial)
+
+    def reset_state(self, net: Network) -> None:
+        """Return the dopamine to its initial value."""
         net.dopamine = float(self.initial)
 
     def forward(self, net: Network) -> None:

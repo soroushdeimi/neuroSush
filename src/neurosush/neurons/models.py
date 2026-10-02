@@ -114,6 +114,18 @@ class LIF(Behavior):
 
         group.model = self
 
+    def reset_state(self, group: NeuronGroup) -> None:
+        """Return ``v`` to ``v_init`` (``v_rest`` without one), clear the spikes and ``I``."""
+        if self.v_init is None:
+            group.v.fill_(self.v_rest)
+        elif isinstance(self.v_init, torch.Tensor):
+            v_init = self.v_init.to(dtype=group.net.dtype, device=group.net.device)
+            group.v.copy_(v_init.expand(group.state_shape))
+        else:
+            group.v.fill_(self.v_init)
+        group.spikes.zero_()
+        group.I.zero_()
+
     def derivative(self, group: NeuronGroup) -> torch.Tensor:
         """``tau * dv/dt`` of the current state."""
         return dynamics.lif_derivative(
@@ -209,6 +221,11 @@ class AdaptiveELIF(ELIF):
         super().initialize(group)
         group.omega = group.state(self.omega_init)
 
+    def reset_state(self, group: NeuronGroup) -> None:
+        """Reset the LIF state and return ``omega`` to ``omega_init``."""
+        super().reset_state(group)
+        group.omega.fill_(self.omega_init)
+
     def derivative(self, group: NeuronGroup) -> torch.Tensor:
         """``tau * dv/dt`` including the adaptation current."""
         return super().derivative(group) - group.resistance * group.omega
@@ -243,3 +260,40 @@ class Fire(Behavior):
     def forward(self, group: NeuronGroup) -> None:
         """Emit spikes and reset."""
         group.model.fire(group)
+
+
+class Refractory(Behavior):
+    """Absolute refractory period: after a spike the membrane stays at ``v_reset``.
+
+    A neuron that fires is held at ``v_reset`` for the next ``ceil(period / dt)`` steps, so
+    it cannot fire again sooner. Runs after the neuron model, noise and competition and
+    before :class:`Fire` (``Order.REFRACTORY``). State on the group: ``refractory``, the
+    time left.
+
+    Args:
+        period: Refractory period, in the unit of ``dt``.
+    """
+
+    order = Order.REFRACTORY
+    graph_safe = True
+
+    def __init__(self, period: float) -> None:
+        _positive(period=period)
+        self.period = float(period)
+
+    def initialize(self, group: NeuronGroup) -> None:
+        """Check for a neuron model and allocate the countdown."""
+        if not hasattr(group, "v_reset"):
+            raise RuntimeError(f"Refractory on {group.name} needs a neuron model such as LIF")
+        group.refractory = group.state()
+
+    def reset_state(self, group: NeuronGroup) -> None:
+        """End every countdown."""
+        group.refractory.zero_()
+
+    def forward(self, group: NeuronGroup) -> None:
+        """Start the countdown on the last step's spikes and clamp neurons still in it."""
+        group.refractory = torch.where(
+            group.spikes, self.period, (group.refractory - group.net.dt).clamp(min=0)
+        )
+        group.v = group.v.masked_fill(group.refractory > 1e-9, group.v_reset)

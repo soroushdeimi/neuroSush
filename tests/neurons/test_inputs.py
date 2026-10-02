@@ -6,7 +6,7 @@ import torch
 from neurosush.core.network import Network, NeuronGroup, SynapseGroup
 from neurosush.data import spike_frames
 from neurosush.neurons.axon import Axon
-from neurosush.neurons.inputs import SpikeInput
+from neurosush.neurons.inputs import PoissonInput, SpikeInput
 from neurosush.synapses.currents import DenseInput
 from neurosush.synapses.init import WeightInit
 from neurosush.synapses.traces import SpikeGather
@@ -78,3 +78,19 @@ class TestSpikeInput:
         net.run(2)
         # step 1 gathers the spikes; step 2 turns them into current
         assert syn.I.tolist() == [1.0]
+
+
+class TestPoissonInput:
+    def test_negative_rate_is_rejected(self):
+        with pytest.raises(ValueError, match=r"rates must be non-negative, got -0\.1"):
+            PoissonInput(-0.1)
+
+    def test_negative_rates_in_a_tensor_are_rejected(self):
+        with pytest.raises(ValueError, match="rates must be non-negative"):
+            PoissonInput(torch.tensor([0.1, -0.2]))
+
+    def test_rates_of_wrong_shape_are_rejected(self):
+        net = Network()
+        NeuronGroup(net, 3, behaviors=[PoissonInput(torch.zeros(4))])
+        with pytest.raises(ValueError, match=r"rates must have shape \(3,\).*got \(4,\)"):
+            net.initialize()

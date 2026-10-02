@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from neurosush.core.network import Network, NeuronGroup
-from neurosush.neurons.models import ELIF, LIF, AdaptiveELIF, Fire
+from neurosush.neurons.models import ELIF, LIF, AdaptiveELIF, Fire, Refractory
 
 LIF_ARGS = {"tau": 10.0, "threshold": -50.0, "v_reset": -70.0, "v_rest": -65.0}
 
@@ -139,3 +139,16 @@ class TestFire:
         net.step()
         assert ng.spikes.tolist() == [True]
         assert ng.v.tolist() == [-70.0]
+
+
+class TestRefractory:
+    @pytest.mark.parametrize("period", [0.0, -2.0])
+    def test_period_must_be_positive(self, period):
+        with pytest.raises(ValueError, match=f"period must be positive, got {period}"):
+            Refractory(period)
+
+    def test_needs_a_neuron_model(self):
+        net = Network()
+        NeuronGroup(net, 1, behaviors=[Refractory(2.0), Fire()])
+        with pytest.raises(RuntimeError, match="needs a neuron model"):
+            net.initialize()

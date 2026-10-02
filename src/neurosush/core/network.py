@@ -117,6 +117,22 @@ class Network:
         for host, behavior in self.schedule:
             behavior.initialize(host)
 
+    def reset_state(self) -> None:
+        """Clear the per-sample dynamic state of every behavior, in place.
+
+        Calls :meth:`~neurosush.core.behavior.Behavior.reset_state` of every behavior,
+        enabled or not, in schedule order. Voltages, currents, traces, spike histories and
+        countdowns return to their initial values; weights, thresholds, theta and the
+        iteration counter are kept, and so are tensor addresses (a CUDA graph stays valid).
+
+        Raises:
+            RuntimeError: If the network is not initialized.
+        """
+        if not self.initialized:
+            raise RuntimeError("reset_state needs an initialized network")
+        for host, behavior in self.schedule:
+            behavior.reset_state(host)
+
     def step(self) -> None:
         """Advance one iteration, running each enabled behavior."""
         if not self.initialized:
@@ -175,6 +191,18 @@ class NeuronGroup:
     exhaustion: torch.Tensor
     # MinicolumnInhibition sets the steps of inhibition left per minicolumn.
     column_inhibition: torch.Tensor
+    # PoissonInput sets the rates it draws spikes from.
+    rates: torch.Tensor
+    # Refractory sets the refractory time left.
+    refractory: torch.Tensor
+    # AdaptiveThreshold sets the threshold offset and the threshold it adds to.
+    theta: torch.Tensor
+    base_threshold: torch.Tensor
+    # ConductanceIntegration sets the excitatory and inhibitory conductances.
+    g_exc: torch.Tensor
+    g_inh: torch.Tensor
+    # SpikeCounter sets the number of spikes counted per neuron.
+    spike_count: torch.Tensor
 
     def __init__(
         self,

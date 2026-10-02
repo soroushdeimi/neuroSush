@@ -15,6 +15,7 @@ def test_order_values_follow_the_step_sequence():
         Order.NOISE,
         Order.COMPETITION,
         Order.VOLTAGE_HOMEOSTASIS,
+        Order.REFRACTORY,
         Order.FIRE,
         Order.ACTIVITY_HOMEOSTASIS,
         Order.AXON,

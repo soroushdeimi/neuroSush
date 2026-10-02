@@ -4,7 +4,11 @@ import torch
 from neurosush.core.behavior import Behavior
 from neurosush.core.network import Network, NeuronGroup
 from neurosush.core.order import Order
-from neurosush.neurons.homeostasis import ActivityHomeostasis, VoltageHomeostasis
+from neurosush.neurons.homeostasis import (
+    ActivityHomeostasis,
+    AdaptiveThreshold,
+    VoltageHomeostasis,
+)
 from neurosush.neurons.models import LIF
 
 LIF_ARGS = {"tau": 10.0, "threshold": -50.0, "v_reset": -70.0, "v_rest": -65.0}
@@ -145,3 +149,27 @@ def test_threshold_keeps_the_network_dtype():
     )
     net.run(2)
     assert ng.threshold.dtype == torch.float32
+
+
+class TestAdaptiveThreshold:
+    @pytest.mark.parametrize("increment", [0.0, -0.1])
+    def test_increment_must_be_positive(self, increment):
+        with pytest.raises(ValueError, match=f"increment must be positive, got {increment}"):
+            AdaptiveThreshold(increment=increment)
+
+    @pytest.mark.parametrize("tau", [0.0, -5.0])
+    def test_tau_must_be_positive(self, tau):
+        with pytest.raises(ValueError, match=f"tau must be positive, got {tau}"):
+            AdaptiveThreshold(increment=0.1, tau=tau)
+
+    def test_tau_must_be_at_least_dt(self):
+        net = Network(dt=2.0)
+        NeuronGroup(net, 1, behaviors=[LIF(**LIF_ARGS), AdaptiveThreshold(increment=0.1, tau=1.0)])
+        with pytest.raises(ValueError, match=r"tau \(1.0\) must be at least dt \(2.0\)"):
+            net.initialize()
+
+    def test_needs_a_threshold(self):
+        net = Network()
+        NeuronGroup(net, 1, behaviors=[AdaptiveThreshold(increment=0.1)])
+        with pytest.raises(RuntimeError, match="needs a threshold"):
+            net.initialize()

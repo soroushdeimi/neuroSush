@@ -1,4 +1,5 @@
 import math
+from typing import ClassVar
 
 import pytest
 import torch
@@ -7,7 +8,12 @@ from neurosush.core.behavior import Behavior
 from neurosush.core.network import Compartment, Network, NeuronGroup, SynapseGroup
 from neurosush.core.order import Order
 from neurosush.neurons.axon import Axon
-from neurosush.neurons.dendrite import DendriteIntegration, DendriteStructure, modulatory_drive
+from neurosush.neurons.dendrite import (
+    ConductanceIntegration,
+    DendriteIntegration,
+    DendriteStructure,
+    modulatory_drive,
+)
 from neurosush.neurons.models import LIF
 
 
@@ -210,3 +216,59 @@ class TestDendriteIntegration:
 
 def test_compartment_names_match_the_enum():
     assert {c.value for c in Compartment} == {"proximal", "distal", "apical"}
+
+
+class TestConductanceIntegration:
+    LIF_ARGS: ClassVar = {"tau": 10.0, "threshold": -45.0, "v_reset": -70.0, "v_rest": -65.0}
+
+    def net(self, *, dt=1.0, extra=(), compartment="proximal", delay=0, **kwargs):
+        net = Network(dt=dt)
+        src = NeuronGroup(net, 1)
+        dst = NeuronGroup(
+            net,
+            2,
+            behaviors=[
+                DendriteStructure(**{f"{compartment}_depth": delay + 1}),
+                ConductanceIntegration(**kwargs),
+                LIF(**self.LIF_ARGS),
+                *extra,
+            ],
+        )
+        syn = SynapseGroup(
+            net, src, dst, behaviors=[ScriptedCurrent([1.0])], compartment=compartment
+        )
+        syn.dst_delay = torch.full((2,), delay)
+        return net
+
+    def test_reversal_potentials_must_be_ordered(self):
+        with pytest.raises(ValueError, match=r"e_inh \(0.0\) must be below e_exc \(0.0\)"):
+            ConductanceIntegration(e_exc=0.0, e_inh=0.0)
+        with pytest.raises(ValueError, match="e_inh"):
+            ConductanceIntegration(e_exc=-80.0, e_inh=-70.0)
+
+    @pytest.mark.parametrize("name", ["tau_exc", "tau_inh"])
+    @pytest.mark.parametrize("tau", [0.0, -1.0])
+    def test_time_constants_must_be_positive(self, name, tau):
+        with pytest.raises(ValueError, match=f"{name} must be positive, got {tau}"):
+            ConductanceIntegration(**{name: tau})
+
+    @pytest.mark.parametrize("name", ["tau_exc", "tau_inh"])
+    def test_time_constants_must_be_at_least_dt(self, name):
+        net = self.net(dt=2.0, **{"tau_exc": 5.0, "tau_inh": 5.0, name: 1.0})
+        with pytest.raises(ValueError, match=rf"{name} \(1.0\) must be at least dt \(2.0\)"):
+            net.initialize()
+
+    def test_distal_synapses_are_rejected(self):
+        net = self.net(compartment="distal")
+        with pytest.raises(ValueError, match="takes proximal synapses only"):
+            net.initialize()
+
+    def test_dendritic_delay_is_rejected(self):
+        net = self.net(delay=1)
+        with pytest.raises(ValueError, match="does not support dst_delay"):
+            net.initialize()
+
+    def test_cannot_be_combined_with_dendrite_integration(self):
+        net = self.net(extra=[DendriteIntegration()])
+        with pytest.raises(ValueError, match="both ConductanceIntegration and DendriteIntegration"):
+            net.initialize()

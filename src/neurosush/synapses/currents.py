@@ -224,6 +224,10 @@ class _SynapticInput(Behavior, ABC):
             syn: Synapse group whose geometry is checked.
         """
 
+    def reset_state(self, syn: SynapseGroup) -> None:
+        """Zero the destination current."""
+        syn.I.zero_()
+
     @abstractmethod
     def current(self, syn: SynapseGroup) -> torch.Tensor:
         """Return currents before applying the coefficient and source sign.

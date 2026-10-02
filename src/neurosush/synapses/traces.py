@@ -33,6 +33,12 @@ class SpikeGather(Behavior):
         self.post = hasattr(syn.dst, "spike_history")
         self.forward(syn)
 
+    def reset_state(self, syn: SynapseGroup) -> None:
+        """Silence the gathered spikes."""
+        syn.pre_spike.zero_()
+        if self.post:
+            syn.post_spike.zero_()
+
     def forward(self, syn: SynapseGroup) -> None:
         """Read this step's delayed spikes."""
         syn.pre_spike = syn.src.spike_history.read(syn.src_delay)
@@ -75,6 +81,11 @@ class Traces(Behavior):
             )
         syn.pre_trace = syn.src.state()
         syn.post_trace = syn.dst.state()
+
+    def reset_state(self, syn: SynapseGroup) -> None:
+        """Zero both traces."""
+        syn.pre_trace.zero_()
+        syn.post_trace.zero_()
 
     def forward(self, syn: SynapseGroup) -> None:
         """Update both traces."""

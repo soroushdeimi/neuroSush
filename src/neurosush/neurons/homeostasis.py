@@ -90,11 +90,62 @@ class ActivityHomeostasis(Behavior):
         self.rate.fill_(float(state["rate"]))
 
 
+class AdaptiveThreshold(Behavior):
+    """A threshold that rises with every spike and relaxes slowly (Diehl and Cook 2015).
+
+    ``theta = theta (1 - dt / tau) + increment * spikes`` and
+    ``threshold = base + theta``, where ``base`` is the model's threshold at
+    initialization. A neuron that fires a lot becomes harder to fire, which spreads activity
+    over a competing population. In a batch the threshold is shared, so ``theta`` rises by
+    the batch mean of the spikes. Set ``enabled = False`` to freeze ``theta`` (for
+    example when testing a trained network). State on the group: ``theta`` and
+    ``base_threshold``.
+
+    Args:
+        increment: Threshold increase per spike, in the unit of the voltage.
+        tau: Relaxation time constant, in the unit of ``dt``; ``None`` never relaxes.
+    """
+
+    order = Order.ACTIVITY_HOMEOSTASIS
+    graph_safe = True
+
+    def __init__(self, *, increment: float, tau: float | None = None) -> None:
+        if increment <= 0:
+            raise ValueError(f"increment must be positive, got {increment}")
+        if tau is not None and tau <= 0:
+            raise ValueError(f"tau must be positive, got {tau}")
+        self.increment = increment
+        self.tau = tau
+
+    def initialize(self, group: NeuronGroup) -> None:
+        """Check for a per-neuron threshold and allocate ``theta``."""
+        if not hasattr(group, "threshold") or not isinstance(group.threshold, torch.Tensor):
+            raise RuntimeError(f"AdaptiveThreshold on {group.name} needs a threshold (LIF model)")
+        if self.tau is not None and self.tau < group.net.dt:
+            raise ValueError(f"tau ({self.tau}) must be at least dt ({group.net.dt})")
+        group.base_threshold = group.threshold.clone()
+        group.theta = group.vector()
+
+    def forward(self, group: NeuronGroup) -> None:
+        """Relax ``theta``, add this step's spikes and set the threshold."""
+        spikes = group.spikes.to(group.theta.dtype)
+        if spikes.dim() > 1:
+            spikes = spikes.reshape(-1, group.size).mean(0)
+        theta = group.theta
+        if self.tau is not None:
+            theta = theta * (1 - group.net.dt / self.tau)
+        group.theta = theta + self.increment * spikes
+        group.threshold = group.base_threshold + group.theta
+
+
 class VoltageHomeostasis(Behavior):
     """Pushes voltages back into ``[v_min, v_max]`` through an accumulating exhaustion term.
 
     ``exhaustion += rate * (v - v_max)`` above the band and ``rate * (v - v_min)`` below it;
     then ``v -= exhaustion``.
+
+    ``exhaustion`` adapts slowly over many samples, like a threshold, so
+    :meth:`~neurosush.core.network.Network.reset_state` keeps it.
 
     Args:
         target: Sets both ``v_min`` and ``v_max``.
