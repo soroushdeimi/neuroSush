@@ -119,10 +119,25 @@ class TestMultiTask:
         )
         assert accuracy > 0.95
 
-    def test_an_ungated_network_is_stuck_at_chance(self):
+    def test_a_network_without_the_context_is_stuck_at_chance(self):
         inputs, context, targets = self.data()
         torch.manual_seed(0)
         mlp = nn.Sequential(nn.Linear(10, 64), nn.ReLU(), nn.Linear(64, 2))
         accuracy = self.train(lambda x, c: mlp(x), mlp.parameters(), inputs, context, targets)
-        # each input appears once with each label: exactly one of the two copies is right
+        # it gets no context, so it cannot solve the task by construction: each input appears
+        # once with each label, so exactly one of the two copies is right
         assert accuracy == 0.5
+
+    def test_an_mlp_that_sees_the_context_also_solves_them(self):
+        # the fair baseline: same hidden size and training, context concatenated to the input
+        inputs, context, targets = self.data()
+        torch.manual_seed(0)
+        mlp = nn.Sequential(nn.Linear(12, 64), nn.ReLU(), nn.Linear(64, 2))
+        accuracy = self.train(
+            lambda x, c: mlp(torch.cat([x, c], -1)),
+            mlp.parameters(),
+            inputs,
+            context,
+            targets,
+        )
+        assert accuracy > 0.95

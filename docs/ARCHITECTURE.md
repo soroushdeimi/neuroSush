@@ -29,12 +29,12 @@ cortical structures.
 | `core/buffers.py` | `HistoryBuffer` (past values, read with per-neuron delay), `ArrivalBuffer` (future accumulation for dendritic delays) |
 | `core/network.py` | `Network`, `NeuronGroup`, `SynapseGroup`, `Compartment` |
 | `neurons/dynamics.py` | pure LIF / ELIF / AdEx equations and threshold crossing |
-| `neurons/models.py` | `LIF`, `ELIF`, `AdaptiveELIF`, `Fire` |
+| `neurons/models.py` | `LIF`, `ELIF`, `AdaptiveELIF`, `Refractory`, `Fire` |
 | `neurons/competition.py` | `KWTA`, `MinicolumnInhibition`, `InherentNoise` |
 | `neurons/axon.py` | `Axon` (spike history for delays) |
-| `neurons/dendrite.py` | `DendriteStructure`, `DendriteIntegration` |
-| `neurons/homeostasis.py` | `ActivityHomeostasis`, `VoltageHomeostasis` |
-| `neurons/inputs.py` | `SpikeInput` (drives a group from a stream of spike frames) |
+| `neurons/dendrite.py` | `DendriteStructure`, `DendriteIntegration`, `ConductanceIntegration`, `conductance_step` |
+| `neurons/homeostasis.py` | `ActivityHomeostasis`, `VoltageHomeostasis`, `AdaptiveThreshold` |
+| `neurons/inputs.py` | `SpikeInput` (drives a group from a stream of spike frames), `PoissonInput` (random spikes at per-neuron rates) |
 | `synapses/init.py` | `WeightInit`, `DelayInit`, `sparse_random` |
 | `synapses/currents.py` | pure current functions + `DenseInput`, `OneToOneInput`, `SparseInput`, `Conv2dInput`, `Local2dInput`, `LateralInput`, `AvgPool2dInput` |
 | `synapses/traces.py` | `SpikeGather`, `Traces`, `trace_step` |
@@ -42,18 +42,20 @@ cortical structures.
 | `synapses/segment_learning.py` | `SegmentLearning` |
 | `synapses/bounds.py` | `soft_bound`, `hard_bound`, `no_bound` (directional learning gates) |
 | `synapses/plasticity.py` | pure STDP / iSTDP kernels per connectivity + `STDP`, `RSTDP`, `ISTDP` |
+| `synapses/triplet.py` | `TripletSTDP` (Pfister and Gerstner 2006; the Diehl and Cook 2015 rule is a special case) |
 | `synapses/constraints.py` | `WeightClip`, `WeightNormalization`, `CurrentNormalization` |
 | `modulation.py` | `Payoff`, `Dopamine` |
 | `encoding.py` | `rate_poisson`, `interval_poisson`, `intensity_to_latency` |
 | `filters.py` | `dog_kernel`, `gabor_kernel` |
 | `transforms.py` | `grid_boxes`, `GridErase`, `GridKeep`, `GridCrop`, `split_polarity`, `FilterBank` |
-| `data.py` | `LocationDataset`, `spike_frames` |
+| `data.py` | `LocationDataset`, `spike_frames`, `read_idx`, `load_mnist` |
 | `structure/layer.py` | `Layer`, `CorticalLayer` (named groups and ports) |
 | `structure/connect.py` | `connect` (one synapse group per source/destination pair) |
 | `structure/column.py` | `CorticalColumn` |
 | `structure/sequence.py` | `sequence_memory`, `sequence_timing`, `Neuron` |
 | `structure/spec.py` | `ColumnSpec` and friends, `build_column`, `to_json`/`from_json`, `register` |
-| `recording.py` | `Recorder` (runs last, at `Order.RECORD`) |
+| `recording.py` | `Recorder` (runs last, at `Order.RECORD`), `SpikeCounter` (spike counts per neuron, graph-safe) |
+| `readout.py` | `assign_labels`, `classify`, `accuracy`: labels for an unsupervised layer |
 | `checkpoint.py` | `state_dict`, `load_state_dict`, `save`, `load` |
 | `htm/sdr.py` | SDR operations, `match_probability`, union capacity |
 | `htm/encoders.py` | `ScalarEncoder`, `RandomDistributedScalarEncoder`, `CategoryEncoder` |
@@ -77,17 +79,18 @@ A step of `Network.step()` runs every enabled behavior's `forward` once, sorted 
 | 180 | synaptic inputs | `syn.pre_spike`, `syn.weights` | `syn.I` |
 | 200 | `CurrentNormalization` | `syn.weights` | `syn.I` |
 | 220 | `DendriteStructure` | afferent `syn.I`, `syn.dst_delay` | `ng.I_proximal/distal/apical` |
-| 240 | `DendriteIntegration` | compartment currents | `ng.I` |
+| 240 | `DendriteIntegration`, `ConductanceIntegration` | compartment currents; `syn.I`, `ng.v` | `ng.I` (`ng.g_exc`, `ng.g_inh`) |
 | 260 | `LIF`/`ELIF`/`AdaptiveELIF` | `ng.I` | `ng.v` |
 | 280 | `InherentNoise` | | `ng.v` |
 | 300 | `KWTA` | `ng.v` | `ng.v` |
 | 310 | `VoltageHomeostasis` | `ng.v` | `ng.v` |
-| 340 | `Fire`, `SpikeInput` | `ng.v` | `ng.spikes`, `ng.v` |
-| 350 | `ActivityHomeostasis` | `ng.spikes` | `ng.threshold` |
+| 330 | `Refractory` | `ng.spikes`, `ng.v` | `ng.v`, `ng.refractory` |
+| 340 | `Fire`, `SpikeInput`, `PoissonInput` | `ng.v`, `ng.rates` | `ng.spikes`, `ng.v` |
+| 350 | `ActivityHomeostasis`, `AdaptiveThreshold` | `ng.spikes` | `ng.threshold` (`ng.theta`) |
 | 380 | `Axon` | `ng.spikes` | `ng.spike_history` |
 | 420 | `SpikeGather` | `spike_history`, delays | `syn.pre_spike`, `syn.post_spike` |
 | 460 | `Traces` | gathered spikes | `syn.pre_trace`, `syn.post_trace` |
-| 500 | `STDP`/`RSTDP`/`ISTDP` | spikes, traces, `net.dopamine` | `syn.weights` |
+| 500 | `STDP`/`RSTDP`/`ISTDP`/`TripletSTDP` | spikes, traces, `net.dopamine` | `syn.weights` |
 | 520 | `WeightNormalization` | | `syn.weights` |
 | 540 | `WeightClip` | | `syn.weights` |
 
@@ -112,8 +115,10 @@ Synaptic input at step t uses spikes gathered at step t-1 (one step of transmiss
   columns of spiking postsynaptic neurons, depression only the rows of spiking presynaptic
   neurons.
 - On a GPU one sample is bound by kernel-launch latency, so batches are the main lever:
-  `benchmarks/dense_stdp.py` (784 -> 400, dense STDP) runs about 90 steps/s at batch 1 and at
-  batch 256 alike, i.e. about 23,000 sample-steps/s on a laptop RTX 3060.
+  `benchmarks/dense_stdp.py` (784 -> 400, dense STDP) measured on 2026-10-02 on an RTX 3060
+  Laptop GPU (Linux, torch 2.14) at 1,746 steps/s eager and unbatched, 1,310 steps/s
+  (335,301 sample-steps/s) at batch 256 and 3,887 steps/s with a CUDA graph. See
+  [BENCHMARKS.md](BENCHMARKS.md).
 - Time constants and `dt` share one unit (ms by convention). Every decay uses `dt / tau`.
 - Inhibitory source groups (`NeuronGroup(..., inhibitory=True)`) make currents negative.
 
@@ -140,6 +145,21 @@ stores on its host is therefore saved without extra code; state kept on a behavi
 `state_dict`/`load_state_dict` pair. The host classes declare the state attributes that the
 library's behaviors set (as annotations without values, so `hasattr` still tells whether a
 behavior is present), which is what lets strict mypy check behavior code.
+
+## Resetting between samples
+
+`Network.reset_state()` calls `Behavior.reset_state(host)` of every behavior (enabled or not,
+in schedule order). A behavior clears the per-sample dynamic state it keeps on its host in
+place (`fill_`, `zero_`, buffer `reset()`): voltages go back to `v_init` or `v_rest`, and
+currents, conductances, spike histories, traces, eligibility, dendritic delay buffers,
+refractory and plateau countdowns and the recent spike times of `SegmentLearning` are
+cleared; `AdaptiveELIF` returns `omega` to `omega_init` and `Payoff`/`Dopamine` to their
+initial values. Learned and parameter state is kept: weights, permanences, thresholds,
+`theta`, the `ActivityHomeostasis` counter and `VoltageHomeostasis` exhaustion (both adapt
+over many samples). `SpikeInput` keeps its place in the frame stream and `PoissonInput` its
+rates; a `Recorder` keeps its recordings. Everything is in place, so a captured CUDA graph
+stays valid. `HistoryBuffer.reset()` also sets a Python head index, which is harmless for
+the depth-1 buffers a graph can capture but valid for deeper ones only between eager steps.
 
 ## CUDA graphs
 

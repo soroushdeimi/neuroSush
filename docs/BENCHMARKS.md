@@ -26,7 +26,9 @@ times batch size.
 | Software | Windows 11, Python 3.12.10, PyTorch 2.14.0+cu130 |
 
 Every measurement builds a fresh network, runs 20 warm-up steps and times 300 steps;
-the tables show the median of three runs. The benchmark ran at high priority on the
+the tables show the median of three runs. Eager runs varied by up to 25% between repeats
+(unbatched GPU eager 857-1,115 steps/s, CPU with one thread unbatched 1,912-2,442); graph
+runs varied by at most 3%. The benchmark ran at high priority on the
 performance cores (see *Pitfalls*). All numbers come from this one machine.
 
 ## GPU
@@ -68,8 +70,8 @@ bit-for-bit the same results.
   2.4x the best CPU result for one network (2,327 steps/s).
 - **Batch for throughput.** A graph step costs almost the same for 1 or 32 samples, so
   throughput grows with the batch, up to **2,428,474 sample-steps/s at batch 2,048** (42x
-  the best CPU result). At 350 steps per sample (a 350 ms presentation, as in Diehl and
-  Cook 2015) that is about 6,938 samples per second.
+  the best CPU result, which was measured only up to batch 128). A reproduction of Diehl
+  and Cook (2015) is in `examples/diehl_cook_mnist.py`.
 - **On a CPU, batching helps too, and more threads help batches.** With PyTorch 2.14.0,
   one and six threads run a single network equally fast; with six threads a batch of 128
   reaches 57,349 sample-steps/s. With older PyTorch versions, one thread was faster than

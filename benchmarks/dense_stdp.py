@@ -1,8 +1,8 @@
 """Throughput of a 784 -> 400 network with dense STDP (MNIST-sized).
 
-Poisson-like input, LIF outputs with k-winners-take-all and homeostasis, soft-bounded
-STDP and weight normalization. Reports simulation steps per second and sample-steps per
-second (steps times batch size).
+One fixed random input frame (5% of the inputs spike), repeated every step. LIF outputs
+with k-winners-take-all and homeostasis, soft-bounded STDP and weight normalization.
+Reports simulation steps per second and sample-steps per second (steps times batch size).
 Run: ``python benchmarks/dense_stdp.py --device cuda --batch 64``.
 """
 

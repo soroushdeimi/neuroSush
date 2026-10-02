@@ -72,6 +72,16 @@ class TestIntervalPoisson:
         # Var of max(1, Poisson) is at most lam + 1
         assert abs(isi.mean().item() - expected) < 5 * math.sqrt((lam + 1) / len(isi))
 
+    def test_interval_variance_equals_the_mean(self):
+        # Poisson-distributed intervals (not a Poisson process): variance = mean = 1 / rate
+        lam = 20.0
+        isi = intervals(interval_poisson(torch.full((400,), 1 / lam), 2000, generator=gen(5)))
+        isi = isi.double()
+        n = len(isi)
+        assert abs(isi.mean().item() - lam) < 5 * math.sqrt(lam / n)
+        # variance of the sample variance of Poisson draws: (lam + 2 lam^2) / n
+        assert abs(isi.var().item() - lam) < 5 * math.sqrt((lam + 2 * lam**2) / n)
+
 
 class TestDelays:
     def test_spikes_arrive_after_the_axonal_plus_dendritic_delay(self):

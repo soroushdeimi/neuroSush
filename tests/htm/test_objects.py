@@ -121,7 +121,7 @@ class TestVoting:
         assert abs(wrong.mean().item() - expected) < 5 * wrong.std().item() / math.sqrt(trials)
 
     def test_more_columns_recognize_in_fewer_sensations(self):
-        # Lewis et al. (2019), Fig. 5: voting cuts the sensations needed
+        # Hawkins, Ahmad and Cui (2017): more columns need fewer sensations
         objects, shape, features = 100, (5, 5), 30
         library = ObjectLibrary.random(objects, shape, features, generator=gen(7))
         g = gen(8)

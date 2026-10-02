@@ -8,9 +8,10 @@ with dopamine modulation) on a CPU or GPU, in batches. It implements the **Thous
 and HTM models** (sparse distributed representations, spatial pooler, temporal memory, grid
 cells, active dendrites, voting columns) and **hierarchical predictive coding**, which run on
 the CPU, one sample at a time (the active-dendrites layer also runs on a GPU), and it joins
-the two worlds: a **spiking layer that provably computes the temporal memory** and learns
-the same sequences. Every model is tested against what it claims: exact solutions,
-closed-form probabilities and expectations, and the results of its papers.
+the two worlds: a **spiking layer verified to compute the temporal memory** (under derived timing
+conditions) and to learn the same sequences. Every model is tested against what it claims:
+exact solutions, closed-form probabilities and expectations, and qualitative properties
+reported in its papers, on small setups.
 
 | | |
 |---|---|
@@ -123,16 +124,16 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
 
 | order | behaviors | order | behaviors |
 |---|---|---|---|
-| 0 | `WeightInit`, `DelayInit` | 300 | `KWTA`, `MinicolumnInhibition` |
-| 100 | `Payoff` | 310 | `VoltageHomeostasis` |
-| 120 | `Dopamine` | 340 | `Fire`, `SpikeInput` |
-| 180 | synaptic inputs, `ActiveSegments` | 350 | `ActivityHomeostasis` |
+| 0 | `WeightInit`, `DelayInit` | 310 | `VoltageHomeostasis` |
+| 100 | `Payoff` | 330 | `Refractory` |
+| 120 | `Dopamine` | 340 | `Fire`, `SpikeInput`, `PoissonInput` |
+| 180 | synaptic inputs, `ActiveSegments` | 350 | `ActivityHomeostasis`, `AdaptiveThreshold` |
 | 200 | `CurrentNormalization` | 380 | `Axon` |
 | 220 | `DendriteStructure` | 420 | `SpikeGather` |
-| 240 | `DendriteIntegration` | 460 | `Traces` |
-| 260 | `LIF`, `ELIF`, `AdaptiveELIF` | 500 | `STDP`, `RSTDP`, `ISTDP`, `SegmentLearning` |
+| 240 | `DendriteIntegration`, `ConductanceIntegration` | 460 | `Traces` |
+| 260 | `LIF`, `ELIF`, `AdaptiveELIF` | 500 | `STDP`, `RSTDP`, `ISTDP`, `TripletSTDP`, `SegmentLearning` |
 | 280 | `InherentNoise` | 520, 540 | `WeightNormalization`, `WeightClip` |
-|  |  | 1000 | `Recorder` |
+| 300 | `KWTA`, `MinicolumnInhibition` | 1000 | `Recorder` |
 
 - **Spikes travel through `SpikeGather`**: a synaptic input reads `syn.pre_spike`, which
   `SpikeGather` fills from the source's `Axon`, so every synapse group with an input needs
@@ -144,8 +145,12 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
   currents negative.
 - **Batches**: `Network(batch_size=B)` simulates `B` samples side by side. State tensors get
   shape `(B, size)`; weights and thresholds stay shared, and learning uses the batch mean.
-  Feed it with `spike_frames(samples, batch_size=B)`. On a GPU a batch costs about as much
-  as one sample, so throughput grows almost linearly with `B`.
+  Feed it with `spike_frames(samples, batch_size=B)`. On a GPU a small batch costs about as
+  much as one sample, so throughput grows almost linearly with `B` at first: the CUDA-graph
+  step costs about the same up to batch 32 and is 4.7 times slower at batch 2048
+  ([Benchmarks](https://github.com/soroushdeimi/neuroSush/blob/main/docs/BENCHMARKS.md)).
+  Learning from the batch mean is a different algorithm from presenting the samples one
+  after another.
 
 More in [docs/ARCHITECTURE.md](https://github.com/soroushdeimi/neuroSush/blob/main/docs/ARCHITECTURE.md).
 
@@ -154,7 +159,10 @@ More in [docs/ARCHITECTURE.md](https://github.com/soroushdeimi/neuroSush/blob/ma
 A `Recorder` copies attributes of its host at the end of every `interval`-th step. A
 checkpoint saves the complete state of an initialized network (iteration, random
 generator, every tensor and delay buffer, and behavior state such as homeostasis), and
-loading it into a network built the same way continues the run exactly:
+loading it into a network built the same way continues the run exactly. To present many
+samples one after another, `net.reset_state()` clears voltages, currents, traces, spike
+histories and countdowns in place and keeps weights, thresholds and `theta`; add a
+`SpikeCounter` to read each sample's response (see `examples/diehl_cook_mnist.py`):
 
 ```python
 import tempfile
@@ -245,9 +253,11 @@ the stepper keeps one graph per key. Not ready yet: `Payoff`, `Dopamine`, `RSTDP
 transmission delays longer than one step; `GraphStepper` names every behavior that is not
 ready. A `Recorder` runs after each replayed step.
 
-On an RTX 3090 a 784-input, 400-neuron STDP network runs 5,538 steps per second as a graph,
-5.5 times eager stepping and 2.4 times the fastest CPU run on the same machine; batched, it
-reaches 2.4 million sample-steps per second. [Benchmarks](https://github.com/soroushdeimi/neuroSush/blob/main/docs/BENCHMARKS.md) has the full results, the
+On an RTX 3090 (Windows) a 784-input, 400-neuron STDP network runs 5,538 steps per second
+as a graph, 5.5 times eager stepping and 2.4 times the fastest CPU run on the same machine;
+batched, it reaches 2.4 million sample-steps per second. On an RTX 3060 Laptop GPU (Linux)
+the same benchmark measured 3,887 graph steps per second against 1,746 eager (2.2 times,
+2026-10-02). The gain depends on the platform's kernel-launch overhead. [Benchmarks](https://github.com/soroushdeimi/neuroSush/blob/main/docs/BENCHMARKS.md) has the full results, the
 method and the pitfalls.
 
 ![Steps per second of one network on a CPU and on a GPU, eager and as a CUDA graph](https://raw.githubusercontent.com/soroushdeimi/neuroSush/main/docs/figures/single-network.svg)
@@ -257,24 +267,26 @@ method and the pitfalls.
 | module | contents |
 |---|---|
 | `neurosush.core` | `Network`, `NeuronGroup`, `SynapseGroup`, `Behavior`, `Order`, delay buffers |
-| `neurosush.neurons.models` | `LIF`, `ELIF`, `AdaptiveELIF`, `Fire` (equations in `dynamics`) |
+| `neurosush.neurons.models` | `LIF`, `ELIF`, `AdaptiveELIF`, `Refractory`, `Fire` (equations in `dynamics`) |
 | `neurosush.neurons.competition` | `KWTA`, `MinicolumnInhibition`, `InherentNoise` |
-| `neurosush.neurons.axon`, `.dendrite` | `Axon`; `DendriteStructure`, `DendriteIntegration` |
-| `neurosush.neurons.homeostasis` | `ActivityHomeostasis`, `VoltageHomeostasis` |
-| `neurosush.neurons.inputs` | `SpikeInput` |
+| `neurosush.neurons.axon`, `.dendrite` | `Axon`; `DendriteStructure`, `DendriteIntegration`, `ConductanceIntegration` |
+| `neurosush.neurons.homeostasis` | `ActivityHomeostasis`, `VoltageHomeostasis`, `AdaptiveThreshold` |
+| `neurosush.neurons.inputs` | `SpikeInput`, `PoissonInput` |
 | `neurosush.synapses.init` | `WeightInit` (dense or sparse), `DelayInit` |
 | `neurosush.synapses.currents` | `DenseInput`, `OneToOneInput`, `SparseInput`, `Conv2dInput`, `Local2dInput`, `LateralInput`, `AvgPool2dInput` |
 | `neurosush.synapses.traces` | `SpikeGather`, `Traces` |
 | `neurosush.synapses.segments` | `ActiveSegments` (dendritic segments with NMDA-like plateaus) |
 | `neurosush.synapses.segment_learning` | `SegmentLearning` (temporal memory learning in spike time) |
 | `neurosush.synapses.plasticity` | `STDP`, `RSTDP`, `ISTDP` (bounds in `bounds`) |
+| `neurosush.synapses.triplet` | `TripletSTDP` (triplet STDP of Pfister and Gerstner 2006, all-to-all or nearest-spike; the Diehl and Cook 2015 rule is a special case) |
 | `neurosush.synapses.constraints` | `WeightClip`, `WeightNormalization`, `CurrentNormalization` |
 | `neurosush.modulation` | `Payoff`, `Dopamine` |
 | `neurosush.encoding` | `rate_poisson`, `interval_poisson`, `intensity_to_latency` |
 | `neurosush.filters`, `.transforms` | DoG and Gabor kernels; grid masks, polarity split, filter bank |
-| `neurosush.data` | `LocationDataset`, `spike_frames` |
+| `neurosush.data` | `LocationDataset`, `spike_frames`, `load_mnist` (IDX files, optional download) |
 | `neurosush.structure` | layers, ports, `connect`, `CorticalColumn`, JSON specs, `sequence_memory` |
-| `neurosush.recording` | `Recorder` |
+| `neurosush.recording` | `Recorder`, `SpikeCounter` (per-neuron spike counts, graph-safe) |
+| `neurosush.readout` | `assign_labels`, `classify`, `accuracy` (label an unsupervised layer, Diehl and Cook 2015) |
 | `neurosush.checkpoint` | `state_dict`, `load_state_dict`, `save`, `load` |
 | `neurosush.htm.sdr`, `.encoders`, `.classifier` | SDR operations and match probabilities; scalar, RDSE and category encoders; `SDRClassifier` |
 | `neurosush.htm.spatial_pooler`, `.temporal_memory` | `SpatialPooler`, `TemporalMemory` |
@@ -342,14 +354,14 @@ on any device, and SDRs and `SDRClassifier` accept tensors on any device.
 
 | model | reference | validated by the tests |
 |---|---|---|
-| SDRs | Ahmad and Hawkins (2016) | exact false-match probabilities, confirmed by Monte Carlo |
+| SDRs | Ahmad and Hawkins (2016) | exact false-match probabilities of a single SDR, confirmed by Monte Carlo; union match is the binomial approximation of Ahmad and Hawkins |
 | encoders | Numenta encoders | overlap of scalar codes is `max(0, w - distance)` |
 | spatial pooler | Cui et al. (2017) | exact update rules; learned codes stay stable under 20% input noise; boosting spreads activity |
 | temporal memory | Hawkins and Ahmad (2016) | first- and high-order sequences, branching unions, punishment of wrong predictions |
 | grid cells | Hawkins et al. (2019) | exact path integration on the torus; six-fold symmetric fields; several modules locate far beyond one scale |
 | active dendrites | Iyer et al. (2022) | gating equations; context solves two tasks that give every input opposite labels |
-| voting columns | Lewis et al. (2019) | the true object is never lost; elimination rates match closed-form expectations; more columns need fewer touches |
-| predictive coding | Rao and Ballard (1999), Bogacz (2017) | inference and learning follow the free-energy gradient; the exact Gaussian posterior; convergence to backprop (Whittington and Bogacz 2017) |
+| voting columns | Hawkins, Ahmad and Cui (2017); Lewis et al. (2019) | an exact, noise-free hypothesis-set model: the true object is never lost; elimination rates match closed-form expectations; more columns need fewer touches |
+| predictive coding | Rao and Ballard (1999), Bogacz (2017) | inference and learning follow the free-energy gradient; the exact posterior mean of a linear Gaussian model; convergence to backprop (Whittington and Bogacz 2017) |
 
 ```python
 import torch
@@ -392,8 +404,9 @@ The same sequence memory also runs as a spiking network. `ActiveSegments` gives 
 distal segments that fire a dendritic spike when enough of their synapses see input within a
 coincidence window, and hold a plateau that primes the cell below threshold.
 `MinicolumnInhibition` lets the first cells of a minicolumn to reach threshold silence the
-rest. A primed (predicted) cell therefore fires alone, and a minicolumn without one fires
-all at once (a burst). `tests/validation/test_sequence_math.py` checks that such a layer
+rest. Predicted cells therefore fire and the rest of their minicolumn is silenced (several
+predicted cells in one minicolumn all fire, as in the temporal memory), and a minicolumn
+without one fires all at once (a burst). `tests/validation/test_sequence_math.py` checks that such a layer
 activates exactly the cells `TemporalMemory` activates, element by element, under timing
 conditions it also checks.
 
@@ -402,9 +415,12 @@ towards the previous element's winners, new segments in bursting minicolumns, pu
 of wrong predictions), and `sequence_memory` builds the whole layer. It derives the
 plateau, coincidence window and learning context from the neuron's exact race times and
 refuses parameters under which the equivalence would fail. On sequences that share their
-middle it learns the same curves as `TemporalMemory` and ends in the same state
-(`tests/validation/test_sequence_learning.py`, and `experiments/sequence_learning.py` for
-the full curves).
+middle it learns like `TemporalMemory`. In `experiments/sequence_learning.py` (12
+repetitions) the burst curves are identical in repetitions 0 to 3 and 8 to 11 and differ in
+repetitions 4 to 7, because the two make different random choices. The final states agree in
+the burst count per element, not in the synapses, and both still burst on D after XBC.
+`tests/validation/test_sequence_learning.py` compares the first four and last two
+repetitions.
 
 A four-element sequence, learned in one repetition (`initial_permanence=0.51` makes new
 synapses connected at once):
@@ -456,6 +472,19 @@ for repetition in range(2):
     print(repetition, bursts)  # [6, 6, 6, 6], then [6, 0, 0, 0]: only the first element surprises
 ```
 
+## Examples
+
+Each example is a script in [`examples/`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/README.md) with its run command, measured
+numbers and deviations from the paper in the module docstring.
+
+- [`two_patterns.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/two_patterns.py): two output neurons learn two input patterns with STDP.
+- [`sequence_prediction.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/sequence_prediction.py): spatial pooler, temporal memory and classifier on high-order sequences.
+- [`object_recognition.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/object_recognition.py): voting columns recognize objects in fewer touches (Lewis et al. 2019).
+- [`diehl_cook_mnist.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/diehl_cook_mnist.py): unsupervised MNIST with STDP (Diehl and Cook 2015); a full-epoch run on a GPU is in progress.
+- [`stdp_frequency.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/stdp_frequency.py): pair versus triplet STDP across pairing frequencies (Sjostrom et al. 2001; Pfister and Gerstner 2006).
+- [`balanced_network.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/balanced_network.py): inhibitory STDP sets a firing-rate target (reduced Vogels et al. 2011).
+- [`predictive_coding_mnist.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/predictive_coding_mnist.py): predictive coding on MNIST (Whittington and Bogacz 2017).
+
 ## Validation
 
 Besides unit tests, `tests/validation` checks the spiking core against the mathematics it
@@ -468,8 +497,13 @@ expected amount. Inhibitory STDP settles the firing rate at its target, homeosta
 the spike count, Poisson spike counts are binomial with geometric intervals, and every spike
 arrives exactly `src_delay + dst_delay + 1` steps after it was fired. Conv, local, lateral and
 pooling synapses equal their dense synapse-by-synapse definition, for both currents and
-STDP; reward-modulated STDP matches the closed form of the three-factor rule and solves the
-distal reward problem of Izhikevich (2007).
+STDP; reward-modulated STDP matches the closed form of the three-factor rule. A reduced,
+open-loop version of the distal reward problem of Izhikevich (2007) passes: 10 by 10
+synapses, Bernoulli spike trains that the weights do not drive, rewards 50 to 150 steps after
+the pairing; the rewarded synapse's credit is more than 3 standard deviations above the
+others, against a control with identical spikes. `TripletSTDP` matches its closed forms,
+reduces to pair STDP when the triplet terms are zero, and shows the frequency dependence of
+Pfister and Gerstner.
 
 ## Limitations
 
@@ -482,6 +516,10 @@ distal reward problem of Izhikevich (2007).
 - **CPU-only HTM models.** The spatial pooler, temporal memory, grid cells, voting columns,
   `SegmentLearning` and `PredictiveCodingNetwork` run on the CPU, one sample at a time.
 - **Checkpoints** save a network's state but not the input streams feeding `SpikeInput`.
+- **Noise.** The spiking temporal memory is checked only with noise-free input that fires
+  on every step of the window; robustness to timing jitter or noise is not tested.
+- **Transmission takes one step.** A disynaptic pathway such as excitation, inhibition,
+  excitation takes two, unlike simulators that deliver within the step.
 - **The spiking temporal memory** equals the algorithm only under the timing conditions
   that `sequence_timing` checks; `sequence_memory` refuses other parameters.
 

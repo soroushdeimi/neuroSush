@@ -1,4 +1,9 @@
-"""Poisson and latency spike encoders."""
+"""Spike encoders: Bernoulli (rate) trains, Poisson-distributed intervals and latency codes.
+
+``rate_poisson`` draws an independent Bernoulli spike each step, the discrete-time Poisson
+process. ``interval_poisson`` draws Poisson-distributed intervals, which is not a Poisson
+process (its intervals are not geometric or exponential), and its trains are more regular.
+"""
 
 from __future__ import annotations
 
@@ -46,7 +51,13 @@ def rate_poisson(
 def interval_poisson(
     x: torch.Tensor, steps: int, *, ratio: float = 1.0, generator: torch.Generator | None = None
 ) -> torch.Tensor:
-    """Spikes whose inter-spike intervals are Poisson with mean ``1 / (x * ratio)`` steps.
+    """Spikes whose inter-spike intervals are Poisson-distributed with mean ``1 / (x * ratio)``.
+
+    This is not a Poisson process: a Poisson process has exponential (here geometric)
+    intervals with a coefficient of variation near 1, whereas here the interval variance
+    equals the mean, so the coefficient of variation is ``1 / sqrt(mean)`` and trains are
+    more regular. For Poisson spike trains use ``rate_poisson`` or
+    ``neurosush.neurons.inputs.PoissonInput``.
 
     Zero intervals are raised to one step; zero intensities never spike.
 
