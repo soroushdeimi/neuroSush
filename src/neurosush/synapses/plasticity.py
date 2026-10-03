@@ -5,7 +5,8 @@ presynaptic trace with a postsynaptic spike; depression pairs a presynaptic spik
 postsynaptic trace. Updates are per spike pair and are not scaled by ``dt``.
 
 Activity may carry leading batch dimensions; the weights are shared, so a batch contributes
-the mean of the per-sample changes.
+the mean of the per-sample changes. With ``independent=True`` the activity is ``(B, size)`` and
+so are the weights' leading dimension: every member gets its own change, with no mean.
 """
 
 from __future__ import annotations
@@ -47,11 +48,13 @@ class _STDPArgs(_SpikeArgs):
     a_minus: float
     ltp_gate: Gate
     ltd_gate: Gate
+    independent: bool
 
 
 class _ISTDPArgs(_SpikeArgs):
     lr: float
     alpha: float
+    independent: bool
 
 
 class _Geometry(TypedDict):
@@ -64,9 +67,14 @@ def _float_dtype(*values: torch.Tensor) -> torch.dtype:
     return next((v.dtype for v in values if v.is_floating_point()), torch.get_default_dtype())
 
 
-def _pairs(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
-    """Batch mean of the outer products ``a[n] x b[n]``, shape ``(len_a, len_b)``."""
+def _pairs(a: torch.Tensor, b: torch.Tensor, independent: bool = False) -> torch.Tensor:
+    """Batch mean of the outer products ``a[n] x b[n]``, shape ``(len_a, len_b)``.
+
+    With ``independent`` the products of every member are kept: shape ``(B, len_a, len_b)``.
+    """
     dtype = _float_dtype(a, b)
+    if independent:
+        return a.to(dtype).unsqueeze(-1) * b.to(dtype).unsqueeze(-2)
     if a.dim() == 1:  # one sample: a single outer product, nothing to average
         return torch.outer(a.to(dtype), b.to(dtype))
     a2 = a.to(dtype).reshape(-1, a.shape[-1])
@@ -74,8 +82,10 @@ def _pairs(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return a2.T @ b2 / a2.shape[0]
 
 
-def _batch_mean(x: torch.Tensor) -> torch.Tensor:
-    """Mean over leading batch dimensions, keeping the last one."""
+def _batch_mean(x: torch.Tensor, independent: bool = False) -> torch.Tensor:
+    """Mean over leading batch dimensions, keeping the last one (``independent``: no mean)."""
+    if independent:
+        return x
     return x.reshape(-1, x.shape[-1]).mean(0)
 
 
@@ -89,10 +99,11 @@ def stdp_dense(
     a_minus: float,
     ltp_gate: Gate = 1.0,
     ltd_gate: Gate = 1.0,
+    independent: bool = False,
 ) -> torch.Tensor:
-    """Weight change ``(n_src, n_dst)`` of all-to-all synapses."""
-    ltp = _pairs(pre_trace, post_spike)
-    ltd = _pairs(pre_spike, post_trace)
+    """Weight change ``(n_src, n_dst)`` of all-to-all synapses (``(B, ...)``: independent)."""
+    ltp = _pairs(pre_trace, post_spike, independent)
+    ltd = _pairs(pre_spike, post_trace, independent)
     return a_plus * ltp * ltp_gate - a_minus * ltd * ltd_gate
 
 
@@ -143,10 +154,11 @@ def stdp_one_to_one(
     a_minus: float,
     ltp_gate: Gate = 1.0,
     ltd_gate: Gate = 1.0,
+    independent: bool = False,
 ) -> torch.Tensor:
-    """Weight change ``(size,)`` of one-to-one synapses."""
-    ltp = _batch_mean(pre_trace * post_spike.to(pre_trace.dtype))
-    ltd = _batch_mean(pre_spike.to(post_trace.dtype) * post_trace)
+    """Weight change ``(size,)`` of one-to-one synapses (``(B, size)``: independent)."""
+    ltp = _batch_mean(pre_trace * post_spike.to(pre_trace.dtype), independent)
+    ltd = _batch_mean(pre_spike.to(post_trace.dtype) * post_trace, independent)
     return a_plus * ltp * ltp_gate - a_minus * ltd * ltd_gate
 
 
@@ -162,6 +174,7 @@ def stdp_sparse(
     dst_idx: torch.Tensor,
     ltp_gate: Gate = 1.0,
     ltd_gate: Gate = 1.0,
+    independent: bool = False,
 ) -> torch.Tensor:
     """Weight change of a connection list ``src_idx[k] -> dst_idx[k]``."""
     return stdp_one_to_one(
@@ -173,6 +186,7 @@ def stdp_sparse(
         a_minus=a_minus,
         ltp_gate=ltp_gate,
         ltd_gate=ltd_gate,
+        independent=independent,
     )
 
 
@@ -204,8 +218,11 @@ def stdp_conv2d(
     padding: Pair,
     ltp_gate: Gate = 1.0,
     ltd_gate: Gate = 1.0,
+    independent: bool = False,
 ) -> torch.Tensor:
     """Weight change ``(out, in, kh, kw)`` of a shared kernel, averaged over positions."""
+    if independent:
+        raise NotImplementedError("conv2d and local2d plasticity do not support independent=True")
     geometry = (src_shape, kernel_size, stride, padding)
     out_channels, positions = dst_shape[0], dst_shape[1] * dst_shape[2]
     weight_shape = (out_channels, src_shape[0], *kernel_size)
@@ -234,8 +251,11 @@ def stdp_local2d(
     padding: Pair,
     ltp_gate: Gate = 1.0,
     ltd_gate: Gate = 1.0,
+    independent: bool = False,
 ) -> torch.Tensor:
     """Weight change ``(out, positions, in * kh * kw)`` of unshared local kernels."""
+    if independent:
+        raise NotImplementedError("conv2d and local2d plasticity do not support independent=True")
     geometry = (src_shape, kernel_size, stride, padding)
     out_channels, positions = dst_shape[0], dst_shape[1] * dst_shape[2]
     dtype = pre_trace.dtype
@@ -256,13 +276,17 @@ def istdp_dense(
     post_trace: torch.Tensor,
     lr: float,
     alpha: float,
+    independent: bool = False,
 ) -> torch.Tensor:
     """Symmetric inhibitory STDP (Vogels et al. 2011) for all-to-all synapses.
 
     A presynaptic spike adds ``lr * (post_trace - alpha)``; a postsynaptic spike adds
     ``lr * pre_trace``.
     """
-    return lr * (_pairs(pre_spike, post_trace - alpha) + _pairs(pre_trace, post_spike))
+    return lr * (
+        _pairs(pre_spike, post_trace - alpha, independent)
+        + _pairs(pre_trace, post_spike, independent)
+    )
 
 
 def istdp_one_to_one(
@@ -273,11 +297,12 @@ def istdp_one_to_one(
     post_trace: torch.Tensor,
     lr: float,
     alpha: float,
+    independent: bool = False,
 ) -> torch.Tensor:
     """Symmetric inhibitory STDP for one-to-one synapses."""
     on_pre = pre_spike.to(post_trace.dtype) * (post_trace - alpha)
     on_post = pre_trace * post_spike.to(pre_trace.dtype)
-    return lr * _batch_mean(on_pre + on_post)
+    return lr * _batch_mean(on_pre + on_post, independent)
 
 
 class STDP(Behavior):
@@ -294,6 +319,7 @@ class STDP(Behavior):
     """
 
     order = Order.PLASTICITY
+    independent_ok = True
     supported: tuple[str, ...] = ("dense", "one_to_one", "sparse", "conv2d", "local2d")
 
     def __init__(
@@ -328,7 +354,10 @@ class STDP(Behavior):
     def compute(self, syn: SynapseGroup) -> torch.Tensor:
         """Weight change of this step."""
         assert syn.weights is not None  # Supported inputs require weights at initialization.
-        ltp_gate, ltd_gate = BOUNDS[self.bound](syn.weights, self.w_min, self.w_max)
+        ltp_gate: Gate = 1.0  # unbounded: skip two weight-sized tensors of ones
+        ltd_gate: Gate = 1.0
+        if self.bound != "none":
+            ltp_gate, ltd_gate = BOUNDS[self.bound](syn.weights, self.w_min, self.w_max)
         args: _STDPArgs = {
             "pre_spike": syn.pre_spike,
             "pre_trace": syn.pre_trace,
@@ -338,6 +367,7 @@ class STDP(Behavior):
             "a_minus": self.a_minus,
             "ltp_gate": ltp_gate,
             "ltd_gate": ltd_gate,
+            "independent": syn.net.independent,
         }
         kind = syn.connectivity
         if kind == "dense":
@@ -402,6 +432,8 @@ class RSTDP(STDP):
         **kwargs: :class:`STDP` arguments.
     """
 
+    independent_ok = False
+
     def __init__(self, *, tau_c: float, **kwargs: Unpack[_STDPOptions]) -> None:
         super().__init__(**kwargs)
         if tau_c <= 0:
@@ -448,6 +480,7 @@ class ISTDP(Behavior):
     """
 
     order = Order.PLASTICITY
+    independent_ok = True
     graph_safe = True
     supported = ("dense", "one_to_one", "sparse")
 
@@ -485,6 +518,7 @@ class ISTDP(Behavior):
             "post_trace": syn.post_trace,
             "lr": self.lr,
             "alpha": self.alpha,
+            "independent": syn.net.independent,
         }
         if syn.connectivity == "dense":
             dw = istdp_dense(**args)

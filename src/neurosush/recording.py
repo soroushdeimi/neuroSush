@@ -85,6 +85,7 @@ class SpikeCounter(Behavior):
     """
 
     order = Order.ACTIVITY_HOMEOSTASIS
+    independent_ok = True
     graph_safe = True
 
     def initialize(self, group: NeuronGroup) -> None:

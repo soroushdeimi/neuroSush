@@ -40,7 +40,34 @@ class Network:
         batch_size: Number of samples simulated in parallel. ``None`` (default) keeps state
             unbatched, shaped ``(size,)``; an int ``B`` shapes every state ``(B, size)``
             while weights and thresholds stay shared.
+        independent: With ``batch_size`` set, simulate ``batch_size`` independent copies of
+            the network instead of samples of one (default ``False``: shared weights, see
+            below). Requires ``batch_size``.
         behaviors: Behaviors attached to the network.
+
+    **Shared batch** (``independent=False``). One network sees ``B`` samples at once: states
+    are ``(B, size)``, but weights, thresholds, ``theta`` and homeostasis counters are single
+    tensors; learning rules and homeostasis use the mean over the batch.
+
+    **Independent batch** (``independent=True``). Batch member ``b`` is a complete network of
+    its own that shares nothing with the others, so ``B`` seeds, ``B`` online-learning runs
+    or ``B`` parameter settings run together at about the cost of one on a GPU. Per-member
+    tensors carry a leading batch dimension: neuron parameters and states are
+    ``(B, size)`` (``group.vector()`` returns ``(B, size)``; shared mode returns
+    ``(size,)``), dense weights ``(B, n_src, n_dst)``, one-to-one weights ``(B, n)``. Currents
+    use ``torch.bmm``; plasticity, weight clipping and normalization, ``AdaptiveThreshold``,
+    ``ActivityHomeostasis`` and k-winners-take-all act on every member separately, with no
+    averaging. Member ``b`` evolves exactly as an unbatched network would that starts from
+    the same state and sees the same inputs. Random draws (initial weights, Poisson spikes,
+    noise) come from the single network generator, so members get different values; to
+    start members identically, copy weights in after :meth:`initialize`. What is shared by
+    all members: scalar hyperparameters (time constants, learning rates, ``dt``), delays and
+    the homeostasis ``rate`` schedule. What may differ per member: initial weights
+    (``WeightInit(weights=...)`` of shape ``(B, ...)``), ``LIF(threshold=...)`` and
+    ``v_init`` of shape ``(B, size)``, and the input (rates, frames). Only behaviors that set
+    ``independent_ok = True`` are allowed (dense and one-to-one connectivity, the
+    neuron, homeostasis, trace and plasticity behaviors of the Diehl and Cook network);
+    :meth:`initialize` raises ``NotImplementedError`` listing any other.
     """
 
     # Payoff and Dopamine set the network's modulation state.
@@ -55,10 +82,13 @@ class Network:
         device: str | torch.device = "cpu",
         seed: int | None = None,
         batch_size: int | None = None,
+        independent: bool = False,
         behaviors: Iterable[Behavior] = (),
     ) -> None:
         if batch_size is not None and (isinstance(batch_size, bool) or batch_size < 1):
             raise ValueError(f"batch_size must be a positive int or None, got {batch_size!r}")
+        if independent and batch_size is None:
+            raise ValueError("independent=True needs batch_size (the number of members)")
         if dt <= 0:
             raise ValueError(f"dt must be positive, got {dt}")
         if not dtype.is_floating_point:
@@ -67,6 +97,7 @@ class Network:
         self.dtype = dtype
         self.device = torch.device(device)
         self.batch_size = batch_size
+        self.independent = bool(independent)
         self.generator = torch.Generator(device=self.device)
         if seed is None:
             self.generator.seed()
@@ -108,6 +139,19 @@ class Network:
             raise RuntimeError("network is already initialized")
         # Stable sorting preserves registration order for ties.
         self.schedule = sorted(self._registrations, key=lambda pair: pair[1].order)
+        if self.independent:
+            unsupported = sorted(
+                {
+                    f"{type(behavior).__name__} on "
+                    + ("the network" if isinstance(host, Network) else host.name)
+                    for host, behavior in self.schedule
+                    if not behavior.independent_ok
+                }
+            )
+            if unsupported:
+                raise NotImplementedError(
+                    "independent=True does not support: " + ", ".join(unsupported)
+                )
         self._preparing = [
             (host, behavior)
             for host, behavior in self.schedule
@@ -269,8 +313,18 @@ class NeuronGroup:
         return (self.size,) if batch is None else (batch, self.size)
 
     def vector(self, fill: float = 0.0, dtype: torch.dtype | None = None) -> torch.Tensor:
-        """A per-neuron parameter tensor of shape ``(size,)``, shared by every sample."""
-        return torch.full((self.size,), fill, dtype=dtype or self.net.dtype, device=self.net.device)
+        """A per-neuron parameter tensor.
+
+        Shape ``(size,)``, shared by every sample; ``(batch_size, size)`` in an independent
+        network, where every member has its own parameters.
+        """
+        net = self.net
+        shape = (
+            (self.size,)
+            if net.batch_size is None or not net.independent
+            else (net.batch_size, self.size)
+        )
+        return torch.full(shape, fill, dtype=dtype or net.dtype, device=net.device)
 
     def state(self, fill: float | bool = 0.0, dtype: torch.dtype | None = None) -> torch.Tensor:
         """A per-sample state tensor of shape :attr:`state_shape` filled with ``fill``."""

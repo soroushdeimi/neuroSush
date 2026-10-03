@@ -20,6 +20,7 @@ class DendriteStructure(Behavior):
     """
 
     order = Order.DENDRITE_STRUCTURE
+    independent_ok = True
 
     def __init__(
         self,
@@ -139,6 +140,7 @@ class DendriteIntegration(Behavior):
     """
 
     order = Order.DENDRITE_INTEGRATION
+    independent_ok = True
     graph_safe = True
 
     def __init__(
@@ -239,6 +241,7 @@ class ConductanceIntegration(Behavior):
     """
 
     order = Order.DENDRITE_INTEGRATION
+    independent_ok = True
     graph_safe = True
 
     def __init__(

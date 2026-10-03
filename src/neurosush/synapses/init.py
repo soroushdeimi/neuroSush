@@ -46,7 +46,8 @@ class WeightInit(Behavior):
 
     Args:
         mode: Sampling distribution or constant weight value.
-        weights: Explicit weights to copy instead of sampling.
+        weights: Explicit weights to copy instead of sampling. In an independent network, either
+            the geometry's shape (copied to every member) or ``(B, *shape)`` (one set per member).
         scale: Multiplier applied after sampling and transformation.
         offset: Offset added after scaling.
         fn: Optional transformation of sampled weights.
@@ -56,6 +57,7 @@ class WeightInit(Behavior):
     """
 
     order = Order.INITIALIZATION
+    independent_ok = True
     graph_safe = True
 
     def __init__(
@@ -105,14 +107,24 @@ class WeightInit(Behavior):
         """
         net = syn.net
         shape = self.shape or (syn.src.size, syn.dst.size)
+        members = net.batch_size or 1
+        if net.independent and self.sparse:
+            raise NotImplementedError(f"sparse weights ({syn.name}) need independent=False")
         if self.weights is not None:
-            if self.weights.shape != shape:
+            if net.independent and self.weights.shape == (members, *shape):
+                pass  # one set of weights per member
+            elif self.weights.shape != shape:
                 raise ValueError(
-                    f"weights shape for {syn.name!r} must be {shape}, "
-                    f"got {tuple(self.weights.shape)}"
+                    f"weights shape for {syn.name!r} must be {shape}"
+                    + (f" or {(members, *shape)}" if net.independent else "")
+                    + f", got {tuple(self.weights.shape)}"
                 )
             syn.weights = self.weights.to(dtype=net.dtype, device=net.device, copy=True)
+            if net.independent and syn.weights.shape == shape:  # same weights for every member
+                syn.weights = syn.weights.expand(members, *shape).clone()
             return
+        if net.independent:
+            shape = (members, *shape)  # every member draws its own weights
         if self.sparse:
             syn.src_idx, syn.dst_idx = sparse_random(
                 shape[0], shape[1], self.density, generator=net.generator, device=net.device
@@ -147,6 +159,7 @@ class DelayInit(Behavior):
     """
 
     order = Order.INITIALIZATION
+    independent_ok = True
     graph_safe = True
 
     def __init__(

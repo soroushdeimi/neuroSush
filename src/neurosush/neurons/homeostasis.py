@@ -25,6 +25,7 @@ class ActivityHomeostasis(Behavior):
     """
 
     order = Order.ACTIVITY_HOMEOSTASIS
+    independent_ok = True
     graph_safe = True
 
     def __init__(self, *, target_spikes: int, window: int, rate: float, decay: float = 1.0) -> None:
@@ -60,7 +61,9 @@ class ActivityHomeostasis(Behavior):
 
     def forward(self, group: NeuronGroup) -> None:
         """Count activity and adjust the threshold at the end of each window."""
-        if group.spikes.dim() == 1:  # +1 per spike, -penalty per silent step
+        if (
+            group.spikes.dim() == 1 or group.net.independent
+        ):  # +1 per spike, -penalty per silent step
             step = torch.where(group.spikes, self._spike, self._silent)
             self.activity = self.activity + step
         else:  # the threshold is shared by all samples, so a batch counts its mean activity
@@ -96,9 +99,10 @@ class AdaptiveThreshold(Behavior):
     ``theta = theta (1 - dt / tau) + increment * spikes`` and
     ``threshold = base + theta``, where ``base`` is the model's threshold at
     initialization. A neuron that fires a lot becomes harder to fire, which spreads activity
-    over a competing population. In a batch the threshold is shared, so ``theta`` rises by
-    the batch mean of the spikes. Set ``enabled = False`` to freeze ``theta`` (for
-    example when testing a trained network). State on the group: ``theta`` and
+    over a competing population. In a shared batch the threshold is shared, so ``theta`` rises
+    by the batch mean of the spikes; in an independent batch every member has its own
+    ``theta`` of shape ``(B, size)`` and rises with its own spikes. Set ``enabled = False`` to
+    freeze ``theta`` (for example when testing a trained network). State on the group: ``theta`` and
     ``base_threshold``.
 
     Args:
@@ -107,6 +111,7 @@ class AdaptiveThreshold(Behavior):
     """
 
     order = Order.ACTIVITY_HOMEOSTASIS
+    independent_ok = True
     graph_safe = True
 
     def __init__(self, *, increment: float, tau: float | None = None) -> None:
@@ -129,7 +134,7 @@ class AdaptiveThreshold(Behavior):
     def forward(self, group: NeuronGroup) -> None:
         """Relax ``theta``, add this step's spikes and set the threshold."""
         spikes = group.spikes.to(group.theta.dtype)
-        if spikes.dim() > 1:
+        if spikes.dim() > 1 and not group.net.independent:
             spikes = spikes.reshape(-1, group.size).mean(0)
         theta = group.theta
         if self.tau is not None:

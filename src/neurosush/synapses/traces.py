@@ -25,6 +25,7 @@ class SpikeGather(Behavior):
     """
 
     order = Order.SPIKE_GATHER
+    independent_ok = True
 
     def initialize(self, syn: SynapseGroup) -> None:
         """Check for the source axon and read the initial spikes."""
@@ -62,6 +63,7 @@ class Traces(Behavior):
     """
 
     order = Order.TRACE
+    independent_ok = True
     graph_safe = True
 
     def __init__(

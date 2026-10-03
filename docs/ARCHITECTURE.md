@@ -105,6 +105,26 @@ Synaptic input at step t uses spikes gathered at step t-1 (one step of transmiss
   `(size,)`, or `(batch_size, size)` with `Network(batch_size=...)`. Parameters (`weights`,
   `threshold`) are shared by the batch; learning rules and activity homeostasis use the batch
   mean, so rates do not depend on the batch size.
+- **Independent batches.** `Network(batch_size=B, independent=True)` makes the `B` batch
+  members `B` separate networks that run in one set of kernels. Per-member tensors get a
+  leading `B`: neuron parameters and state `(B, size)` (`group.vector()` returns
+  `(B, size)` instead of `(size,)`), dense weights `(B, n_src, n_dst)`, one-to-one weights
+  `(B, n)`. Dense currents are `torch.bmm`; STDP, `TripletSTDP`, `ISTDP`, `WeightClip`,
+  `WeightNormalization`, `CurrentNormalization`, `AdaptiveThreshold`, `ActivityHomeostasis`
+  and `KWTA` act on each member with no mean over the batch, so member `b` evolves exactly as
+  an unbatched network with the same weights and inputs (checked to 1e-12 in float64 by
+  `tests/core/test_independent.py`). Initial weights, Poisson spikes and noise are drawn from
+  the one network generator, so members differ; `WeightInit(weights=...)` accepts `(B, ...)`
+  weights and `LIF(threshold=...)` a `(B, size)` threshold for per-member values. Scalar
+  hyperparameters (time constants, learning rates, `dt`), delays and the
+  `ActivityHomeostasis` rate schedule are shared by all members. A behavior opts in with
+  `independent_ok = True`; `Network.initialize` raises `NotImplementedError` naming every other
+  behavior, so sparse, conv2d, local2d, lateral and pooling connectivity, `RSTDP`,
+  `ActiveSegments`, `SegmentLearning`, `VoltageHomeostasis`, `MinicolumnInhibition`, modulation
+  and `Recorder` are refused rather than computed wrongly. `GraphStepper`, checkpoints and
+  `reset_state` work unchanged (a checkpoint needs the same `B`). Dense learning touches the
+  whole weight tensor each step, so cost grows with `B` once the GPU is memory-bound:
+  `benchmarks/independent.py`.
 
 ## Performance
 
@@ -119,6 +139,9 @@ Synaptic input at step t uses spikes gathered at step t-1 (one step of transmiss
   Laptop GPU (Linux, torch 2.14) at 1,746 steps/s eager and unbatched, 1,310 steps/s
   (335,301 sample-steps/s) at batch 256 and 3,887 steps/s with a CUDA graph. See
   [BENCHMARKS.md](BENCHMARKS.md).
+- Independent networks in one batch (`independent=True`) fill the GPU the same way:
+  `benchmarks/independent.py` (Diehl and Cook, 100 neurons, CUDA graph, RTX 3060 Laptop GPU)
+  measured 6,029 steps/s for one network and 27,720 member-steps/s with 16 members.
 - Time constants and `dt` share one unit (ms by convention). Every decay uses `dt / tau`.
 - Inhibitory source groups (`NeuronGroup(..., inhibitory=True)`) make currents negative.
 

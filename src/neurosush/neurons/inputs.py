@@ -22,6 +22,7 @@ class SpikeInput(Behavior):
     """
 
     order = Order.FIRE
+    independent_ok = True
     graph_safe = True
 
     def __init__(self, frames: Iterable[torch.Tensor | tuple[torch.Tensor, Any]]) -> None:
@@ -82,6 +83,7 @@ class PoissonInput(Behavior):
     """
 
     order = Order.FIRE
+    independent_ok = True
     graph_safe = True
 
     def __init__(self, rates: float | torch.Tensor = 0.0) -> None:

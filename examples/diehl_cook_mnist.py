@@ -35,6 +35,15 @@ The quick check runs on CPU at about 2 samples/s; accuracy is low for the first 
 training samples, so it only shows that the code runs. Full-epoch results on an RTX 3090
 will be reported. Use ``--checkpoint file.pt``
 (and ``--resume``) to survive interruptions and ``--out results.json`` to keep the results.
+
+``--members B`` (B >= 2) trains B independent copies of the network at once, in one batch of an
+``independent=True`` network: every member has its own random initial weights, Poisson input,
+weights and thetas, and learns online exactly as the single network does (the same sample
+sequence is shown to all members, and a member that needed a repeat does not move the others'
+weights). Members differ by their random draws (all taken from the ``--seed`` generator). On a
+GPU this costs little more than one network. Evaluation is done per member, and the JSON holds
+``accuracies`` (one per member), ``accuracy`` (their mean) and ``accuracy_std``. The default
+``--members 1`` is the plain single network.
 """
 
 from __future__ import annotations
@@ -99,16 +108,26 @@ def build_network(
     graph: bool = False,
     seed: int = 0,
     rule: str = "pair",
+    members: int | None = None,
 ) -> Model:
     """Build the Diehl and Cook network; ``learn=False`` leaves out plasticity and theta.
 
     ``rule`` is ``"pair"`` (traces and pair STDP, the default) or ``"triplet"`` (the rule of
-    the paper's code: nearest-spike triplet STDP, see the module docstring).
+    the paper's code: nearest-spike triplet STDP, see the module docstring). ``members`` builds
+    that many independent copies in one batch (states ``(members, size)``, weights
+    ``(members, 784, N)``); it cannot be combined with ``batch``.
     """
     if rule not in RULES:
         raise ValueError(f"rule must be one of {RULES}, got {rule!r}")
+    if members is not None and batch is not None:
+        raise ValueError("members and batch cannot be combined")
     n = neurons
-    net = Network(device=device, seed=seed, batch_size=batch)
+    net = Network(
+        device=device,
+        seed=seed,
+        batch_size=members if members is not None else batch,
+        independent=members is not None,
+    )
     inp = NeuronGroup(net, 784, [PoissonInput(), Axon()], name="input")
     exc_behaviors: list[Behavior] = [
         ConductanceIntegration(e_exc=0.0, e_inh=-100.0, tau_exc=1.0, tau_inh=2.0),
@@ -183,7 +202,7 @@ def build_network(
 def normalize_weights(model: Model) -> None:
     """Scale every excitatory neuron's input weights to sum to 78, in place."""
     w = model.syn.weights
-    w.mul_(WEIGHT_SUM / w.sum(0, keepdim=True).clamp(min=1e-12))
+    w.mul_(WEIGHT_SUM / w.sum(-2, keepdim=True).clamp(min=1e-12))
 
 
 def relax_theta(model: Model, steps: int) -> None:
@@ -205,13 +224,17 @@ def present(
 ) -> tuple[torch.Tensor, dict[str, int]]:
     """Show images until each makes the excitatory layer fire ``min_spikes`` spikes.
 
-    ``images`` is ``(784,)`` uint8 (unbatched network) or ``(batch, 784)``. A sample with too
+    ``images`` is ``(784,)`` uint8 (unbatched network; with independent members every member
+    sees it) or ``(batch, 784)``. A sample with too
     few spikes is shown again with the intensity raised by one, up to ``max_intensity``;
-    each sample keeps the counts of its last presentation. Returns the spike counts (shape
-    of ``exc.spike_count``) and ``{"repeats": samples shown again, "sim_steps": steps run}``,
-    with a batch counted as one run per step. With ``rest`` > 0 (training) every presentation,
-    re-presentations included, is followed by ``rest`` steps of rest, of which only the
-    relaxation of theta is applied (see :func:`relax_theta`).
+    each sample keeps the counts of its last presentation. With independent members, the
+    weights and thetas of a member whose sample was already good are restored after a repeat
+    that other members needed, so each member learns as if it were alone. Returns the spike
+    counts (shape of ``exc.spike_count``) and
+    ``{"repeats": samples shown again, "sim_steps": steps run}``, with a batch counted as one
+    run per step. With ``rest`` > 0 (training) every presentation, re-presentations included,
+    is followed by ``rest`` steps of rest, of which only the relaxation of theta is applied
+    (see :func:`relax_theta`).
     """
     net = model.net
     rates = images.to(net.device, net.dtype) / 255.0 * MAX_RATE / 1000.0  # spikes per ms
@@ -219,12 +242,20 @@ def present(
     pending = torch.zeros((), dtype=torch.bool, device=net.device)
     repeats = sim_steps = 0
     while True:
+        saved = None
+        if result is not None and model.learn and net.independent:
+            saved = (model.syn.weights.clone(), model.exc.theta.clone())
         net.reset_state()
         model.input.rates.copy_(rates * intensity / 2.0)
         model.stepper.run(steps)
         sim_steps += steps
         if rest and model.learn:
             relax_theta(model, rest)
+        if saved is not None:  # members that did not need this repeat keep what they had
+            done = ~pending
+            model.syn.weights.copy_(torch.where(done[:, None, None], saved[0], model.syn.weights))
+            model.exc.theta.copy_(torch.where(done[:, None], saved[1], model.exc.theta))
+            model.exc.threshold.copy_(model.exc.base_threshold + model.exc.theta)
         counts = model.exc.spike_count.clone()
         if result is None:
             result = counts
@@ -287,7 +318,7 @@ def train(
         print(f"resumed from {ckpt} at sample {start}", flush=True)
     t0 = time.perf_counter() - stats["seconds"]
     t_log, steps_log, done_log = time.perf_counter(), stats["sim_steps"], start
-    accuracies: list[float] = []
+    accuracies: list[float] = []  # one list per log point with independent members
     for i in range(start, total):
         normalize_weights(model)
         counts, info = present(model, images[i % len(images)], steps, rest=rest)
@@ -307,13 +338,23 @@ def train(
             )
             if len(recent) > log_every:
                 labelled, latest = recent[:-log_every], recent[-log_every:]
-                assignment = assign_labels(
-                    torch.stack([c for c, _ in labelled]), torch.tensor([y for _, y in labelled])
-                )
-                predicted = classify(torch.stack([c for c, _ in latest]), assignment)
+                old = torch.stack([c for c, _ in labelled])
+                new = torch.stack([c for c, _ in latest])
                 truth = torch.tensor([y for _, y in latest])
-                accuracies.append(accuracy(predicted, truth))
-                line += f", running accuracy {accuracies[-1]:.3f}"
+                targets = torch.tensor([y for _, y in labelled])
+                if model.net.independent:  # counts are (samples, members, N)
+                    per_member = [
+                        accuracy(
+                            classify(new[:, b], assign_labels(old[:, b], targets)),
+                            truth,
+                        )
+                        for b in range(old.shape[1])
+                    ]
+                    accuracies.append(per_member)  # type: ignore[arg-type]
+                    line += f", running accuracy {sum(per_member) / len(per_member):.3f} (mean)"
+                else:
+                    accuracies.append(accuracy(classify(new, assign_labels(old, targets)), truth))
+                    line += f", running accuracy {accuracies[-1]:.3f}"
             print(line, flush=True)
             t_log, steps_log, done_log = now, stats["sim_steps"], done
         if ckpt is not None and (done % checkpoint_every == 0 or done == total):
@@ -379,10 +420,77 @@ def evaluate(
     graph: bool = False,
     seed: int = 0,
 ) -> dict[str, Any]:
-    """Assign neurons to digits on ``label_images``, then classify ``test_images``."""
-    weights, theta = model.syn.weights.detach().clone(), model.exc.theta.detach().clone()
+    """Assign neurons to digits on ``label_images``, then classify ``test_images``.
+
+    With independent members every member is evaluated on its own (its weights and thetas in
+    a frozen shared-batch network); ``accuracy`` is then the mean over members, with
+    ``accuracies``, ``accuracy_std`` and one entry per member in ``member_results``.
+    """
+    if model.net.independent:
+        parts = [
+            _evaluate_one(
+                model.syn.weights[b].detach().clone(),
+                model.exc.theta[b].detach().clone(),
+                model.net.device,
+                label_images,
+                label_targets,
+                test_images,
+                test_targets,
+                batch=batch,
+                steps=steps,
+                graph=graph,
+                seed=seed,
+            )
+            for b in range(model.net.batch_size or 1)
+        ]
+        accuracies = torch.tensor([part["accuracy"] for part in parts])
+        seconds = sum(part["evaluation_seconds"] for part in parts)
+        return {
+            "accuracy": float(accuracies.mean()),
+            "accuracy_std": float(accuracies.std(unbiased=False)),
+            "accuracies": accuracies.tolist(),
+            "assignment_histogram": [part["assignment_histogram"] for part in parts],
+            "evaluation_seconds": seconds,
+            "evaluation_sample_steps_per_second": sum(
+                part["evaluation_sample_steps"] for part in parts
+            )
+            / seconds,
+            "evaluation_repeats": sum(part["evaluation_repeats"] for part in parts),
+        }
+    result = _evaluate_one(
+        model.syn.weights.detach().clone(),
+        model.exc.theta.detach().clone(),
+        model.net.device,
+        label_images,
+        label_targets,
+        test_images,
+        test_targets,
+        batch=batch,
+        steps=steps,
+        graph=graph,
+        seed=seed,
+    )
+    del result["evaluation_sample_steps"]
+    return result
+
+
+def _evaluate_one(
+    weights: torch.Tensor,
+    theta: torch.Tensor,
+    device: torch.device,
+    label_images: torch.Tensor,
+    label_targets: torch.Tensor,
+    test_images: torch.Tensor,
+    test_targets: torch.Tensor,
+    *,
+    batch: int,
+    steps: int,
+    graph: bool,
+    seed: int,
+) -> dict[str, Any]:
+    """Evaluate one set of weights and thetas; also reports the sample steps it simulated."""
     kwargs: dict[str, Any] = {
-        "device": model.net.device,
+        "device": device,
         "batch": batch,
         "steps": steps,
         "graph": graph,
@@ -401,6 +509,7 @@ def evaluate(
         "evaluation_seconds": seconds,
         "evaluation_sample_steps_per_second": sample_steps / seconds,
         "evaluation_repeats": info1["repeats"] + info2["repeats"],
+        "evaluation_sample_steps": sample_steps,
     }
 
 
@@ -427,6 +536,12 @@ def main() -> None:
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     p.add_argument("--no-graph", action="store_true", help="do not use CUDA graphs")
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument(
+        "--members",
+        type=int,
+        default=1,
+        help="train this many independent networks at once (different random draws)",
+    )
     p.add_argument("--rest", type=int, default=REST, help="ms of rest after each training sample")
     p.add_argument("--rule", choices=RULES, default="pair", help="synaptic learning rule")
     p.add_argument("--data", default="data/MNIST/raw", help="folder of MNIST IDX files")
@@ -442,7 +557,16 @@ def main() -> None:
     xtr, ytr, xte, yte = load_mnist(args.data, download=True)
     xtr, xte = xtr.reshape(len(xtr), -1), xte.reshape(len(xte), -1)
     torch.manual_seed(args.seed)
-    model = build_network(args.neurons, device, graph=graph, seed=args.seed, rule=args.rule)
+    if args.members < 1:
+        p.error("--members must be at least 1")
+    model = build_network(
+        args.neurons,
+        device,
+        graph=graph,
+        seed=args.seed,
+        rule=args.rule,
+        members=args.members if args.members > 1 else None,
+    )
     stats = train(
         model,
         xtr,
@@ -481,7 +605,18 @@ def main() -> None:
         parameters={**vars(args), "graph": graph},
         machine=machine_info(device),
     )
-    print(f"accuracy {result['accuracy']:.4f} on {n_test} test images")
+    if args.members > 1:
+        result.update(
+            members=args.members,
+            training_member_samples_per_second=args.members * stats["samples"] / stats["seconds"],
+        )
+        print(
+            f"accuracy {result['accuracy']:.4f} +- {result['accuracy_std']:.4f} "
+            f"(mean +- std of {args.members} members) on {n_test} test images; "
+            f"per member {[round(a, 4) for a in result['accuracies']]}"
+        )
+    else:
+        print(f"accuracy {result['accuracy']:.4f} on {n_test} test images")
     print(
         f"training {stats['seconds']:.0f}s, evaluation {result['evaluation_seconds']:.0f}s",
         flush=True,

@@ -10,11 +10,14 @@ from neurosush.core.order import Order
 
 
 def incoming_weight_sum(syn: SynapseGroup) -> torch.Tensor:
-    """Sum of the weights reaching each destination neuron, shape ``(dst.size,)``."""
+    """Sum of the weights reaching each destination neuron, shape ``(dst.size,)``.
+
+    ``(B, dst.size)`` in an independent network (dense and one-to-one only).
+    """
     w, kind = syn.weights, getattr(syn, "connectivity", None)
     assert w is not None  # Weight normalization requires initialized weights.
     if kind == "dense":
-        return w.sum(0)
+        return w.sum(-2)  # (n_src, n_dst) or, independent, (B, n_src, n_dst)
     if kind == "one_to_one":
         return w.clone()
     if kind == "sparse":
@@ -33,7 +36,7 @@ def _scale_weights(syn: SynapseGroup, factor: torch.Tensor) -> torch.Tensor:
     w, kind = syn.weights, syn.connectivity
     assert w is not None  # Weight normalization requires initialized weights.
     if kind == "dense":
-        return w * factor.unsqueeze(0)
+        return w * factor.unsqueeze(-2)
     if kind == "one_to_one":
         return w * factor
     if kind == "sparse":
@@ -62,6 +65,7 @@ class WeightClip(Behavior):
     """
 
     order = Order.WEIGHT_CLIP
+    independent_ok = True
     graph_safe = True
 
     def __init__(self, *, w_min: float = 0.0, w_max: float = 1.0) -> None:
@@ -85,6 +89,7 @@ class WeightNormalization(Behavior):
     """
 
     order = Order.WEIGHT_NORMALIZATION
+    independent_ok = True
     graph_safe = True
 
     def __init__(self, *, norm: float = 1.0) -> None:
@@ -107,6 +112,7 @@ class CurrentNormalization(Behavior):
     """
 
     order = Order.CURRENT_NORMALIZATION
+    independent_ok = True
     graph_safe = True
 
     def __init__(self, *, norm: float = 1.0) -> None:

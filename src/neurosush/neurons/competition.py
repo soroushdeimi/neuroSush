@@ -62,6 +62,7 @@ class KWTA(Behavior):
     """
 
     order = Order.COMPETITION
+    independent_ok = True
     graph_safe = True
 
     def __init__(self, k: int, *, dim: int | None = None) -> None:
@@ -189,6 +190,7 @@ class InherentNoise(Behavior):
     """
 
     order = Order.NOISE
+    independent_ok = True
 
     def __init__(
         self, *, scale: float = 1.0, offset: float = 0.0, distribution: str = "uniform"

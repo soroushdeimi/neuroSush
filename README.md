@@ -150,7 +150,10 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
   step costs about the same up to batch 32 and is 4.7 times slower at batch 2048
   ([Benchmarks](https://github.com/soroushdeimi/neuroSush/blob/main/docs/BENCHMARKS.md)).
   Learning from the batch mean is a different algorithm from presenting the samples one
-  after another.
+  after another. `Network(batch_size=B, independent=True)` instead makes the `B` members `B`
+  independent networks, each with its own weights, thresholds and learning (no averaging), so
+  several seeds or online-learning runs share one GPU; dense and one-to-one connectivity and the
+  behaviors of the Diehl and Cook example are supported, anything else raises.
 
 More in [docs/ARCHITECTURE.md](https://github.com/soroushdeimi/neuroSush/blob/main/docs/ARCHITECTURE.md).
 

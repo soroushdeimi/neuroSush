@@ -19,6 +19,10 @@ class Behavior:
     order: ClassVar[int]
     enabled: bool = True
     graph_safe: ClassVar[bool] = False  # True when forward() is unconditionally graph-ready
+    # True when the behavior computes every batch member on its own state in a network created
+    # with ``independent=True`` (no mean over the batch, per-member weights); anything else
+    # makes such a network refuse to initialize.
+    independent_ok: ClassVar[bool] = False
 
     def initialize(self, host: Any) -> None:
         """Allocate state on ``host``; called once, in schedule order."""

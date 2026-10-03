@@ -18,6 +18,7 @@ class Axon(Behavior):
     """
 
     order = Order.AXON
+    independent_ok = True
 
     def __init__(self, *, max_delay: int = 1) -> None:
         if max_delay < 1:

@@ -58,6 +58,7 @@ class LIF(Behavior):
     """
 
     order = Order.NEURON_DYNAMICS
+    independent_ok = True
     graph_safe = True
 
     def __init__(
@@ -90,7 +91,15 @@ class LIF(Behavior):
         group.resistance = self.resistance
         group.v_rest = self.v_rest
         group.v_reset = self.v_reset
-        if isinstance(self.threshold, torch.Tensor):
+        if isinstance(self.threshold, torch.Tensor) and group.net.independent:
+            threshold = self.threshold.to(dtype=group.net.dtype, device=group.net.device)
+            if threshold.shape not in ((group.size,), group.state_shape):
+                raise ValueError(
+                    f"threshold must have shape ({group.size},) or {group.state_shape}, "
+                    f"got {tuple(threshold.shape)}"
+                )
+            group.threshold = threshold.expand(group.state_shape).clone()
+        elif isinstance(self.threshold, torch.Tensor):
             group.threshold = self.threshold.to(group.net.dtype).to(group.net.device)
         else:
             group.threshold = group.vector(self.threshold)
@@ -250,6 +259,7 @@ class Fire(Behavior):
     """Calls the group's neuron model to emit spikes (after noise and competition)."""
 
     order = Order.FIRE
+    independent_ok = True
     graph_safe = True
 
     def initialize(self, group: NeuronGroup) -> None:
@@ -275,6 +285,7 @@ class Refractory(Behavior):
     """
 
     order = Order.REFRACTORY
+    independent_ok = True
     graph_safe = True
 
     def __init__(self, period: float) -> None:

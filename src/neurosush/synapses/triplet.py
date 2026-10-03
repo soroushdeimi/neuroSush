@@ -53,11 +53,17 @@ def triplet_dense(
     a3_minus: float,
     ltp_gate: Gate = 1.0,
     ltd_gate: Gate = 1.0,
+    independent: bool = False,
 ) -> torch.Tensor:
-    """Weight change ``(n_src, n_dst)`` of all-to-all synapses (batch mean of the samples)."""
+    """Weight change ``(n_src, n_dst)`` of all-to-all synapses (batch mean of the samples).
+
+    With ``independent`` every member keeps its own change, shape ``(B, n_src, n_dst)``.
+    """
     post_gain = post_spike.to(r1.dtype) * (a2_plus + a3_plus * o2_before)
     pre_gain = pre_spike.to(o1.dtype) * (a2_minus + a3_minus * r2_before)
-    return _pairs(r1, post_gain) * ltp_gate - _pairs(pre_gain, o1) * ltd_gate
+    ltp = _pairs(r1, post_gain, independent)
+    ltd = _pairs(pre_gain, o1, independent)
+    return ltp * ltp_gate - ltd * ltd_gate
 
 
 def triplet_one_to_one(
@@ -74,11 +80,14 @@ def triplet_one_to_one(
     a3_minus: float,
     ltp_gate: Gate = 1.0,
     ltd_gate: Gate = 1.0,
+    independent: bool = False,
 ) -> torch.Tensor:
-    """Weight change ``(size,)`` of one-to-one synapses."""
+    """Weight change ``(size,)`` of one-to-one synapses (``(B, size)``: independent)."""
     post_gain = post_spike.to(r1.dtype) * (a2_plus + a3_plus * o2_before)
     pre_gain = pre_spike.to(o1.dtype) * (a2_minus + a3_minus * r2_before)
-    return _batch_mean(r1 * post_gain) * ltp_gate - _batch_mean(pre_gain * o1) * ltd_gate
+    ltp = _batch_mean(r1 * post_gain, independent)
+    ltd = _batch_mean(pre_gain * o1, independent)
+    return ltp * ltp_gate - ltd * ltd_gate
 
 
 class TripletSTDP(Behavior):
@@ -108,7 +117,8 @@ class TripletSTDP(Behavior):
 
     Supports dense and one-to-one synapses; needs ``SpikeGather`` and an Axon on the
     destination. Activity may be batched: the weight change is the batch mean of the
-    per-sample changes (traces are per sample). Weight-dependent gates from ``bound`` scale
+    per-sample changes (traces are per sample); in an independent network every member keeps
+    its own change. Weight-dependent gates from ``bound`` scale
     the potentiation and depression parts.
 
     Args:
@@ -127,6 +137,7 @@ class TripletSTDP(Behavior):
     """
 
     order = Order.PLASTICITY
+    independent_ok = True
     graph_safe = True
     supported: tuple[str, ...] = ("dense", "one_to_one")
 
@@ -215,7 +226,10 @@ class TripletSTDP(Behavior):
         )
         self.r2 = trace_increment(r2_before, pre, interaction=self.interaction)
         self.o2 = trace_increment(o2_before, post, interaction=self.interaction)
-        ltp_gate, ltd_gate = BOUNDS[self.bound](syn.weights, self.w_min, self.w_max)
+        ltp_gate: Gate = 1.0  # unbounded: skip two weight-sized tensors of ones
+        ltd_gate: Gate = 1.0
+        if self.bound != "none":
+            ltp_gate, ltd_gate = BOUNDS[self.bound](syn.weights, self.w_min, self.w_max)
         kernel = triplet_dense if syn.connectivity == "dense" else triplet_one_to_one
         return kernel(
             pre_spike=pre,
@@ -230,6 +244,7 @@ class TripletSTDP(Behavior):
             a3_minus=self.a3_minus,
             ltp_gate=ltp_gate,
             ltd_gate=ltd_gate,
+            independent=syn.net.independent,
         )
 
     def forward(self, syn: SynapseGroup) -> None:

@@ -30,13 +30,18 @@ def conv_output_size(size: int, *, kernel: int, stride: int, padding: int) -> in
     return (size + 2 * padding - kernel) // stride + 1
 
 
-def dense_current(spikes: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
+def dense_current(
+    spikes: torch.Tensor, weights: torch.Tensor, *, independent: bool = False
+) -> torch.Tensor:
     """Sum the weights of spiking sources for each destination.
 
     Args:
-        spikes: Flat source spike vector.
-        weights: Weights shaped (n_src, n_dst).
+        spikes: Flat source spike vector, ``(B, n_src)`` when independent.
+        weights: Weights shaped (n_src, n_dst), ``(B, n_src, n_dst)`` when independent.
+        independent: Multiply every member's spikes with its own weights (``torch.bmm``).
     """
+    if independent:
+        return torch.bmm(spikes.to(weights.dtype).unsqueeze(1), weights).squeeze(1)
     return spikes.to(weights.dtype) @ weights
 
 
@@ -164,6 +169,8 @@ def _pair(value: int | tuple[int, int], name: str, minimum: int) -> tuple[int, i
 
 def _check_shape(syn: SynapseGroup, expected: tuple[int, ...]) -> None:
     assert syn.weights is not None  # Weighted inputs are checked before validate().
+    if syn.net.independent:
+        expected = (syn.net.batch_size or 1, *expected)
     if syn.weights.shape != expected:
         raise ValueError(
             f"weights of {syn.name} must have shape {expected}, got {tuple(syn.weights.shape)}"
@@ -253,6 +260,7 @@ class DenseInput(_SynapticInput):
     """
 
     connectivity = "dense"
+    independent_ok = True
 
     def validate(self, syn: SynapseGroup) -> None:
         """Require one weight for every source and destination pair.
@@ -269,7 +277,7 @@ class DenseInput(_SynapticInput):
             syn: Synapse group providing spikes and weights.
         """
         assert syn.weights is not None  # initialize() requires weights.
-        return dense_current(syn.pre_spike, syn.weights)
+        return dense_current(syn.pre_spike, syn.weights, independent=syn.net.independent)
 
 
 class OneToOneInput(_SynapticInput):
@@ -280,6 +288,7 @@ class OneToOneInput(_SynapticInput):
     """
 
     connectivity = "one_to_one"
+    independent_ok = True
 
     def validate(self, syn: SynapseGroup) -> None:
         """Require equal group sizes and a vector of paired weights.

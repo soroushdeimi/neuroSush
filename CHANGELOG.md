@@ -6,6 +6,13 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- `Network(batch_size=B, independent=True)`: the `B` batch members are `B` independent
+  networks with their own weights, thresholds, `theta`, homeostasis and learning, with no
+  averaging over the batch (dense `(B, n_src, n_dst)` and one-to-one `(B, n)` weights,
+  `group.vector()` returns `(B, size)`). Supports the behaviors of the Diehl and Cook network;
+  `Network.initialize` raises `NotImplementedError` for the others (a behavior opts in with
+  `independent_ok = True`). `diehl_cook_mnist.py --members B` trains `B` networks at once and
+  reports per-member and mean accuracy; `benchmarks/independent.py` measures throughput.
 - Examples `stdp_frequency.py` (pair versus triplet STDP across pairing frequencies),
   `balanced_network.py` (inhibitory STDP, reduced Vogels et al. 2011),
   `predictive_coding_mnist.py` (predictive coding on MNIST) and `diehl_cook_mnist.py`
