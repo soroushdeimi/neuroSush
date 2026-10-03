@@ -5,6 +5,8 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-03
+
 ### Added
 - `Izhikevich` (`neurosush.neurons.models`, Izhikevich 2003): two-variable neuron with
   per-neuron `a`, `b`, `c`, `d` and `substeps` Euler sub-steps of `v`; the spike test and reset
