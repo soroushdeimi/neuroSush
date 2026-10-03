@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import Any
 
 import torch
+from torch.torch_version import TorchVersion
 
 from neurosush.core.behavior import Behavior
 from neurosush.core.graph import (
@@ -33,6 +34,14 @@ from neurosush.core.graph import (
 )
 from neurosush.core.network import Network
 from neurosush.core.order import Order
+
+MIN_TORCH_VERSION = "2.3"
+"""The oldest torch whose dynamo traces the compiled step (2.2 and older cannot)."""
+
+
+def torch_supports_compile() -> bool:
+    """Whether the installed torch is at least :data:`MIN_TORCH_VERSION`."""
+    return bool(TorchVersion(torch.__version__) >= MIN_TORCH_VERSION)
 
 
 class CompiledStepper:
@@ -48,7 +57,11 @@ class CompiledStepper:
     first assigns later (a lazily created attribute) is not written back, and the stepper raises
     ``RuntimeError`` during the first, uncaptured step of a key if it sees one.
 
+    Needs torch 2.3 or newer (:data:`MIN_TORCH_VERSION`): dynamo in 2.2 and older cannot trace
+    the step.
+
     Raises:
+        RuntimeError: If the installed torch is older than 2.3.
         ValueError: If a behavior that would be compiled (``order < Order.RECORD``) is not
             :meth:`~neurosush.core.behavior.Behavior.compile_ready`.
     """
@@ -61,6 +74,11 @@ class CompiledStepper:
         cuda_graph: bool = True,
         mode: str | None = None,
     ) -> None:
+        if not torch_supports_compile():
+            raise RuntimeError(
+                f"CompiledStepper needs torch >= {MIN_TORCH_VERSION} (found {torch.__version__}): "
+                "older dynamo cannot trace the compiled step; use GraphStepper or Network.run"
+            )
         if not net.initialized:
             net.initialize()
         self.net = net

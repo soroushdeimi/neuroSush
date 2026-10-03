@@ -161,6 +161,7 @@ class TestIzhikevich:
         assert torch.isfinite(group.v).all()
 
 
+@pytest.mark.needs_compile
 @pytest.mark.skipif(shutil.which("g++") is None, reason="torch.compile on the CPU needs g++")
 def test_compiled_stepper_matches_eager_with_the_new_behaviors():
     def build():

@@ -65,7 +65,10 @@ class _Geometry(TypedDict):
 
 def _float_dtype(*values: torch.Tensor) -> torch.dtype:
     """The dtype of the first floating point tensor (a trace): the network's precision."""
-    return next((v.dtype for v in values if v.is_floating_point()), torch.get_default_dtype())
+    for value in values:  # a plain loop: older dynamo cannot trace next(generator, default)
+        if value.is_floating_point():
+            return value.dtype
+    return torch.get_default_dtype()
 
 
 def _pairs(a: torch.Tensor, b: torch.Tensor, independent: bool = False) -> torch.Tensor:

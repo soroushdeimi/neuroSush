@@ -37,7 +37,7 @@ All notable changes to neuroSush are documented here, following the
   and pairing, fixed in-degree, `delta_coef` and `PoissonDrive`.
 - `CompiledStepper` (`neurosush.core.compiled`): opt-in, same `step()` and `run(steps)` as
   `GraphStepper`; compiles the whole step with `torch.compile` and, on CUDA, replays it as a CUDA
-  graph per key. CPU and CUDA, shared batch and `independent=True`. Equal to eager to a
+  graph per key. Needs torch >= 2.3 (`RuntimeError` on older versions). CPU and CUDA, shared batch and `independent=True`. Equal to eager to a
   tolerance, not bit for bit (`GraphStepper` stays exact). New hooks `Behavior.compile_ready`
   and `Behavior.draw` (random numbers drawn eagerly in the eager order; `PoissonInput` and
   `InherentNoise` use them); a depth-1 `HistoryBuffer` read no longer inspects its delays.

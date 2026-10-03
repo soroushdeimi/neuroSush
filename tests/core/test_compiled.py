@@ -23,6 +23,8 @@ from neurosush.synapses.traces import SpikeGather
 
 from .test_graph import build as build_kwta
 
+pytestmark = pytest.mark.needs_compile
+
 EXAMPLE = Path(__file__).resolve().parents[2] / "examples" / "diehl_cook_mnist.py"
 CUDA = pytest.param("cuda", marks=[pytest.mark.gpu])
 DEVICES = ["cpu", CUDA]

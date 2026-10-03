@@ -267,7 +267,8 @@ method and the pitfalls.
 A graph still launches one kernel per tensor operation (154 per step for the Diehl and Cook
 network). `CompiledStepper` (`neurosush.core.compiled`) is an opt-in alternative: it compiles
 the whole step with `torch.compile` into a few fused kernels and, on CUDA, replays that as a
-CUDA graph per key. It has the same `step()` and `run(steps)`, works on CPU and CUDA and in
+CUDA graph per key. It needs torch 2.3 or newer (it raises `RuntimeError` on older
+versions; `GraphStepper` works from 2.1). It has the same `step()` and `run(steps)`, works on CPU and CUDA and in
 shared-batch and `independent=True` networks, and names the behaviors it cannot compile
 (`Behavior.compile_ready`; delays longer than one step, `RSTDP` and, on the CPU, the unbatched
 dense `STDP` are refused). Its results equal eager stepping to a tolerance, not bit for bit:

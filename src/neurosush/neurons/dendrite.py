@@ -10,6 +10,8 @@ from neurosush.core.network import Compartment, NeuronGroup
 from neurosush.core.order import Order
 from neurosush.neurons.params import at_least, keep, per_neuron, positive
 
+_COMPARTMENTS = tuple(Compartment)  # older dynamo cannot iterate an enum class
+
 
 class DendriteStructure(Behavior):
     """Allocates dendritic compartments and buffers for incoming synaptic current.
@@ -79,7 +81,7 @@ class DendriteStructure(Behavior):
         The compartment currents are read-only: a compartment without synapses shares one
         zero tensor, and one without delays passes its synapse's current on as is.
         """
-        for c in Compartment:
+        for c in _COMPARTMENTS:
             synapses = group.afferent[c]
             if not synapses:
                 current = self._silent
