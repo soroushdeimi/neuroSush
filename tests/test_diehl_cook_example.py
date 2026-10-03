@@ -113,3 +113,34 @@ def test_repeat_leaves_satisfied_members_alone():
     assert info["repeats"] >= 1
     assert counts.shape == (2, 6)
     assert torch.equal(model.syn.weights[1], before[1])  # the black image changes nothing
+
+
+def test_dt_half_smoke_run_and_winner_diagnostics():
+    dc = load()
+    gen = torch.Generator().manual_seed(0)
+    images = (torch.rand(12, 784, generator=gen) * 255).to(torch.uint8)
+    labels = torch.randint(0, 10, (12,), generator=gen)
+    model = dc.build_network(6, "cpu", seed=0, dt=0.5)
+    assert model.net.dt == 0.5
+    stats = dc.train(model, images, labels, samples=8, steps=120, log_every=4, rest=300, block=5)
+    assert stats["sim_steps"] >= 8 * 120
+    diag = stats["winner_diagnostics"]
+    assert diag["samples"] == 8
+    assert 0 <= diag["distinct_neurons_mean"] <= 6
+    assert 0 <= diag["top_share_mean"] <= 1
+    assert [(b["start"], b["end"]) for b in diag["blocks"]] == [(0, 5), (5, 8)]
+    result = dc.evaluate(
+        model, images[:6], labels[:6], images[6:], labels[6:], batch=6, steps=120, dt=0.5
+    )
+    assert 0.0 <= result["accuracy"] <= 1.0
+    json.dumps(diag)
+
+
+def test_winner_diagnostics_per_member():
+    dc = load()
+    images = (torch.rand(6, 784, generator=torch.Generator().manual_seed(2)) * 255).to(torch.uint8)
+    model = dc.build_network(5, "cpu", seed=0, members=2)
+    stats = dc.train(model, images, torch.zeros(6, dtype=torch.long), samples=6, steps=60)
+    diag = stats["winner_diagnostics"]
+    assert len(diag["distinct_neurons_mean"]) == 2
+    json.dumps(diag)
