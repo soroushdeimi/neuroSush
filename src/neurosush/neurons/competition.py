@@ -87,7 +87,7 @@ class KWTA(Behavior):
 def minicolumn_inhibition(
     v: torch.Tensor,
     threshold: torch.Tensor | float,
-    v_reset: float,
+    v_reset: torch.Tensor | float,
     inhibition: torch.Tensor,
     *,
     cells_per_column: int,
@@ -113,7 +113,12 @@ def minicolumn_inhibition(
     """
     lead, columns = v.shape[:-1], inhibition.shape[-1]
     blocked = (inhibition > 0).unsqueeze(-1).expand(*lead, columns, cells_per_column)
-    v = v.masked_fill(blocked.reshape(v.shape), v_reset)
+    blocked = blocked.reshape(v.shape)
+    v = (
+        torch.where(blocked, v_reset, v)
+        if isinstance(v_reset, torch.Tensor)
+        else v.masked_fill(blocked, v_reset)
+    )
     fires = (v >= threshold).view(*lead, columns, cells_per_column).any(-1)
     inhibition = torch.where(fires, duration, (inhibition - 1).clamp(min=0))
     return v, inhibition

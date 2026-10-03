@@ -13,12 +13,12 @@ class TestDoG:
         assert k.dtype == torch.float64
 
     def test_center_value(self):
-        k = dog_kernel(3, 1.0, 2.0, dtype=torch.float64)
+        k = dog_kernel(3, 1.0, 2.0, zero_mean=False, dtype=torch.float64)
         expected = (1 / 1.0 - 1 / 2.0) / math.sqrt(2 * math.pi)
         assert k[1, 1].item() == pytest.approx(expected)
 
     def test_off_center_value(self):
-        k = dog_kernel(3, 1.0, 2.0, dtype=torch.float64)
+        k = dog_kernel(3, 1.0, 2.0, zero_mean=False, dtype=torch.float64)
         # point (0, 1): squared distance 1 from the center
         expected = (math.exp(-0.5) / 1.0 - math.exp(-0.5 / 4) / 2.0) / math.sqrt(2 * math.pi)
         assert k[0, 1].item() == pytest.approx(expected)
@@ -35,9 +35,16 @@ class TestDoG:
         assert torch.allclose(k, k.flip(0))
 
     def test_spacing_scales_coordinates(self):
-        coarse = dog_kernel(3, 1.0, 2.0, spacing=2.0, dtype=torch.float64)
-        wide = dog_kernel(5, 1.0, 2.0, dtype=torch.float64)
+        coarse = dog_kernel(3, 1.0, 2.0, spacing=2.0, zero_mean=False, dtype=torch.float64)
+        wide = dog_kernel(5, 1.0, 2.0, zero_mean=False, dtype=torch.float64)
         assert torch.allclose(coarse, wide[::2, ::2])
+
+    def test_default_is_zero_mean(self):
+        k = dog_kernel(7, 1.0, 2.0, dtype=torch.float64)
+        assert k.sum().item() == pytest.approx(0.0, abs=1e-12)
+        raw = dog_kernel(7, 1.0, 2.0, zero_mean=False, dtype=torch.float64)
+        assert raw.sum().item() < -0.01  # the raw kernel is net inhibitory
+        assert torch.equal(k[raw > 0], raw[raw > 0])  # only the negative part is rescaled
 
     def test_zero_mean(self):
         k = dog_kernel(7, 1.0, 2.0, zero_mean=True, dtype=torch.float64)

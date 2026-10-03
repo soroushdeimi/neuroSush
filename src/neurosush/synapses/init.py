@@ -41,6 +41,38 @@ def sparse_random(
     return flat // n_dst, flat % n_dst
 
 
+def fixed_in_degree(
+    n_src: int,
+    n_dst: int,
+    in_degree: int,
+    *,
+    generator: torch.Generator | None = None,
+    device: str | torch.device | None = None,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return source and destination indices with exactly ``in_degree`` sources per destination.
+
+    The sources of a destination are distinct and uniformly random; edges are listed
+    in rounds (the first source of every destination, then the second, ...).
+
+    Args:
+        n_src: Number of source neurons.
+        n_dst: Number of destination neurons.
+        in_degree: Number of distinct sources of every destination.
+        generator: Random generator used to sample connections.
+        device: Device for the returned indices.
+    """
+    if not 1 <= in_degree <= n_src:
+        raise ValueError(f"in_degree must be in [1, {n_src}], got {in_degree}")
+    chunk = max(1, (1 << 24) // n_src)  # bounds the (n_src, chunk) random draw
+    sources = []
+    for start in range(0, n_dst, chunk):
+        width = min(chunk, n_dst - start)
+        draw = torch.rand(n_src, width, generator=generator, device=device)
+        sources.append(draw.argsort(0)[:in_degree])  # (in_degree, width)
+    dst = torch.arange(n_dst, device=device).repeat(in_degree)
+    return torch.cat(sources, dim=1).flatten(), dst
+
+
 class WeightInit(Behavior):
     """Initialize copied weights or sampled dense or sparse weights.
 
@@ -53,6 +85,9 @@ class WeightInit(Behavior):
         fn: Optional transformation of sampled weights.
         density: Fraction of connections to retain.
         sparse: Store sampled connections as indices and a weight vector.
+        in_degree: With ``sparse=True``, connect every destination to exactly this many distinct
+            random sources (fixed in-degree, as in Brunel 2000) instead of a ``density``;
+            mutually exclusive with ``density < 1``.
         shape: Weight geometry; defaults to source by destination size.
     """
 
@@ -70,6 +105,7 @@ class WeightInit(Behavior):
         fn: Callable[[torch.Tensor], torch.Tensor] | None = None,
         density: float = 1.0,
         sparse: bool = False,
+        in_degree: int | None = None,
         shape: tuple[int, ...] | None = None,
     ) -> None:
         if (mode is None) == (weights is None):
@@ -88,6 +124,15 @@ class WeightInit(Behavior):
                 f"got scale={scale}, offset={offset}, fn={fn!r}"
             )
         _check_density(density)
+        if in_degree is not None:
+            if not sparse:
+                raise ValueError("in_degree needs sparse=True")
+            if density != 1.0:
+                raise ValueError(f"in_degree and density are exclusive, got density={density}")
+            if isinstance(in_degree, bool) or not isinstance(in_degree, int) or in_degree < 1:
+                raise ValueError(f"in_degree must be a positive int, got {in_degree!r}")
+            if weights is not None:
+                raise ValueError("in_degree samples connections, so it cannot be used with weights")
         if sparse and shape is not None and len(shape) != 2:
             raise ValueError(f"sparse weights require a 2-D shape, got {shape}")
         self.mode = mode
@@ -97,6 +142,7 @@ class WeightInit(Behavior):
         self.fn = fn
         self.density = density
         self.sparse = sparse
+        self.in_degree = in_degree
         self.shape = shape
 
     def initialize(self, syn: SynapseGroup) -> None:
@@ -126,9 +172,14 @@ class WeightInit(Behavior):
         if net.independent:
             shape = (members, *shape)  # every member draws its own weights
         if self.sparse:
-            syn.src_idx, syn.dst_idx = sparse_random(
-                shape[0], shape[1], self.density, generator=net.generator, device=net.device
-            )
+            if self.in_degree is not None:
+                syn.src_idx, syn.dst_idx = fixed_in_degree(
+                    shape[0], shape[1], self.in_degree, generator=net.generator, device=net.device
+                )
+            else:
+                syn.src_idx, syn.dst_idx = sparse_random(
+                    shape[0], shape[1], self.density, generator=net.generator, device=net.device
+                )
             values = self._sample((syn.src_idx.numel(),), net)
         else:
             values = self._sample(shape, net)

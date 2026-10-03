@@ -75,9 +75,9 @@ def adaptation_step(
     spikes: torch.Tensor,
     *,
     v_rest: float,
-    alpha: float,
-    beta: float,
-    tau_w: float,
+    alpha: Scalar,
+    beta: Scalar,
+    tau_w: Scalar,
     dt: float,
 ) -> torch.Tensor:
     """Adaptation current update of the adaptive exponential LIF.
@@ -85,3 +85,61 @@ def adaptation_step(
     ``tau_w * d(omega)/dt = alpha * (v - v_rest) - omega``, plus a jump of ``beta`` per spike.
     """
     return omega + (alpha * (v - v_rest) - omega) * (dt / tau_w) + beta * spikes.to(omega.dtype)
+
+
+def izhikevich_step(
+    v: torch.Tensor,
+    u: torch.Tensor,
+    current: Scalar,
+    *,
+    a: Scalar,
+    b: Scalar,
+    dt: float,
+    substeps: int = 2,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """One step of the Izhikevich (2003) neuron, without the spike reset.
+
+    ``v' = 0.04 v^2 + 5 v + 140 - u + I`` is advanced by ``substeps`` forward Euler steps of
+    ``dt / substeps`` with ``I`` and ``u`` held (two half steps for ``dt = 1`` ms, as in the
+    paper), then ``u' = a (b v - u)`` by one Euler step of ``dt`` using the updated ``v``.
+    """
+    h = dt / substeps
+    for _ in range(substeps):
+        v = v + h * (0.04 * v * v + 5.0 * v + 140.0 - u + current)
+    u = u + dt * a * (b * v - u)
+    return v, u
+
+
+def izhikevich_reset(
+    v: torch.Tensor, u: torch.Tensor, *, v_peak: Scalar, c: Scalar, d: Scalar
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Spike where ``v >= v_peak``; those neurons get ``v = c`` and ``u += d``.
+
+    Returns:
+        ``(spikes, v, u)``.
+    """
+    spikes, v_after = fire(v, threshold=v_peak, v_reset=c)
+    return spikes, v_after, u + d * spikes.to(u.dtype)
+
+
+def decaying_current_step(
+    current: torch.Tensor, spikes: torch.Tensor, *, amplitude: Scalar, tau: Scalar, dt: float
+) -> torch.Tensor:
+    """``current * (1 - dt / tau) + amplitude * spikes``: a current that jumps at each spike."""
+    return current * (1 - dt / tau) + amplitude * spikes.to(current.dtype)
+
+
+def poisson_increment_moments(
+    *, count: float, rate: float, jump: float, dt: float
+) -> tuple[float, float]:
+    """Mean and variance of ``jump * Poisson(count * rate * dt)``."""
+    lam = count * rate * dt
+    return jump * lam, jump * jump * lam
+
+
+def correlated_pair_correlation(*, correlation: float, p_mother: float) -> float:
+    """Count correlation of two copies of a Bernoulli mother train, ``c (1 - p) / (1 - c p)``.
+
+    Independent of the bin length; ``c`` as ``p = rate dt / c`` goes to 0 (Poisson mother).
+    """
+    return correlation * (1 - p_mother) / (1 - correlation * p_mother)

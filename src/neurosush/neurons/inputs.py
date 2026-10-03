@@ -10,6 +10,7 @@ import torch
 from neurosush.core.behavior import Behavior
 from neurosush.core.network import NeuronGroup
 from neurosush.core.order import Order
+from neurosush.neurons import dynamics
 
 
 class SpikeInput(Behavior):
@@ -122,3 +123,135 @@ class PoissonInput(Behavior):
     def draw(self, group: NeuronGroup) -> dict[str, torch.Tensor]:
         """This step's uniform samples, for the compiled stepper."""
         return {"uniform": group.rand()}
+
+
+def _cuda_graph_ready(group: NeuronGroup) -> bool:
+    from neurosush.core.graph import random_numbers_supported  # graph imports behaviors
+
+    return group.net.generator.device.type == "cuda" and random_numbers_supported()
+
+
+class PoissonDrive(Behavior):
+    """Background drive from ``count`` independent Poisson sources per neuron (Brunel 2000).
+
+    Each source fires at ``rate`` (per time unit of ``dt``) and every spike is a delta
+    synapse that adds ``jump`` to the membrane. Per step each neuron receives
+    ``jump * Poisson(count * rate * dt)``, drawn with ``torch.poisson`` from the network
+    generator (or from :meth:`draw` under the compiled stepper). Runs at ``Order.NOISE``,
+    after the neuron model integrated and before competition and ``Fire``. The increments
+    have mean ``jump * count * rate * dt`` and variance ``jump^2 * count * rate * dt``.
+
+    Args:
+        count: Number of sources per neuron (positive; need not be an integer).
+        rate: Rate of each source, at least 0.
+        jump: Voltage added per source spike (negative for inhibitory sources).
+    """
+
+    order = Order.NOISE
+    independent_ok = True
+
+    def __init__(self, count: float, rate: float, jump: float) -> None:
+        if count <= 0:
+            raise ValueError(f"count must be positive, got {count}")
+        if rate < 0:
+            raise ValueError(f"rate must be non-negative, got {rate}")
+        self.count, self.rate, self.jump = float(count), float(rate), float(jump)
+
+    def initialize(self, group: NeuronGroup) -> None:
+        """Allocate the Poisson mean of one step."""
+        self._lam = group.state(self.count * self.rate * group.net.dt)
+
+    def _draw(self, group: NeuronGroup) -> torch.Tensor:
+        return torch.poisson(self._lam, generator=group.net.generator)
+
+    def forward(self, group: NeuronGroup) -> None:
+        """Add this step's jumps to the membrane."""
+        events = self.drawn.get("events")
+        if events is None:
+            events = self._draw(group)
+        group.v = group.v + self.jump * events
+
+    def draw(self, group: NeuronGroup) -> dict[str, torch.Tensor]:
+        """This step's event counts, for the compiled stepper."""
+        return {"events": self._draw(group)}
+
+    def moments(self, dt: float) -> tuple[float, float]:
+        """Mean and variance of one step's voltage increment."""
+        return dynamics.poisson_increment_moments(
+            count=self.count, rate=self.rate, jump=self.jump, dt=dt
+        )
+
+    def compile_ready(self, group: NeuronGroup) -> bool:
+        """Always ready: the compiled stepper draws the counts itself."""
+        return True
+
+    def graph_ready(self, group: NeuronGroup) -> bool:
+        """Ready when the generator is on CUDA and this torch can replay its draws."""
+        return _cuda_graph_ready(group)
+
+
+class CorrelatedPoissonInput(Behavior):
+    """Spike trains with pairwise correlation ``c``: the multiple interaction process.
+
+    A mother train of rate ``rate / c`` is drawn per sample (per batch member), and every
+    neuron copies each mother spike independently with probability ``c`` (Kuhn, Aertsen and
+    Rotter 2003). Every neuron then fires at ``rate`` and two neurons' spike counts in a bin
+    have correlation coefficient ``c`` (exactly so for a Poisson mother; with the per-step
+    Bernoulli mother ``c (1 - p) / (1 - c p)``, ``p = rate dt / c``,
+    see :func:`~neurosush.neurons.dynamics.correlated_pair_correlation`). ``c = 1`` makes
+    identical trains. Sets ``group.spikes`` at ``Order.FIRE``.
+
+    Args:
+        rate: Rate of every neuron (positive, per time unit of ``dt``).
+        correlation: Pairwise correlation ``c`` in ``(0, 1]``.
+    """
+
+    order = Order.FIRE
+    independent_ok = True
+    graph_safe = True
+
+    def __init__(self, rate: float, correlation: float) -> None:
+        if rate <= 0:
+            raise ValueError(f"rate must be positive, got {rate}")
+        if not 0 < correlation <= 1:
+            raise ValueError(f"correlation must be in (0, 1], got {correlation}")
+        self.rate, self.correlation = float(rate), float(correlation)
+
+    @property
+    def mother_probability(self) -> float:
+        """Per-step probability of a mother spike given the last initialized ``dt``."""
+        return self._p_mother
+
+    def initialize(self, group: NeuronGroup) -> None:
+        """Check that a mother spike per step is a probability and allocate the spikes."""
+        p_mother = self.rate / self.correlation * group.net.dt
+        if p_mother > 1:
+            raise ValueError(
+                f"rate / correlation * dt must be at most 1, got {p_mother} "
+                f"(rate={self.rate}, correlation={self.correlation}, dt={group.net.dt})"
+            )
+        self._p_mother = p_mother
+        group.spikes = group.state(False, dtype=torch.bool)
+
+    def reset_state(self, group: NeuronGroup) -> None:
+        """Silence the group."""
+        group.spikes.zero_()
+
+    def _draw(self, group: NeuronGroup) -> dict[str, torch.Tensor]:
+        net = group.net
+        mother_shape = (*group.state_shape[:-1], 1)
+        return {
+            "mother": torch.rand(
+                mother_shape, generator=net.generator, dtype=net.dtype, device=net.device
+            ),
+            "copy": group.rand(),
+        }
+
+    def draw(self, group: NeuronGroup) -> dict[str, torch.Tensor]:
+        """This step's mother and copy samples, for the compiled stepper."""
+        return self._draw(group)
+
+    def forward(self, group: NeuronGroup) -> None:
+        """Draw the mother spike of each sample and let every neuron copy it with prob. ``c``."""
+        drawn = self.drawn if "mother" in self.drawn else self._draw(group)
+        group.spikes = (drawn["mother"] < self._p_mother) & (drawn["copy"] < self.correlation)

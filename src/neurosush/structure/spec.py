@@ -15,11 +15,13 @@ from typing import Any, TypedDict
 from neurosush.core.behavior import Behavior
 from neurosush.core.network import Compartment, Network, NeuronGroup, SynapseGroup
 from neurosush.modulation import Dopamine
+from neurosush.neurons.adaptation import SpikeTriggeredCurrent
 from neurosush.neurons.axon import Axon
 from neurosush.neurons.competition import KWTA, InherentNoise, MinicolumnInhibition
 from neurosush.neurons.dendrite import DendriteIntegration, DendriteStructure
 from neurosush.neurons.homeostasis import ActivityHomeostasis, VoltageHomeostasis
-from neurosush.neurons.models import ELIF, LIF, AdaptiveELIF, Fire
+from neurosush.neurons.inputs import CorrelatedPoissonInput, PoissonDrive
+from neurosush.neurons.models import ELIF, LIF, AdaptiveELIF, Fire, Izhikevich
 from neurosush.structure.column import CorticalColumn
 from neurosush.structure.connect import connect
 from neurosush.structure.layer import Layer
@@ -30,6 +32,7 @@ from neurosush.synapses.currents import (
     DenseInput,
     LateralInput,
     Local2dInput,
+    MaxPool2dInput,
     OneToOneInput,
     SparseInput,
 )
@@ -59,6 +62,10 @@ for _cls in (
     LIF,
     ELIF,
     AdaptiveELIF,
+    Izhikevich,
+    SpikeTriggeredCurrent,
+    PoissonDrive,
+    CorrelatedPoissonInput,
     Fire,
     KWTA,
     MinicolumnInhibition,
@@ -77,6 +84,7 @@ for _cls in (
     Local2dInput,
     LateralInput,
     AvgPool2dInput,
+    MaxPool2dInput,
     ActiveSegments,
     SpikeGather,
     Traces,

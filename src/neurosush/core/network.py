@@ -12,7 +12,7 @@ from neurosush.core.behavior import Behavior
 
 if TYPE_CHECKING:
     from neurosush.core.buffers import ArrivalBuffer, HistoryBuffer
-    from neurosush.neurons.models import LIF
+    from neurosush.neurons.models import LIF, Izhikevich
     from neurosush.synapses.currents import _SynapticInput
 
 
@@ -214,14 +214,18 @@ class NeuronGroup:
     tau: float
     resistance: float
     v_rest: float
-    v_reset: float
+    v_reset: float | torch.Tensor
     threshold: torch.Tensor
-    model: LIF
+    model: LIF | Izhikevich
     # LIF and SpikeInput set spikes; SpikeInput also sets the label.
     spikes: torch.Tensor
     label: object
     # AdaptiveELIF sets the adaptation current.
     omega: torch.Tensor
+    # Izhikevich sets the recovery variable.
+    u: torch.Tensor
+    # SpikeTriggeredCurrent sets its decaying current.
+    I_adapt: torch.Tensor
     # LIF and DendriteIntegration set the input current.
     I: torch.Tensor  # noqa: E741 - Existing public name for current.
     # DendriteStructure sets the compartment currents.

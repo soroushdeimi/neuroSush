@@ -212,3 +212,42 @@ class TestISTDP:
     def test_invalid_arguments(self, kwargs, match):
         with pytest.raises(ValueError, match=match):
             ISTDP(**kwargs)
+
+
+class TestNearestPairingArguments:
+    def test_invalid_pairing(self):
+        with pytest.raises(ValueError, match="pairing"):
+            STDP(a_plus=0.1, a_minus=0.1, pairing="first")
+
+    def test_sparse_connectivity_is_refused(self):
+        net = Network()
+        src = NeuronGroup(net, 3, behaviors=[Axon()])
+        dst = NeuronGroup(net, 3, behaviors=[Axon()])
+        SynapseGroup(
+            net,
+            src,
+            dst,
+            [
+                WeightInit(mode=0.5, density=0.5, sparse=True),
+                SparseInput(),
+                SpikeGather(),
+                Traces(tau_pre=10.0),
+                STDP(a_plus=0.1, a_minus=0.1, pairing="nearest"),
+            ],
+        )
+        with pytest.raises(ValueError, match="dense or one_to_one"):
+            net.initialize()
+
+    def test_default_keeps_no_age_state(self):
+        _, syn = learning_synapse(STDP(a_plus=0.1, a_minus=0.1))
+        assert syn.behaviors[-1].state_dict() == {}
+
+    def test_rstdp_inherits_pairing_and_resets_ages(self):
+        net = Network(behaviors=[Payoff(constant(0.0)), Dopamine(tau=10.0)])
+        net, syn = learning_synapse(
+            RSTDP(a_plus=0.1, a_minus=0.1, tau_c=10.0, pairing="nearest"), net=net
+        )
+        rule = syn.behaviors[-1]
+        rule.pre_age.zero_()
+        net.reset_state()
+        assert int(rule.pre_age.min()) > 1 << 40

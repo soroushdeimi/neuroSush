@@ -8,6 +8,7 @@ from neurosush.core.behavior import Behavior
 from neurosush.core.buffers import ArrivalBuffer
 from neurosush.core.network import Compartment, NeuronGroup
 from neurosush.core.order import Order
+from neurosush.neurons.params import at_least, keep, per_neuron, positive
 
 
 class DendriteStructure(Behavior):
@@ -236,8 +237,10 @@ class ConductanceIntegration(Behavior):
     Args:
         e_exc: Excitatory reversal potential.
         e_inh: Inhibitory reversal potential.
-        tau_exc: Decay time constant of ``g_exc``, at least ``dt``.
-        tau_inh: Decay time constant of ``g_inh``, at least ``dt``.
+        tau_exc: Decay time constant of ``g_exc``, at least ``dt``: a number, or a tensor of
+            shape ``(size,)`` (``(batch_size, size)`` in an independent network) for one
+            value per neuron.
+        tau_inh: Decay time constant of ``g_inh``, at least ``dt``, per neuron as ``tau_exc``.
     """
 
     order = Order.DENDRITE_INTEGRATION
@@ -249,23 +252,21 @@ class ConductanceIntegration(Behavior):
         *,
         e_exc: float = 0.0,
         e_inh: float = -100.0,
-        tau_exc: float = 1.0,
-        tau_inh: float = 1.0,
+        tau_exc: float | torch.Tensor = 1.0,
+        tau_inh: float | torch.Tensor = 1.0,
     ) -> None:
         if e_inh >= e_exc:
             raise ValueError(f"e_inh ({e_inh}) must be below e_exc ({e_exc})")
-        for name, tau in (("tau_exc", tau_exc), ("tau_inh", tau_inh)):
-            if tau <= 0:
-                raise ValueError(f"{name} must be positive, got {tau}")
+        positive(tau_exc=tau_exc, tau_inh=tau_inh)
         self.e_exc, self.e_inh = e_exc, e_inh
-        self.tau_exc, self.tau_inh = tau_exc, tau_inh
+        self.tau_exc, self.tau_inh = keep(tau_exc), keep(tau_inh)
 
     def initialize(self, group: NeuronGroup) -> None:
         """Check the synapses and time constants; allocate the conductances."""
         dt = group.net.dt
-        for name, tau in (("tau_exc", self.tau_exc), ("tau_inh", self.tau_inh)):
-            if tau < dt:
-                raise ValueError(f"{name} ({tau}) must be at least dt ({dt})")
+        at_least(dt, tau_exc=self.tau_exc, tau_inh=self.tau_inh)
+        self._tau_exc = per_neuron(group, self.tau_exc, "tau_exc")
+        self._tau_inh = per_neuron(group, self.tau_inh, "tau_inh")
         for compartment, synapses in group.afferent.items():
             for syn in synapses:
                 if compartment is not Compartment.PROXIMAL:
@@ -295,8 +296,8 @@ class ConductanceIntegration(Behavior):
     def forward(self, group: NeuronGroup) -> None:
         """Update the conductances and set the equivalent current ``group.I``."""
         dt = group.net.dt
-        g_exc = group.g_exc * (1 - dt / self.tau_exc)
-        g_inh = group.g_inh * (1 - dt / self.tau_inh)
+        g_exc = group.g_exc * (1 - dt / self._tau_exc)
+        g_inh = group.g_inh * (1 - dt / self._tau_inh)
         for syn in group.afferent[Compartment.PROXIMAL]:
             if syn.src.inhibitory:
                 g_inh = g_inh - syn.I
