@@ -12,7 +12,7 @@ abstract: >-
   dendritic compartments and delays, STDP-family plasticity with dopamine modulation),
   implements the Thousand Brains and hierarchical temporal memory models and hierarchical
   predictive coding, and provides a spiking layer that computes the temporal memory. Every
-  model is validated against its mathematics.
+  model is tested against its mathematics and the properties its papers report.
 keywords:
   - spiking neural networks
   - hierarchical temporal memory

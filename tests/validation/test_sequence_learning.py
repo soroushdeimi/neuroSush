@@ -4,8 +4,11 @@ The layer (``sequence_memory``) and a ``TemporalMemory`` with the same parameter
 same two sequences, ABCDE and XBCDY, which share their middle: only the first element tells
 the endings apart. The number of bursting minicolumns of every element, repetition by
 repetition, is the learning curve. The two differ only in their random choices (winner
-cells, sampled synapses), so the curves must agree while learning follows from the
-structure of the input and must end in the same state.
+cells, sampled synapses). What is checked, and no more: the curves are identical in the
+first four repetitions and in the last two. In ``experiments/sequence_learning.py`` (12
+repetitions) they are identical in repetitions 0-3 and 8-11 and differ in 4-7. "The same
+state" means the same burst count per element, not the same synapses; at the end both
+still burst on D after XBC.
 """
 
 import torch

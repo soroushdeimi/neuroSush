@@ -30,13 +30,44 @@ def conv_output_size(size: int, *, kernel: int, stride: int, padding: int) -> in
     return (size + 2 * padding - kernel) // stride + 1
 
 
-def dense_current(spikes: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
+def delta_coef(tau: float, dt: float, jump: float, resistance: float = 1.0) -> float:
+    """Input coefficient that makes one presynaptic spike jump a LIF membrane by ``jump``.
+
+    A :class:`~neurosush.neurons.models.LIF` integrates ``v += dt / tau * (v_rest - v + R I)``,
+    so a spike delivering the current ``I = coef * w`` for a single step raises ``v`` by
+    ``dt / tau * R * coef * w`` (leak neglected within the step). With
+    ``coef = jump * tau / (dt * resistance)`` a unit weight gives a jump of exactly ``jump``,
+    whatever ``dt``: delta-current synapses as in Brunel (2000). Use it as the ``coef`` of an
+    input behavior (and of an external drive) with a ``DendriteIntegration`` whose current
+    has no filter (``tau_current`` unset), so the current lasts one step.
+
+    Args:
+        tau: Membrane time constant of the destination.
+        dt: Simulation time step.
+        jump: Voltage jump of one spike through a unit weight.
+        resistance: Membrane resistance of the destination.
+
+    Returns:
+        ``jump * tau / (dt * resistance)``.
+    """
+    for name, value in (("tau", tau), ("dt", dt), ("resistance", resistance)):
+        if value <= 0:
+            raise ValueError(f"{name} must be positive, got {value}")
+    return jump * tau / (dt * resistance)
+
+
+def dense_current(
+    spikes: torch.Tensor, weights: torch.Tensor, *, independent: bool = False
+) -> torch.Tensor:
     """Sum the weights of spiking sources for each destination.
 
     Args:
-        spikes: Flat source spike vector.
-        weights: Weights shaped (n_src, n_dst).
+        spikes: Flat source spike vector, ``(B, n_src)`` when independent.
+        weights: Weights shaped (n_src, n_dst), ``(B, n_src, n_dst)`` when independent.
+        independent: Multiply every member's spikes with its own weights (``torch.bmm``).
     """
+    if independent:
+        return torch.bmm(spikes.to(weights.dtype).unsqueeze(1), weights).squeeze(1)
     return spikes.to(weights.dtype) @ weights
 
 
@@ -151,6 +182,28 @@ def avg_pool_current(
     return F.adaptive_avg_pool2d(image, out_size).reshape(*spikes.shape[:-1], -1)
 
 
+def max_pool_current(
+    spikes: torch.Tensor,
+    *,
+    src_shape: tuple[int, int, int],
+    kernel_size: tuple[int, int],
+    stride: tuple[int, int],
+    dtype: torch.dtype = torch.float32,
+) -> torch.Tensor:
+    """Logical OR of the source spikes in each pooling window (1 if any spiked).
+
+    Args:
+        spikes: Flat source spike vector.
+        src_shape: Source depth, height and width.
+        kernel_size: Window height and width.
+        stride: Window step.
+        dtype: Floating point dtype for pooling and the result.
+    """
+    image = spikes.to(dtype).reshape(-1, *src_shape)
+    out = F.max_pool2d(image, kernel_size, stride=stride)
+    return out.reshape(*spikes.shape[:-1], -1)
+
+
 def _pair(value: int | tuple[int, int], name: str, minimum: int) -> tuple[int, int]:
     pair = (value, value) if isinstance(value, int) else value
     if (
@@ -164,6 +217,8 @@ def _pair(value: int | tuple[int, int], name: str, minimum: int) -> tuple[int, i
 
 def _check_shape(syn: SynapseGroup, expected: tuple[int, ...]) -> None:
     assert syn.weights is not None  # Weighted inputs are checked before validate().
+    if syn.net.independent:
+        expected = (syn.net.batch_size or 1, *expected)
     if syn.weights.shape != expected:
         raise ValueError(
             f"weights of {syn.name} must have shape {expected}, got {tuple(syn.weights.shape)}"
@@ -224,6 +279,10 @@ class _SynapticInput(Behavior, ABC):
             syn: Synapse group whose geometry is checked.
         """
 
+    def reset_state(self, syn: SynapseGroup) -> None:
+        """Zero the destination current."""
+        syn.I.zero_()
+
     @abstractmethod
     def current(self, syn: SynapseGroup) -> torch.Tensor:
         """Return currents before applying the coefficient and source sign.
@@ -249,6 +308,7 @@ class DenseInput(_SynapticInput):
     """
 
     connectivity = "dense"
+    independent_ok = True
 
     def validate(self, syn: SynapseGroup) -> None:
         """Require one weight for every source and destination pair.
@@ -265,7 +325,7 @@ class DenseInput(_SynapticInput):
             syn: Synapse group providing spikes and weights.
         """
         assert syn.weights is not None  # initialize() requires weights.
-        return dense_current(syn.pre_spike, syn.weights)
+        return dense_current(syn.pre_spike, syn.weights, independent=syn.net.independent)
 
 
 class OneToOneInput(_SynapticInput):
@@ -276,6 +336,7 @@ class OneToOneInput(_SynapticInput):
     """
 
     connectivity = "one_to_one"
+    independent_ok = True
 
     def validate(self, syn: SynapseGroup) -> None:
         """Require equal group sizes and a vector of paired weights.
@@ -503,5 +564,66 @@ class AvgPool2dInput(_SynapticInput):
             syn.pre_spike,
             src_shape=syn.src.shape,
             out_size=(syn.dst.height, syn.dst.width),
+            dtype=syn.net.dtype,
+        )
+
+
+class MaxPool2dInput(_SynapticInput):
+    """OR-pool source spikes: a destination spikes if any source in its window did.
+
+    The destination shape follows from the geometry,
+    ``(depth, (h - kh) // sh + 1, (w - kw) // sw + 1)``, with the depth unchanged. The current
+    is 1 (times ``coef``) when at least one source of the window spiked, however many did.
+    No weights are needed, and members of an independent network pool separately.
+
+    Args:
+        kernel_size: Window height and width, as an int or pair.
+        stride: Window step; defaults to ``kernel_size`` (non-overlapping windows).
+        coef: Multiplier applied to the current.
+    """
+
+    connectivity = "max_pool"
+    needs_weights = False
+    independent_ok = True
+
+    def __init__(
+        self,
+        kernel_size: int | tuple[int, int],
+        stride: int | tuple[int, int] | None = None,
+        *,
+        coef: float = 1.0,
+    ) -> None:
+        super().__init__(coef=coef)
+        self.kernel_size = _pair(kernel_size, "kernel_size", 1)
+        self.stride = self.kernel_size if stride is None else _pair(stride, "stride", 1)
+
+    def validate(self, syn: SynapseGroup) -> None:
+        """Require equal depths and a destination grid matching the windows.
+
+        Args:
+            syn: Synapse group whose geometry is checked.
+        """
+        if syn.src.depth != syn.dst.depth:
+            raise ValueError(
+                f"group depth for {syn.name} must match, "
+                f"got src={syn.src.depth}, dst={syn.dst.depth}"
+            )
+        for axis, kernel in zip(("height", "width"), self.kernel_size, strict=True):
+            size = getattr(syn.src, axis)
+            if kernel > size:
+                raise ValueError(f"kernel_size of {syn.name} exceeds the source {axis} {size}")
+        _check_grid(syn, self.kernel_size, self.stride, (0, 0))
+
+    def current(self, syn: SynapseGroup) -> torch.Tensor:
+        """Return the OR of the spikes of each window in the network dtype.
+
+        Args:
+            syn: Synapse group providing spikes and geometry.
+        """
+        return max_pool_current(
+            syn.pre_spike,
+            src_shape=syn.src.shape,
+            kernel_size=self.kernel_size,
+            stride=self.stride,
             dtype=syn.net.dtype,
         )

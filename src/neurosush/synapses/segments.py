@@ -149,6 +149,14 @@ class ActiveSegments(_SynapticInput):
         self.duration = _steps(self.plateau, net.dt)
         self.window = 1 if self.coincidence is None else _steps(self.coincidence, net.dt)
 
+    def reset_state(self, syn: SynapseGroup) -> None:
+        """End every plateau and forget recent presynaptic spikes; permanences are kept."""
+        super().reset_state(syn)
+        syn.pre_recent.zero_()
+        syn.plateau_steps.zero_()
+        syn.active_segments.zero_()
+        syn.segment_potential.zero_()
+
     def forward(self, syn: SynapseGroup) -> None:
         """Detect dendritic spikes, advance the plateaus and write the current."""
         syn.pre_recent = plateau_step(syn.pre_recent, syn.pre_spike, self.window)

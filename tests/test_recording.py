@@ -4,7 +4,8 @@ import torch
 from neurosush.core.behavior import Behavior
 from neurosush.core.network import Network, NeuronGroup
 from neurosush.core.order import Order
-from neurosush.recording import Recorder
+from neurosush.neurons.inputs import SpikeInput
+from neurosush.recording import Recorder, SpikeCounter
 
 
 class Counter(Behavior):
@@ -77,3 +78,50 @@ def test_unknown_name_and_arguments():
 def test_empty_history():
     assert Recorder("v").get("v").tolist() == []
     assert torch.equal(Recorder("v").get("v"), torch.tensor([]))
+
+
+def frames(*rows):
+    return iter([torch.tensor(row, dtype=torch.bool) for row in rows])
+
+
+class TestSpikeCounter:
+    def test_counts_spikes_per_neuron(self):
+        net = Network()
+        group = NeuronGroup(
+            net, 3, [SpikeInput(frames([1, 0, 1], [1, 1, 0], [1, 0, 0])), SpikeCounter()]
+        )
+        net.run(3)
+        assert group.spike_count.tolist() == [3.0, 1.0, 1.0]
+        assert group.spike_count.dtype == net.dtype
+
+    def test_reset_state_starts_a_new_sample(self):
+        net = Network()
+        group = NeuronGroup(net, 2, [SpikeInput(frames([1, 1], [0, 1], [1, 0])), SpikeCounter()])
+        net.run(2)
+        address = group.spike_count.data_ptr()
+        net.reset_state()
+        assert group.spike_count.tolist() == [0.0, 0.0]
+        assert group.spike_count.data_ptr() == address
+        net.step()
+        assert group.spike_count.tolist() == [1.0, 0.0]
+
+    def test_batched_counts_are_per_sample(self):
+        net = Network(batch_size=2)
+        rows = [
+            torch.tensor([[1, 0], [0, 0]], dtype=torch.bool),
+            torch.tensor([[1, 1], [0, 1]], dtype=torch.bool),
+        ]
+        group = NeuronGroup(net, 2, [SpikeInput(iter(rows)), SpikeCounter()])
+        net.run(2)
+        assert group.spike_count.tolist() == [[2.0, 1.0], [0.0, 1.0]]
+
+    def test_runs_after_the_spikes_of_the_step_and_below_the_recorder(self):
+        assert SpikeCounter.order == Order.ACTIVITY_HOMEOSTASIS
+        assert Order.FIRE < SpikeCounter.order < Order.RECORD
+        assert SpikeCounter.graph_safe
+
+    def test_a_group_without_spikes_is_rejected(self):
+        net = Network()
+        NeuronGroup(net, 2, [SpikeCounter()], name="bare")
+        with pytest.raises(RuntimeError, match="bare"):
+            net.initialize()

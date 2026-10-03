@@ -141,6 +141,18 @@ class SegmentLearning(Behavior):
         self.earliest = math.ceil(self.context[0] / dt - 1e-9)
         self.latest = math.floor(self.context[1] / dt + 1e-9)
 
+    def reset_state(self, syn: SynapseGroup) -> None:
+        """Forget when segments started and cells last spiked or won, and what started them.
+
+        ``segment_used`` (least-recently-used replacement) and the permanences are learned
+        and kept. The times are absolute iterations, so the context of a new sequence must
+        not reach back into the previous one.
+        """
+        syn.segment_start.fill_(_NEVER)
+        syn.last_spike.fill_(_NEVER)
+        syn.last_win.fill_(_NEVER)
+        syn.activation_synapses.zero_()
+
     # --- one step ---------------------------------------------------------------------
 
     def forward(self, syn: SynapseGroup) -> None:

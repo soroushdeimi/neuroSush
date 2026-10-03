@@ -73,5 +73,35 @@ class Recorder(Behavior):
         return f"Recorder({names}, interval={self.interval})"
 
 
+class SpikeCounter(Behavior):
+    """Counts each neuron's spikes in ``group.spike_count`` (float, the group's state shape).
+
+    Adds this step's spikes once per step, so after a sample ``spike_count`` is the response
+    of every neuron (per sample in a batch). Unlike :class:`Recorder` it is graph-safe: it
+    runs at ``Order.ACTIVITY_HOMEOSTASIS``, right after the spikes of the step are final
+    (``Fire`` and the inputs run at ``Order.FIRE``) and below ``Order.RECORD``, so a
+    :class:`~neurosush.core.graph.GraphStepper` captures it. :meth:`reset_state` zeros the
+    count, which starts the next sample.
+    """
+
+    order = Order.ACTIVITY_HOMEOSTASIS
+    independent_ok = True
+    graph_safe = True
+
+    def initialize(self, group: NeuronGroup) -> None:
+        """Allocate ``group.spike_count``; the group must have spikes (a neuron model or input)."""
+        if not hasattr(group, "spikes"):
+            raise RuntimeError(f"SpikeCounter on {group.name} needs spikes (a neuron model)")
+        group.spike_count = group.state()
+
+    def forward(self, group: NeuronGroup) -> None:
+        """Add this step's spikes."""
+        group.spike_count = group.spike_count + group.spikes.to(group.spike_count.dtype)
+
+    def reset_state(self, group: NeuronGroup) -> None:
+        """Zero the count."""
+        group.spike_count.zero_()
+
+
 def _name(host: Network | NeuronGroup | SynapseGroup) -> str:
     return "the network" if isinstance(host, Network) else host.name

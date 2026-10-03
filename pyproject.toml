@@ -63,7 +63,10 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-q --strict-markers --strict-config"
 xfail_strict = true
-markers = ["gpu: needs a CUDA device; skipped without one"]
+markers = [
+    "gpu: needs a CUDA device; skipped without one",
+    "needs_compile: uses CompiledStepper; skipped on a torch older than its minimum",
+]
 filterwarnings = [
     "error",
     # torch warns at import when the optional numpy is absent (as in CI); not our concern

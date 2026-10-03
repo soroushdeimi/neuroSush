@@ -18,6 +18,7 @@ class Axon(Behavior):
     """
 
     order = Order.AXON
+    independent_ok = True
 
     def __init__(self, *, max_delay: int = 1) -> None:
         if max_delay < 1:
@@ -29,7 +30,16 @@ class Axon(Behavior):
         for kind, links in (("src_delay", group.efferent), ("dst_delay", group.afferent)):
             for synapses in links.values():
                 for syn in synapses:
-                    longest = int(getattr(syn, kind).max())
+                    delays = getattr(syn, kind)
+                    if delays.is_floating_point() or delays.dtype == torch.bool:
+                        raise ValueError(
+                            f"{kind} must be integers for {syn.name}, got {delays.dtype}"
+                        )
+                    if int(delays.min()) < 0:
+                        raise ValueError(
+                            f"{kind} must not be negative for {syn.name}, got {int(delays.min())}"
+                        )
+                    longest = int(delays.max())
                     if longest >= self.max_delay:
                         raise ValueError(
                             f"{kind} must be less than max_delay={self.max_delay} for "
@@ -42,6 +52,10 @@ class Axon(Behavior):
             device=group.net.device,
             batch=group.net.batch_size,
         )
+
+    def reset_state(self, group: NeuronGroup) -> None:
+        """Clear the spike history."""
+        group.spike_history.reset()
 
     def forward(self, group: NeuronGroup) -> None:
         """Push current spikes into the history buffer."""

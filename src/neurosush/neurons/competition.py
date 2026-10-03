@@ -62,6 +62,7 @@ class KWTA(Behavior):
     """
 
     order = Order.COMPETITION
+    independent_ok = True
     graph_safe = True
 
     def __init__(self, k: int, *, dim: int | None = None) -> None:
@@ -86,7 +87,7 @@ class KWTA(Behavior):
 def minicolumn_inhibition(
     v: torch.Tensor,
     threshold: torch.Tensor | float,
-    v_reset: float,
+    v_reset: torch.Tensor | float,
     inhibition: torch.Tensor,
     *,
     cells_per_column: int,
@@ -112,7 +113,12 @@ def minicolumn_inhibition(
     """
     lead, columns = v.shape[:-1], inhibition.shape[-1]
     blocked = (inhibition > 0).unsqueeze(-1).expand(*lead, columns, cells_per_column)
-    v = v.masked_fill(blocked.reshape(v.shape), v_reset)
+    blocked = blocked.reshape(v.shape)
+    v = (
+        torch.where(blocked, v_reset, v)
+        if isinstance(v_reset, torch.Tensor)
+        else v.masked_fill(blocked, v_reset)
+    )
     fires = (v >= threshold).view(*lead, columns, cells_per_column).any(-1)
     inhibition = torch.where(fires, duration, (inhibition - 1).clamp(min=0))
     return v, inhibition
@@ -161,6 +167,10 @@ class MinicolumnInhibition(Behavior):
         )
         self.steps = max(1, math.ceil(self.duration / net.dt - 1e-9))
 
+    def reset_state(self, group: NeuronGroup) -> None:
+        """End the inhibition of every minicolumn."""
+        group.column_inhibition.zero_()
+
     def forward(self, group: NeuronGroup) -> None:
         """Hold inhibited minicolumns down and start inhibition where cells cross."""
         group.v, group.column_inhibition = minicolumn_inhibition(
@@ -185,6 +195,7 @@ class InherentNoise(Behavior):
     """
 
     order = Order.NOISE
+    independent_ok = True
 
     def __init__(
         self, *, scale: float = 1.0, offset: float = 0.0, distribution: str = "uniform"
@@ -197,8 +208,21 @@ class InherentNoise(Behavior):
 
     def forward(self, group: NeuronGroup) -> None:
         """Perturb the membrane."""
-        sample = group.rand() if self.distribution == "uniform" else group.randn()
+        sample = self.drawn.get("sample")
+        if sample is None:
+            sample = self._draw(group)
         group.v = group.v + self.scale * sample + self.offset
+
+    def _draw(self, group: NeuronGroup) -> torch.Tensor:
+        return group.rand() if self.distribution == "uniform" else group.randn()
+
+    def draw(self, group: NeuronGroup) -> dict[str, torch.Tensor]:
+        """This step's samples, for the compiled stepper."""
+        return {"sample": self._draw(group)}
+
+    def compile_ready(self, group: NeuronGroup) -> bool:
+        """Always ready: the compiled stepper draws the samples itself."""
+        return True
 
     def graph_ready(self, group: NeuronGroup) -> bool:
         """Ready when the generator is on CUDA and this torch can replay its draws."""

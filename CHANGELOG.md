@@ -5,13 +5,98 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-03
+
+### Added
+- `Izhikevich` (`neurosush.neurons.models`, Izhikevich 2003): two-variable neuron with
+  per-neuron `a`, `b`, `c`, `d` and `substeps` Euler sub-steps of `v`; the spike test and reset
+  are in `fire`, so it works with `Fire` and with dendritic input. Runs at
+  `Order.NEURON_DYNAMICS`.
+- `SpikeTriggeredCurrent` (`neurosush.neurons.adaptation`, new `Order.ADAPTATION = 250`): a
+  current that jumps by `amplitude` at each spike and decays with `tau`, added to `group.I`
+  before the neuron model; a negative amplitude gives spike-frequency adaptation for a `LIF`.
+- `PoissonDrive` (`neurosush.neurons.inputs`, `Order.NOISE`): background drive of `count`
+  Poisson sources of rate `rate`, each spike adding `jump` to the membrane (delta synapses,
+  Brunel 2000). `CorrelatedPoissonInput` (`Order.FIRE`): spike trains with pairwise
+  correlation `c` from a mother train (multiple interaction process, Kuhn, Aertsen and Rotter
+  2003). Both implement `draw` for the compiled stepper.
+- `Traces(interaction="nearest")` and `STDP(pairing="nearest")` (also `RSTDP`): nearest-spike
+  and nearest-pair plasticity (Masquelier et al. 2008) for dense and one-to-one synapses.
+- `WeightInit(sparse=True, in_degree=k)` and `synapses.init.fixed_in_degree`: sparse
+  connections with exactly `k` distinct sources per destination.
+- `synapses.currents.delta_coef` (input coefficient that makes a spike jump a `LIF` membrane by
+  a given voltage) and `MaxPool2dInput` (a destination spikes if any source in its window did).
+- `neurosush.neurons.params`: helpers that validate a parameter given as a number or one
+  value per neuron.
+- Examples `competitive_stdp.py` (Song, Miller and Abbott 2000), `spike_pattern_detection.py`
+  (Masquelier et al. 2008), `brunel_network.py` (Brunel 2000), `conv_stdp_mnist.py`
+  (Kheradpisheh et al. 2018) and `intrinsic_timing_ramps.py` (illustrating Huang et al. 2026),
+  with rows in `examples/README.md`.
+- `diehl_cook_mnist.py` gets `--dt`, `--presentation` (ms) and winner diagnostics;
+  `spike_pattern_detection.py` and `brunel_network.py` use the library nearest-spike traces
+  and pairing, fixed in-degree, `delta_coef` and `PoissonDrive`.
+- `CompiledStepper` (`neurosush.core.compiled`): opt-in, same `step()` and `run(steps)` as
+  `GraphStepper`; compiles the whole step with `torch.compile` and, on CUDA, replays it as a CUDA
+  graph per key. Needs torch >= 2.3 (`RuntimeError` on older versions). CPU and CUDA, shared batch and `independent=True`. Equal to eager to a
+  tolerance, not bit for bit (`GraphStepper` stays exact). New hooks `Behavior.compile_ready`
+  and `Behavior.draw` (random numbers drawn eagerly in the eager order; `PoissonInput` and
+  `InherentNoise` use them); a depth-1 `HistoryBuffer` read no longer inspects its delays.
+  `benchmarks/compiled.py` compares eager, graph and compiled; `diehl_cook_mnist.py` gets
+  `--stepper {graph,compiled}`.
+- `Network(batch_size=B, independent=True)`: the `B` batch members are `B` independent
+  networks with their own weights, thresholds, `theta`, homeostasis and learning, with no
+  averaging over the batch (dense `(B, n_src, n_dst)` and one-to-one `(B, n)` weights,
+  `group.vector()` returns `(B, size)`). Supports the behaviors of the Diehl and Cook network;
+  `Network.initialize` raises `NotImplementedError` for the others (a behavior opts in with
+  `independent_ok = True`). `diehl_cook_mnist.py --members B` trains `B` networks at once and
+  reports per-member and mean accuracy; `benchmarks/independent.py` measures throughput.
+- Examples `stdp_frequency.py` (pair versus triplet STDP across pairing frequencies),
+  `balanced_network.py` (inhibitory STDP, reduced Vogels et al. 2011),
+  `predictive_coding_mnist.py` (predictive coding on MNIST) and `diehl_cook_mnist.py`
+  (Diehl and Cook 2015), with a table in `examples/README.md`.
+- `TripletSTDP` (`neurosush.synapses.triplet`): the triplet rule of Pfister and Gerstner
+  (2006) with all-to-all or nearest-spike interaction, soft or hard bounds, batch-mean
+  updates and checkpointed traces; the Diehl and Cook (2015) rule is the special case
+  `a2_plus=0, a3_minus=0` with nearest interaction.
+- `PoissonInput` (`neurosush.neurons.inputs`): every step each neuron spikes with probability
+  `rates * dt`, drawn on the network's device. The rates live on the group as `group.rates`
+  and can be changed in place, also while a CUDA graph replays.
+- `Refractory(period)` (`neurosush.neurons.models`, at the new `Order.REFRACTORY = 330`):
+  holds the membrane at `v_reset` for `ceil(period / dt)` steps after a spike.
+- `AdaptiveThreshold(increment, tau=None)` (`neurosush.neurons.homeostasis`): raises a
+  neuron's threshold by `increment` per spike and relaxes it with `tau`; in a batch the
+  threshold rises by the batch mean of the spikes. Set `enabled = False` to freeze it.
+- `ConductanceIntegration` and `conductance_step` (`neurosush.neurons.dendrite`):
+  conductance-based synapses where excitatory and inhibitory input adds to `g_exc` and
+  `g_inh`, which decay with their own time constants and pull the voltage towards the
+  reversal potentials. The step is the exact solution of the equation over one step, so it
+  stays stable for large conductances. All four behaviors are graph-ready.
+- `Network.reset_state()` and `Behavior.reset_state(host)`: clear the per-sample dynamic
+  state (voltages, currents, conductances, traces, spike histories, delay buffers,
+  countdowns, eligibility, plateaus) in place between samples, keeping weights, thresholds,
+  `theta` and homeostasis counters. Every behavior that keeps per-sample state implements
+  it; in-place clearing keeps CUDA graphs valid.
+- `SpikeCounter` (`neurosush.recording`): counts each neuron's spikes in
+  `group.spike_count`; graph-safe, zeroed by `reset_state`.
+- `neurosush.readout`: `assign_labels`, `classify` and `accuracy` to label an unsupervised
+  layer from its spike counts, as in Diehl and Cook (2015).
+- `neurosush.data.load_mnist` and `read_idx`: read the MNIST IDX files (plain or `.gz`) with
+  pure torch, optionally downloading missing files.
+
+### Changed
+- `AdaptiveELIF` (`alpha`, `beta`, `tau_w`) and `ConductanceIntegration` (`tau_exc`,
+  `tau_inh`) accept a tensor of shape `(size,)` for one value per neuron.
+- `filters.dog_kernel` defaults to `zero_mean=True`; callers that relied on the old output pass
+  `zero_mean=False`.
+
 ## [0.4.0] - 2026-09-25
 
 ### Added
 - `GraphStepper` (`neurosush.core.graph`) captures a network's step as a CUDA graph and
   replays it, for networks whose behaviors are all graph-ready. On an RTX 3090 a 784-input,
   400-neuron STDP network runs 5.5 times faster than eager stepping, with bit-for-bit the
-  same results.
+  same results. (Measured on one Windows machine; on an RTX 3060 Laptop GPU on Linux the
+  gain was 2.2 times. It depends on the platform's kernel-launch overhead.)
 - A behavior protocol for it: `Behavior.graph_safe`, `graph_ready(host)`, `graph_key(host)`
   and `prepare(host)`, which `Network.step` calls before the schedule for the behaviors that
   override it.
@@ -58,6 +143,9 @@ All notable changes to neuroSush are documented here, following the
 - `SegmentLearning`: the temporal memory's learning in spike time, and `sequence_memory`,
   which builds a spiking sequence memory layer with derived and checked timing. It learns
   the same curves as `TemporalMemory` (`tests/validation/test_sequence_learning.py`).
+  (Clarification: the curves are identical in repetitions 0-3 and 8-11 of the 12 in
+  `experiments/sequence_learning.py` and differ in 4-7; the end states agree in burst counts,
+  not in synapses.)
 - `experiments/sequence_learning.py`: the full learning curves, with parameters and seeds.
 - `SpatialPooler.state_dict()`/`load_state_dict()` and the same for `TemporalMemory`
   (including its random generator), so both resume exactly.
@@ -121,6 +209,7 @@ All notable changes to neuroSush are documented here, following the
   synapses (5-6x faster on CPU); `benchmarks/dense_stdp.py` measures it.
 - Batched simulation: `Network(batch_size=B)` and `spike_frames(..., batch_size=B)` run `B`
   samples side by side with shared weights (about 23,000 sample-steps/s on a laptop GPU for
-  the 784 -> 400 benchmark).
+  the 784 -> 400 benchmark, measured on a throttled CPU; see docs/BENCHMARKS.md for current
+  numbers).
 - CI (lint, tests on Python 3.10 to 3.13, coverage, build) and a tag-driven release workflow
   with PyPI trusted publishing.

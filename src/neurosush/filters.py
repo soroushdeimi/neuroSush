@@ -73,7 +73,7 @@ def dog_kernel(
     sigma_2: float,
     *,
     spacing: float = 1.0,
-    zero_mean: bool = False,
+    zero_mean: bool = True,
     unit_l1: bool = False,
     dtype: torch.dtype | None = None,
     device: torch.device | str | None = None,
@@ -87,7 +87,9 @@ def dog_kernel(
         sigma_1: Standard deviation of the first Gaussian.
         sigma_2: Standard deviation of the second Gaussian.
         spacing: Spacing between pixels.
-        zero_mean: Whether to make the kernel sum to zero.
+        zero_mean: Rescale the negative part so the kernel sums to zero (the default: the raw
+            difference of Gaussians sums to a negative number when ``sigma_1 < sigma_2``, which
+            gives every neuron a net inhibitory drive; pass ``False`` for the raw kernel).
         unit_l1: Whether to make the L1 norm of the kernel equal to 1.
         dtype: Data type of the kernel.
         device: Device of the kernel.

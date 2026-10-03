@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 import torch
 
 from neurosush.core.behavior import Behavior
@@ -10,10 +12,23 @@ from neurosush.core.order import Order
 
 
 def trace_step(
-    trace: torch.Tensor, spikes: torch.Tensor, *, tau: float, dt: float, scale: float = 1.0
+    trace: torch.Tensor,
+    spikes: torch.Tensor,
+    *,
+    tau: float,
+    dt: float,
+    scale: float = 1.0,
+    nearest: bool = False,
 ) -> torch.Tensor:
-    """Decay the trace by ``dt / tau``, then add ``scale`` for each spike."""
-    return (trace * (1 - dt / tau)).add_(spikes, alpha=scale)
+    """Decay the trace by ``dt / tau``, then add ``scale`` for each spike.
+
+    With ``nearest`` a spike sets the trace to ``scale`` instead of adding to it, so the
+    trace only remembers the latest spike.
+    """
+    decayed = trace * (1 - dt / tau)
+    if nearest:
+        return torch.where(spikes.bool(), torch.full_like(decayed, scale), decayed)
+    return decayed.add_(spikes, alpha=scale)
 
 
 class SpikeGather(Behavior):
@@ -25,6 +40,7 @@ class SpikeGather(Behavior):
     """
 
     order = Order.SPIKE_GATHER
+    independent_ok = True
 
     def initialize(self, syn: SynapseGroup) -> None:
         """Check for the source axon and read the initial spikes."""
@@ -32,6 +48,12 @@ class SpikeGather(Behavior):
             raise RuntimeError(f"SpikeGather on {syn.name} needs an Axon on {syn.src.name}")
         self.post = hasattr(syn.dst, "spike_history")
         self.forward(syn)
+
+    def reset_state(self, syn: SynapseGroup) -> None:
+        """Silence the gathered spikes."""
+        syn.pre_spike.zero_()
+        if self.post:
+            syn.post_spike.zero_()
 
     def forward(self, syn: SynapseGroup) -> None:
         """Read this step's delayed spikes."""
@@ -52,20 +74,32 @@ class Traces(Behavior):
     Args:
         tau_pre: Presynaptic trace time constant.
         tau_post: Postsynaptic trace time constant; defaults to ``tau_pre``.
-        scale: Increment per spike.
+        scale: Increment per spike (the value the trace is set to, for ``"nearest"``).
+        interaction: ``"all"`` adds ``scale`` at every spike, so every earlier spike counts
+            (all-to-all STDP); ``"nearest"`` sets the trace to ``scale``, so only the latest
+            spike counts (nearest-spike STDP, Masquelier et al. 2008, Diehl and Cook 2015).
     """
 
     order = Order.TRACE
+    independent_ok = True
     graph_safe = True
 
     def __init__(
-        self, *, tau_pre: float, tau_post: float | None = None, scale: float = 1.0
+        self,
+        *,
+        tau_pre: float,
+        tau_post: float | None = None,
+        scale: float = 1.0,
+        interaction: Literal["all", "nearest"] = "all",
     ) -> None:
         tau_post = tau_pre if tau_post is None else tau_post
         for name, tau in (("tau_pre", tau_pre), ("tau_post", tau_post)):
             if tau <= 0:
                 raise ValueError(f"{name} must be positive, got {tau}")
+        if interaction not in ("all", "nearest"):
+            raise ValueError(f"interaction must be 'all' or 'nearest', got {interaction!r}")
         self.tau_pre, self.tau_post, self.scale = tau_pre, tau_post, scale
+        self.interaction = interaction
 
     def initialize(self, syn: SynapseGroup) -> None:
         """Allocate both traces."""
@@ -76,12 +110,23 @@ class Traces(Behavior):
         syn.pre_trace = syn.src.state()
         syn.post_trace = syn.dst.state()
 
+    def reset_state(self, syn: SynapseGroup) -> None:
+        """Zero both traces."""
+        syn.pre_trace.zero_()
+        syn.post_trace.zero_()
+
     def forward(self, syn: SynapseGroup) -> None:
         """Update both traces."""
         dt = syn.net.dt
+        nearest = self.interaction == "nearest"
         syn.pre_trace = trace_step(
-            syn.pre_trace, syn.pre_spike, tau=self.tau_pre, dt=dt, scale=self.scale
+            syn.pre_trace, syn.pre_spike, tau=self.tau_pre, dt=dt, scale=self.scale, nearest=nearest
         )
         syn.post_trace = trace_step(
-            syn.post_trace, syn.post_spike, tau=self.tau_post, dt=dt, scale=self.scale
+            syn.post_trace,
+            syn.post_spike,
+            tau=self.tau_post,
+            dt=dt,
+            scale=self.scale,
+            nearest=nearest,
         )

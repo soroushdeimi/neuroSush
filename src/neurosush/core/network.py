@@ -12,7 +12,7 @@ from neurosush.core.behavior import Behavior
 
 if TYPE_CHECKING:
     from neurosush.core.buffers import ArrivalBuffer, HistoryBuffer
-    from neurosush.neurons.models import LIF
+    from neurosush.neurons.models import LIF, Izhikevich
     from neurosush.synapses.currents import _SynapticInput
 
 
@@ -40,7 +40,34 @@ class Network:
         batch_size: Number of samples simulated in parallel. ``None`` (default) keeps state
             unbatched, shaped ``(size,)``; an int ``B`` shapes every state ``(B, size)``
             while weights and thresholds stay shared.
+        independent: With ``batch_size`` set, simulate ``batch_size`` independent copies of
+            the network instead of samples of one (default ``False``: shared weights, see
+            below). Requires ``batch_size``.
         behaviors: Behaviors attached to the network.
+
+    **Shared batch** (``independent=False``). One network sees ``B`` samples at once: states
+    are ``(B, size)``, but weights, thresholds, ``theta`` and homeostasis counters are single
+    tensors; learning rules and homeostasis use the mean over the batch.
+
+    **Independent batch** (``independent=True``). Batch member ``b`` is a complete network of
+    its own that shares nothing with the others, so ``B`` seeds, ``B`` online-learning runs
+    or ``B`` parameter settings run together at about the cost of one on a GPU. Per-member
+    tensors carry a leading batch dimension: neuron parameters and states are
+    ``(B, size)`` (``group.vector()`` returns ``(B, size)``; shared mode returns
+    ``(size,)``), dense weights ``(B, n_src, n_dst)``, one-to-one weights ``(B, n)``. Currents
+    use ``torch.bmm``; plasticity, weight clipping and normalization, ``AdaptiveThreshold``,
+    ``ActivityHomeostasis`` and k-winners-take-all act on every member separately, with no
+    averaging. Member ``b`` evolves exactly as an unbatched network would that starts from
+    the same state and sees the same inputs. Random draws (initial weights, Poisson spikes,
+    noise) come from the single network generator, so members get different values; to
+    start members identically, copy weights in after :meth:`initialize`. What is shared by
+    all members: scalar hyperparameters (time constants, learning rates, ``dt``), delays and
+    the homeostasis ``rate`` schedule. What may differ per member: initial weights
+    (``WeightInit(weights=...)`` of shape ``(B, ...)``), ``LIF(threshold=...)`` and
+    ``v_init`` of shape ``(B, size)``, and the input (rates, frames). Only behaviors that set
+    ``independent_ok = True`` are allowed (dense and one-to-one connectivity, the
+    neuron, homeostasis, trace and plasticity behaviors of the Diehl and Cook network);
+    :meth:`initialize` raises ``NotImplementedError`` listing any other.
     """
 
     # Payoff and Dopamine set the network's modulation state.
@@ -55,10 +82,13 @@ class Network:
         device: str | torch.device = "cpu",
         seed: int | None = None,
         batch_size: int | None = None,
+        independent: bool = False,
         behaviors: Iterable[Behavior] = (),
     ) -> None:
         if batch_size is not None and (isinstance(batch_size, bool) or batch_size < 1):
             raise ValueError(f"batch_size must be a positive int or None, got {batch_size!r}")
+        if independent and batch_size is None:
+            raise ValueError("independent=True needs batch_size (the number of members)")
         if dt <= 0:
             raise ValueError(f"dt must be positive, got {dt}")
         if not dtype.is_floating_point:
@@ -67,6 +97,7 @@ class Network:
         self.dtype = dtype
         self.device = torch.device(device)
         self.batch_size = batch_size
+        self.independent = bool(independent)
         self.generator = torch.Generator(device=self.device)
         if seed is None:
             self.generator.seed()
@@ -108,6 +139,19 @@ class Network:
             raise RuntimeError("network is already initialized")
         # Stable sorting preserves registration order for ties.
         self.schedule = sorted(self._registrations, key=lambda pair: pair[1].order)
+        if self.independent:
+            unsupported = sorted(
+                {
+                    f"{type(behavior).__name__} on "
+                    + ("the network" if isinstance(host, Network) else host.name)
+                    for host, behavior in self.schedule
+                    if not behavior.independent_ok
+                }
+            )
+            if unsupported:
+                raise NotImplementedError(
+                    "independent=True does not support: " + ", ".join(unsupported)
+                )
         self._preparing = [
             (host, behavior)
             for host, behavior in self.schedule
@@ -116,6 +160,22 @@ class Network:
         self.initialized = True
         for host, behavior in self.schedule:
             behavior.initialize(host)
+
+    def reset_state(self) -> None:
+        """Clear the per-sample dynamic state of every behavior, in place.
+
+        Calls :meth:`~neurosush.core.behavior.Behavior.reset_state` of every behavior,
+        enabled or not, in schedule order. Voltages, currents, traces, spike histories and
+        countdowns return to their initial values; weights, thresholds, theta and the
+        iteration counter are kept, and so are tensor addresses (a CUDA graph stays valid).
+
+        Raises:
+            RuntimeError: If the network is not initialized.
+        """
+        if not self.initialized:
+            raise RuntimeError("reset_state needs an initialized network")
+        for host, behavior in self.schedule:
+            behavior.reset_state(host)
 
     def step(self) -> None:
         """Advance one iteration, running each enabled behavior."""
@@ -154,14 +214,18 @@ class NeuronGroup:
     tau: float
     resistance: float
     v_rest: float
-    v_reset: float
+    v_reset: float | torch.Tensor
     threshold: torch.Tensor
-    model: LIF
+    model: LIF | Izhikevich
     # LIF and SpikeInput set spikes; SpikeInput also sets the label.
     spikes: torch.Tensor
     label: object
     # AdaptiveELIF sets the adaptation current.
     omega: torch.Tensor
+    # Izhikevich sets the recovery variable.
+    u: torch.Tensor
+    # SpikeTriggeredCurrent sets its decaying current.
+    I_adapt: torch.Tensor
     # LIF and DendriteIntegration set the input current.
     I: torch.Tensor  # noqa: E741 - Existing public name for current.
     # DendriteStructure sets the compartment currents.
@@ -175,6 +239,18 @@ class NeuronGroup:
     exhaustion: torch.Tensor
     # MinicolumnInhibition sets the steps of inhibition left per minicolumn.
     column_inhibition: torch.Tensor
+    # PoissonInput sets the rates it draws spikes from.
+    rates: torch.Tensor
+    # Refractory sets the refractory time left.
+    refractory: torch.Tensor
+    # AdaptiveThreshold sets the threshold offset and the threshold it adds to.
+    theta: torch.Tensor
+    base_threshold: torch.Tensor
+    # ConductanceIntegration sets the excitatory and inhibitory conductances.
+    g_exc: torch.Tensor
+    g_inh: torch.Tensor
+    # SpikeCounter sets the number of spikes counted per neuron.
+    spike_count: torch.Tensor
 
     def __init__(
         self,
@@ -241,8 +317,18 @@ class NeuronGroup:
         return (self.size,) if batch is None else (batch, self.size)
 
     def vector(self, fill: float = 0.0, dtype: torch.dtype | None = None) -> torch.Tensor:
-        """A per-neuron parameter tensor of shape ``(size,)``, shared by every sample."""
-        return torch.full((self.size,), fill, dtype=dtype or self.net.dtype, device=self.net.device)
+        """A per-neuron parameter tensor.
+
+        Shape ``(size,)``, shared by every sample; ``(batch_size, size)`` in an independent
+        network, where every member has its own parameters.
+        """
+        net = self.net
+        shape = (
+            (self.size,)
+            if net.batch_size is None or not net.independent
+            else (net.batch_size, self.size)
+        )
+        return torch.full(shape, fill, dtype=dtype or net.dtype, device=net.device)
 
     def state(self, fill: float | bool = 0.0, dtype: torch.dtype | None = None) -> torch.Tensor:
         """A per-sample state tensor of shape :attr:`state_shape` filled with ``fill``."""
