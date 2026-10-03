@@ -126,14 +126,15 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
 |---|---|---|---|
 | 0 | `WeightInit`, `DelayInit` | 310 | `VoltageHomeostasis` |
 | 100 | `Payoff` | 330 | `Refractory` |
-| 120 | `Dopamine` | 340 | `Fire`, `SpikeInput`, `PoissonInput` |
+| 120 | `Dopamine` | 340 | `Fire`, `SpikeInput`, `PoissonInput`, `CorrelatedPoissonInput` |
 | 180 | synaptic inputs, `ActiveSegments` | 350 | `ActivityHomeostasis`, `AdaptiveThreshold` |
 | 200 | `CurrentNormalization` | 380 | `Axon` |
 | 220 | `DendriteStructure` | 420 | `SpikeGather` |
 | 240 | `DendriteIntegration`, `ConductanceIntegration` | 460 | `Traces` |
-| 260 | `LIF`, `ELIF`, `AdaptiveELIF` | 500 | `STDP`, `RSTDP`, `ISTDP`, `TripletSTDP`, `SegmentLearning` |
-| 280 | `InherentNoise` | 520, 540 | `WeightNormalization`, `WeightClip` |
-| 300 | `KWTA`, `MinicolumnInhibition` | 1000 | `Recorder` |
+| 250 | `SpikeTriggeredCurrent` | 500 | `STDP`, `RSTDP`, `ISTDP`, `TripletSTDP`, `SegmentLearning` |
+| 260 | `LIF`, `ELIF`, `AdaptiveELIF`, `Izhikevich` | 520, 540 | `WeightNormalization`, `WeightClip` |
+| 280 | `InherentNoise`, `PoissonDrive` | 1000 | `Recorder` |
+| 300 | `KWTA`, `MinicolumnInhibition` | | |
 
 - **Spikes travel through `SpikeGather`**: a synaptic input reads `syn.pre_spike`, which
   `SpikeGather` fills from the source's `Axon`, so every synapse group with an input needs
@@ -286,22 +287,24 @@ with 16 independent members in one batch, 11,395 against 1,525 and 838.
 | module | contents |
 |---|---|
 | `neurosush.core` | `Network`, `NeuronGroup`, `SynapseGroup`, `Behavior`, `Order`, delay buffers |
-| `neurosush.neurons.models` | `LIF`, `ELIF`, `AdaptiveELIF`, `Refractory`, `Fire` (equations in `dynamics`) |
+| `neurosush.neurons.models` | `LIF`, `ELIF`, `AdaptiveELIF`, `Izhikevich`, `Refractory`, `Fire` (equations in `dynamics`) |
+| `neurosush.neurons.adaptation` | `SpikeTriggeredCurrent` (after-spike current, spike-frequency adaptation) |
+| `neurosush.neurons.params` | helpers that check a parameter given as a number or one value per neuron |
 | `neurosush.neurons.competition` | `KWTA`, `MinicolumnInhibition`, `InherentNoise` |
 | `neurosush.neurons.axon`, `.dendrite` | `Axon`; `DendriteStructure`, `DendriteIntegration`, `ConductanceIntegration` |
 | `neurosush.neurons.homeostasis` | `ActivityHomeostasis`, `VoltageHomeostasis`, `AdaptiveThreshold` |
-| `neurosush.neurons.inputs` | `SpikeInput`, `PoissonInput` |
-| `neurosush.synapses.init` | `WeightInit` (dense or sparse), `DelayInit` |
-| `neurosush.synapses.currents` | `DenseInput`, `OneToOneInput`, `SparseInput`, `Conv2dInput`, `Local2dInput`, `LateralInput`, `AvgPool2dInput` |
-| `neurosush.synapses.traces` | `SpikeGather`, `Traces` |
+| `neurosush.neurons.inputs` | `SpikeInput`, `PoissonInput`, `PoissonDrive` (Poisson count of delta synapses onto the membrane), `CorrelatedPoissonInput` (correlated trains) |
+| `neurosush.synapses.init` | `WeightInit` (dense, sparse, or sparse with a fixed in-degree), `DelayInit`, `sparse_random`, `fixed_in_degree` |
+| `neurosush.synapses.currents` | `DenseInput`, `OneToOneInput`, `SparseInput`, `Conv2dInput`, `Local2dInput`, `LateralInput`, `AvgPool2dInput`, `MaxPool2dInput`, `delta_coef` |
+| `neurosush.synapses.traces` | `SpikeGather`, `Traces` (all-to-all or nearest-spike) |
 | `neurosush.synapses.segments` | `ActiveSegments` (dendritic segments with NMDA-like plateaus) |
 | `neurosush.synapses.segment_learning` | `SegmentLearning` (temporal memory learning in spike time) |
-| `neurosush.synapses.plasticity` | `STDP`, `RSTDP`, `ISTDP` (bounds in `bounds`) |
+| `neurosush.synapses.plasticity` | `STDP`, `RSTDP`, `ISTDP` (bounds in `bounds`; `pairing="nearest"` for STDP and RSTDP) |
 | `neurosush.synapses.triplet` | `TripletSTDP` (triplet STDP of Pfister and Gerstner 2006, all-to-all or nearest-spike; the Diehl and Cook 2015 rule is a special case) |
 | `neurosush.synapses.constraints` | `WeightClip`, `WeightNormalization`, `CurrentNormalization` |
 | `neurosush.modulation` | `Payoff`, `Dopamine` |
 | `neurosush.encoding` | `rate_poisson`, `interval_poisson`, `intensity_to_latency` |
-| `neurosush.filters`, `.transforms` | DoG and Gabor kernels; grid masks, polarity split, filter bank |
+| `neurosush.filters`, `.transforms` | DoG (zero mean by default) and Gabor kernels; grid masks, polarity split, filter bank |
 | `neurosush.data` | `LocationDataset`, `spike_frames`, `load_mnist` (IDX files, optional download) |
 | `neurosush.structure` | layers, ports, `connect`, `CorticalColumn`, JSON specs, `sequence_memory` |
 | `neurosush.recording` | `Recorder`, `SpikeCounter` (per-neuron spike counts, graph-safe) |
@@ -503,6 +506,11 @@ numbers and deviations from the paper in the module docstring.
 - [`stdp_frequency.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/stdp_frequency.py): pair versus triplet STDP across pairing frequencies (Sjostrom et al. 2001; Pfister and Gerstner 2006).
 - [`balanced_network.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/balanced_network.py): inhibitory STDP sets a firing-rate target (reduced Vogels et al. 2011).
 - [`predictive_coding_mnist.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/predictive_coding_mnist.py): predictive coding on MNIST (Whittington and Bogacz 2017).
+- [`competitive_stdp.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/competitive_stdp.py): additive STDP makes the weights bimodal and the output rate nearly independent of the input rate (Song, Miller and Abbott 2000).
+- [`spike_pattern_detection.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/spike_pattern_detection.py): STDP finds the start of a repeating spike pattern in noise (Masquelier, Guyonneau and Thorpe 2008).
+- [`brunel_network.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/brunel_network.py): sparse excitatory/inhibitory LIF network in four dynamical regimes (Brunel 2000).
+- [`conv_stdp_mnist.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/conv_stdp_mnist.py): STDP-trained spiking convolutional network on MNIST (Kheradpisheh et al. 2018).
+- [`intrinsic_timing_ramps.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/intrinsic_timing_ramps.py): ramping activity from relaxation after a stimulus, with no prediction (illustrating Huang et al. 2026).
 
 ## Validation
 

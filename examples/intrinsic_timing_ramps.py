@@ -71,12 +71,6 @@ stimulus-specific, and no cell is of a mixed or ambiguous kind. The kinetics are
 hand (log-uniform time constants), so the spread of tau shown here is an assumption, not a
 result. The deviant here differs from the paper's only in its timing.
 
-Library gaps worked around locally: :class:`~neurosush.neurons.models.AdaptiveELIF`
-(``tau_w``, ``beta``) and :class:`~neurosush.neurons.dendrite.ConductanceIntegration`
-(``tau_exc``, ``tau_inh``) take scalars, so the per-neuron tensors are assigned after
-``net.initialize()`` (they broadcast through the same equations; the library validates
-scalars only).
-
 Run: ``python examples/intrinsic_timing_ramps.py`` (about 1.5 min on CPU).
 """
 
@@ -139,9 +133,14 @@ def build(
     stim = NeuronGroup(net, n_in, [PoissonInput(0.0), Axon()], name="stim")
     bg = NeuronGroup(net, n_in, [PoissonInput(BG_HZ / 1000.0), Axon()], name="bg")
 
-    def cells(n, model, name, inhibitory=False):
-        conductance = ConductanceIntegration(e_exc=0.0, e_inh=-80.0, tau_exc=5.0, tau_inh=50.0)
-        conductances[name] = conductance
+    tau_a = log_uniform(n_a, TAU_LO, TAU_HI, gen)  # slow excitatory decay of the A cells
+    tau_w = log_uniform(n_a, TAU_LO, TAU_HI, gen)  # adaptation time constant of the A cells
+    tau_b = log_uniform(n_b, TAU_LO, TAU_HI, gen)  # slow inhibitory decay of the B cells
+
+    def cells(n, model, name, inhibitory=False, *, tau_exc=5.0, tau_inh=50.0):
+        conductance = ConductanceIntegration(
+            e_exc=0.0, e_inh=-80.0, tau_exc=tau_exc, tau_inh=tau_inh
+        )
         return NeuronGroup(
             net,
             n,
@@ -156,26 +155,31 @@ def build(
             name=name,
         )
 
-    conductances = {}
     lif = {"tau": 20.0, "threshold": -50.0, "v_reset": -60.0, "v_rest": -70.0}
     a = cells(
         n_a,
-        AdaptiveELIF(alpha=0.0, beta=1.0, tau_w=500.0, delta=2.0, theta_rh=-52.0, **lif),
+        AdaptiveELIF(
+            alpha=0.0,
+            beta=BETA * (500.0 / tau_w) ** 0.5,
+            tau_w=tau_w,
+            delta=2.0,
+            theta_rh=-52.0,
+            **lif,
+        ),
         "a",
+        tau_exc=tau_a,
     )
     b = cells(
         n_b,
         AdaptiveELIF(alpha=0.0, beta=1.0, tau_w=500.0, delta=2.0, theta_rh=-52.0, **lif),
         "b",
+        tau_inh=tau_b,
     )
     i = cells(n_i, LIF(**lif), "i", inhibitory=True)
 
     def connect(src, dst, w, name):
         SynapseGroup(net, src, dst, [WeightInit(weights=w), DenseInput(), SpikeGather()], name=name)
 
-    tau_a = log_uniform(n_a, TAU_LO, TAU_HI, gen)  # slow excitatory decay of the A cells
-    tau_w = log_uniform(n_a, TAU_LO, TAU_HI, gen)  # adaptation time constant of the A cells
-    tau_b = log_uniform(n_b, TAU_LO, TAU_HI, gen)  # slow inhibitory decay of the B cells
     # a spike's conductance integrates to weight * tau, so the A weights are scaled by
     # 1 / tau (same mean drive, slower kinetics); the stimulus weights by tau ** -0.5
     connect(bg, a, _lognormal((n_in, n_a), W_BG_A, gen) * (TAU_REF / tau_a), "bg_a")
@@ -192,13 +196,6 @@ def build(
     connect(i, b, _lognormal((n_i, n_b), W_INH, gen) * (200.0 / tau_b), "i_b")
     net.initialize()
 
-    # Heterogeneous kinetics. The library takes scalar ``tau_w``, ``beta``, ``tau_exc`` and
-    # ``tau_inh``; per-neuron tensors broadcast through the same update equations, so they
-    # are set after ``initialize`` (see the library gaps in the docstring).
-    conductances["a"].tau_exc = tau_a
-    a.model.tau_w = tau_w
-    a.model.beta = BETA * (500.0 / tau_w) ** 0.5
-    conductances["b"].tau_inh = tau_b
     return (
         net,
         {"stim": stim, "a": a, "b": b, "i": i},

@@ -19,11 +19,13 @@ D = 1.5 ms, epsilon = 0.1 (the paper uses N_E = 10000, N_I = 2500).
 
 How it maps to neuroSush: potentials are measured from rest (``v_rest = 0``). The LIF step is
 ``dv = dt / tau * (R I - v)``, so a delta synapse that jumps ``v`` by ``J`` needs a one-step
-current ``I = tau / dt * J``; this is the ``coef`` of the :class:`SparseInput` synapses and
-of the external drive. External input to each neuron is the sum of ``C_E`` Poisson trains,
-i.e. a Poisson count per step with mean ``C_E nu_ext dt`` (drawn by the local
-``PoissonDrive`` behavior; the library's ``PoissonInput`` emits at most one spike per step
-and cannot carry this count). Inhibition has weight ``g J`` through ``inhibitory=True``.
+current ``I = tau / dt * J`` (:func:`~neurosush.synapses.currents.delta_coef`); it is the
+``coef`` of the :class:`SparseInput` synapses and of the external drive. External input to each
+neuron is the sum of ``C_E`` Poisson trains, i.e. a Poisson count per step with mean
+``C_E nu_ext dt`` (:class:`~neurosush.neurons.inputs.PoissonDrive`, which adds ``J`` times the
+count to ``v`` after the neuron model; the library's ``PoissonInput`` emits at most one spike
+per step and cannot carry this count). Inhibition has weight ``g J``
+through ``inhibitory=True``.
 
 Deviations from the paper:
 
@@ -35,9 +37,9 @@ Deviations from the paper:
   seen at step ends). The delay D = 1.5 ms is 3 steps: the library's one-step transmission
   provides one and ``src_delay = 2`` the rest. The refractory period is 4 steps.
 * Every neuron receives exactly epsilon N_E excitatory and epsilon N_I inhibitory
-  connections (fixed in-degree, as in the paper; a local ``FixedInDegree`` behavior, since
-  ``WeightInit`` samples binomial in-degrees, which with J = 0.5 mV leaves some neurons
-  silent and others saturated). Inhibitory neurons get the same external drive.
+  connections (fixed in-degree, as in the paper: ``WeightInit(sparse=True, in_degree=...)``;
+  a ``density`` would sample binomial in-degrees, which with J = 0.5 mV leaves some
+  neurons silent and others saturated). Inhibitory neurons get the same external drive.
 * Statistics use 2 s after a 0.5 s transient (the paper's figures are much longer).
 
 Run: ``python examples/brunel_network.py`` (about a minute on CPU; ``--regime AI`` runs one).
@@ -74,15 +76,14 @@ import argparse
 
 import torch
 
-from neurosush.core.behavior import Behavior
 from neurosush.core.network import Network, NeuronGroup, SynapseGroup
-from neurosush.core.order import Order
 from neurosush.neurons.axon import Axon
 from neurosush.neurons.dendrite import DendriteIntegration, DendriteStructure
+from neurosush.neurons.inputs import PoissonDrive
 from neurosush.neurons.models import LIF, Fire, Refractory
 from neurosush.recording import Recorder
-from neurosush.synapses.currents import SparseInput
-from neurosush.synapses.init import DelayInit
+from neurosush.synapses.currents import SparseInput, delta_coef
+from neurosush.synapses.init import DelayInit, WeightInit
 from neurosush.synapses.traces import SpikeGather
 
 TAU, THETA, V_RESET, TAU_RP = 20.0, 20.0, 10.0, 2.0  # ms, mV, mV, ms
@@ -98,41 +99,6 @@ REGIMES = {
 }
 
 
-class PoissonDrive(Behavior):
-    """Add ``coef`` times a Poisson count (mean ``mean``) to the membrane current each step.
-
-    Stands for many independent Poisson inputs onto every neuron, each jumping ``v`` by J.
-    """
-
-    order = Order.DENDRITE_INTEGRATION + 10  # after the synaptic currents are summed
-
-    def __init__(self, mean: float, coef: float) -> None:
-        self.mean, self.coef = mean, coef
-
-    def forward(self, group: NeuronGroup) -> None:
-        """Draw the counts and add the scaled current."""
-        counts = torch.poisson(torch.full_like(group.I, self.mean), generator=group.net.generator)
-        group.I = group.I + self.coef * counts
-
-
-class FixedInDegree(Behavior):
-    """Connect every destination neuron to exactly ``k`` random distinct sources."""
-
-    order = Order.INITIALIZATION
-
-    def __init__(self, k: int, weight: float) -> None:
-        self.k, self.weight = k, weight
-
-    def initialize(self, syn: SynapseGroup) -> None:
-        """Draw the sources of each destination and set the edge weights."""
-        net = syn.net
-        draw = torch.rand(syn.src.size, syn.dst.size, generator=net.generator, device=net.device)
-        src = draw.argsort(0)[: self.k]  # (k, n_dst)
-        syn.src_idx = src.flatten()
-        syn.dst_idx = torch.arange(syn.dst.size, device=net.device).repeat(self.k)
-        syn.weights = torch.full((self.k * syn.dst.size,), self.weight, dtype=net.dtype)
-
-
 def build(
     n_exc: int = 2000, g: float = 5.0, eta: float = 2.0, dt: float = 0.5, seed: int = 0
 ) -> tuple[Network, NeuronGroup, NeuronGroup]:
@@ -141,7 +107,7 @@ def build(
     c_exc = EPSILON * n_exc
     jump = J_PAPER * N_PAPER / n_exc  # keeps C_E J (the mean feedback) at its paper value
     nu_thr = THETA / (jump * c_exc * TAU)  # spikes per ms
-    coef = TAU / dt * jump  # one-step current that makes v jump by J
+    coef = delta_coef(TAU, dt, jump)  # one-step current that makes v jump by J
     delay_steps = round(DELAY / dt)
     net = Network(dt=dt, seed=seed)
 
@@ -152,7 +118,7 @@ def build(
             [
                 DendriteStructure(),
                 DendriteIntegration(),
-                PoissonDrive(c_exc * eta * nu_thr * dt, coef),
+                PoissonDrive(count=c_exc, rate=eta * nu_thr, jump=jump),
                 LIF(tau=TAU, threshold=THETA, v_reset=V_RESET, v_rest=0.0),
                 Refractory(TAU_RP),
                 Fire(),
@@ -171,7 +137,11 @@ def build(
                 src,
                 dst,
                 [
-                    FixedInDegree(round(EPSILON * src.size), g if src.inhibitory else 1.0),
+                    WeightInit(
+                        mode=g if src.inhibitory else 1.0,
+                        sparse=True,
+                        in_degree=round(EPSILON * src.size),
+                    ),
                     DelayInit(delays=delay_steps - 1),  # plus one step of transmission
                     SparseInput(coef=coef),
                     SpikeGather(),

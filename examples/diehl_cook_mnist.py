@@ -10,13 +10,14 @@ dominating. No labels are used while learning. Afterwards the weights and thetas
 every neuron is assigned the digit it responds to most on training images, and a test image
 is classified by the digit whose neurons fire most.
 
-Learning is online, one sample at a time, as in the paper. Each sample runs for 350 steps
-(1 ms each); the 150 ms rest between samples is replaced by resetting the state in place
-(which also keeps CUDA graphs valid). The rest is not simulated except for the relaxation of
-theta (``--rest``, default 150 ms, applied after every presentation including repeats, as the
-paper's rest follows each one); voltages, conductances and traces are reset instead, which is
-what 150 ms with tau_m = 100 ms nearly does. Without it theta's equilibrium is too high
-(about 71 mV instead of 50 mV at five spikes per sample) and neurons stop firing.
+Learning is online, one sample at a time, as in the paper. Each sample runs for 350 ms
+(``--presentation``, ``round(350 / dt)`` steps); the 150 ms rest between samples is replaced
+by resetting the state in place (which also keeps CUDA graphs valid). The rest is not
+simulated except for the relaxation of theta (``--rest``, default 150 ms, applied after
+every presentation including repeats, as the paper's rest follows each one); voltages,
+conductances and traces are reset instead, which is what 150 ms with tau_m = 100 ms nearly
+does. Without it theta's equilibrium is too high (about 71 mV instead of 50 mV at five
+spikes per sample) and neurons stop firing.
 
 A sample that makes the excitatory layer fire fewer
 than 5 spikes is shown again with a higher input intensity.
@@ -26,6 +27,17 @@ presynaptic trace and depresses on a presynaptic spike, with traces of 20 ms. ``
 the rule of the paper's code: potentiation on a postsynaptic spike scales with a slower
 postsynaptic trace (40 ms) and traces are nearest-spike (set to one at a spike), implemented
 with ``TripletSTDP``.
+
+``--dt`` (ms, default 1.0) sets the simulation step; every duration stays in ms and is
+converted to steps with ``round(ms / dt)`` (presentation, rest). The paper's Brian code uses
+dt = 0.5 ms; with it the one-step synaptic transmission makes exc -> inh -> exc inhibition
+arrive after 1 ms instead of 2 ms. Time constants and rates are in ms (Hz / 1000), so only the
+step counts depend on dt; the conductance taus (1 and 2 ms) must be at least dt.
+
+During training the winner diagnostics are recorded for the last presentation of every sample:
+the number of distinct excitatory neurons that fired and the share of the sample's spikes
+produced by its most active neuron (JSON ``winner_diagnostics``: means and means per block of
+10000 samples, per member with ``--members``).
 
 Run: ``python examples/diehl_cook_mnist.py --data path/to/MNIST/raw`` (the folder with the
 IDX files; without it the files are downloaded). The full paper setting (100 neurons, 60000
@@ -110,13 +122,14 @@ def build_network(
     seed: int = 0,
     rule: str = "pair",
     members: int | None = None,
+    dt: float = 1.0,
 ) -> Model:
     """Build the Diehl and Cook network; ``learn=False`` leaves out plasticity and theta.
 
     ``rule`` is ``"pair"`` (traces and pair STDP, the default) or ``"triplet"`` (the rule of
     the paper's code: nearest-spike triplet STDP, see the module docstring). ``members`` builds
     that many independent copies in one batch (states ``(members, size)``, weights
-    ``(members, 784, N)``); it cannot be combined with ``batch``.
+    ``(members, 784, N)``); it cannot be combined with ``batch``. ``dt`` is the step in ms.
     """
     if rule not in RULES:
         raise ValueError(f"rule must be one of {RULES}, got {rule!r}")
@@ -126,6 +139,7 @@ def build_network(
     net = Network(
         device=device,
         seed=seed,
+        dt=dt,
         batch_size=members if members is not None else batch,
         independent=members is not None,
     )
@@ -300,8 +314,14 @@ def train(
     resume: bool = False,
     window: int = 10000,
     rest: int = REST,
+    block: int = 10000,
 ) -> dict[str, Any]:
     """Train online, one sample at a time, for ``epochs * samples`` presentations.
+
+    ``steps`` and ``rest`` are in simulation steps (``main`` converts from ms). Winner
+    diagnostics (distinct firing neurons, top neuron's share of spikes) of every sample are
+    kept on the device and reduced only at log time and at the end (``winner_diagnostics``,
+    with means per ``block`` samples).
 
     Samples are taken in order from ``images`` (wrapping around). Returns timing and counts;
     the running accuracy follows the paper: labels are assigned from the previous ``window``
@@ -324,12 +344,19 @@ def train(
     t0 = time.perf_counter() - stats["seconds"]
     t_log, steps_log, done_log = time.perf_counter(), stats["sim_steps"], start
     accuracies: list[float] = []  # one list per log point with independent members
+    diag = torch.zeros(
+        (total - start, 2, *model.exc.spike_count.shape[:-1]), device=model.net.device
+    )
+    diag_log = 0
     for i in range(start, total):
         normalize_weights(model)
         counts, info = present(model, images[i % len(images)], steps, rest=rest)
         stats["repeats"] += info["repeats"]
         stats["sim_steps"] += info["sim_steps"]
         label = int(labels[i % len(labels)])
+        fired = counts.sum(-1)
+        diag[i - start, 0] = (counts > 0).sum(-1)
+        diag[i - start, 1] = counts.amax(-1) / fired.clamp(min=1)
         recent.append((counts.cpu(), label))
         del recent[: max(0, len(recent) - window - log_every)]
         done = i + 1
@@ -341,6 +368,12 @@ def train(
                 f"{(stats['sim_steps'] - steps_log) / (now - t_log):.0f} steps/s, "
                 f"mean theta {model.exc.theta.mean().item():.3f}"
             )
+            window_diag = diag[diag_log : done - start].mean(0).reshape(2, -1).mean(1)
+            line += (
+                f", winners {window_diag[0].item():.1f} distinct neurons, "
+                f"top share {window_diag[1].item():.2f}"
+            )
+            diag_log = done - start
             if len(recent) > log_every:
                 labelled, latest = recent[:-log_every], recent[-log_every:]
                 old = torch.stack([c for c, _ in labelled])
@@ -377,8 +410,27 @@ def train(
     stats["seconds"] = time.perf_counter() - t0
     stats["samples"] = total
     stats["running_accuracy"] = accuracies  # type: ignore[assignment]
+    stats["winner_diagnostics"] = _winner_summary(diag, start, block)
     normalize_weights(model)
     return stats
+
+
+def _winner_summary(diag: torch.Tensor, start: int, block: int) -> dict[str, Any]:
+    """Means of the per-sample diagnostics (``(samples, 2, *members)``), overall and per block."""
+    if len(diag) == 0:
+        return {"samples": 0}
+
+    def means(x: torch.Tensor) -> dict[str, Any]:
+        m = x.mean(0).cpu()
+        return {"distinct_neurons_mean": m[0].tolist(), "top_share_mean": m[1].tolist()}
+
+    blocks = []
+    first = start
+    while first < start + len(diag):  # blocks are aligned to multiples of ``block``
+        last = min((first // block + 1) * block, start + len(diag))
+        blocks.append({"start": first, "end": last, **means(diag[first - start : last - start])})
+        first = last
+    return {"samples": len(diag), **means(diag), "blocks": blocks}
 
 
 def respond(
@@ -391,6 +443,7 @@ def respond(
     steps: int,
     graph: bool | Literal["graph", "compiled"],
     seed: int,
+    dt: float = 1.0,
 ) -> tuple[torch.Tensor, dict[str, int]]:
     """Spike counts of the frozen network on ``images``, batched; returns ``(samples, N)``."""
     neurons = weights.shape[1]
@@ -401,7 +454,9 @@ def respond(
         chunk = images[start : start + batch]
         size = len(chunk)
         if size not in models:
-            m = build_network(neurons, device, batch=size, learn=False, graph=graph, seed=seed)
+            m = build_network(
+                neurons, device, batch=size, learn=False, graph=graph, seed=seed, dt=dt
+            )
             m.syn.weights.copy_(weights)
             m.exc.threshold.copy_(m.exc.threshold + theta.to(m.net.device))
             models[size] = m
@@ -424,6 +479,7 @@ def evaluate(
     steps: int = 350,
     graph: bool | Literal["graph", "compiled"] = False,
     seed: int = 0,
+    dt: float = 1.0,
 ) -> dict[str, Any]:
     """Assign neurons to digits on ``label_images``, then classify ``test_images``.
 
@@ -445,6 +501,7 @@ def evaluate(
                 steps=steps,
                 graph=graph,
                 seed=seed,
+                dt=dt,
             )
             for b in range(model.net.batch_size or 1)
         ]
@@ -474,6 +531,7 @@ def evaluate(
         steps=steps,
         graph=graph,
         seed=seed,
+        dt=dt,
     )
     del result["evaluation_sample_steps"]
     return result
@@ -492,6 +550,7 @@ def _evaluate_one(
     steps: int,
     graph: bool | Literal["graph", "compiled"],
     seed: int,
+    dt: float = 1.0,
 ) -> dict[str, Any]:
     """Evaluate one set of weights and thetas; also reports the sample steps it simulated."""
     kwargs: dict[str, Any] = {
@@ -500,6 +559,7 @@ def _evaluate_one(
         "steps": steps,
         "graph": graph,
         "seed": seed,
+        "dt": dt,
     }
     t0 = time.perf_counter()
     label_counts, info1 = respond(weights, theta, label_images, **kwargs)
@@ -537,7 +597,15 @@ def main() -> None:
     p.add_argument("--label-samples", type=int, default=10000)
     p.add_argument("--test-samples", type=int, default=10000)
     p.add_argument("--eval-batch", type=int, default=1000)
-    p.add_argument("--steps", type=int, default=350, help="simulation steps per sample")
+    p.add_argument("--dt", type=float, default=1.0, help="simulation step in ms")
+    p.add_argument(
+        "--presentation",
+        "--steps",
+        dest="presentation",
+        type=float,
+        default=350.0,
+        help="ms each sample is shown (--steps is an old alias, now also in ms)",
+    )
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     p.add_argument("--no-graph", action="store_true", help="step eagerly (no CUDA graphs)")
     p.add_argument(
@@ -554,7 +622,7 @@ def main() -> None:
         default=1,
         help="train this many independent networks at once (different random draws)",
     )
-    p.add_argument("--rest", type=int, default=REST, help="ms of rest after each training sample")
+    p.add_argument("--rest", type=float, default=REST, help="ms of rest after each training sample")
     p.add_argument("--rule", choices=RULES, default="pair", help="synaptic learning rule")
     p.add_argument("--data", default="data/MNIST/raw", help="folder of MNIST IDX files")
     p.add_argument("--out", help="write the results as JSON")
@@ -563,6 +631,10 @@ def main() -> None:
     p.add_argument("--checkpoint-every", type=int, default=5000)
     p.add_argument("--resume", action="store_true", help="continue from --checkpoint")
     args = p.parse_args()
+    if args.dt <= 0:
+        p.error("--dt must be positive")
+    steps = max(1, round(args.presentation / args.dt))
+    rest_steps = round(args.rest / args.dt)
 
     device = torch.device(args.device)
     graph = args.stepper if device.type == "cuda" and not args.no_graph else False
@@ -578,6 +650,7 @@ def main() -> None:
         seed=args.seed,
         rule=args.rule,
         members=args.members if args.members > 1 else None,
+        dt=args.dt,
     )
     stats = train(
         model,
@@ -585,12 +658,12 @@ def main() -> None:
         ytr,
         samples=args.train_samples,
         epochs=args.epochs,
-        steps=args.steps,
+        steps=steps,
         log_every=args.log_every,
         checkpoint=args.checkpoint,
         checkpoint_every=args.checkpoint_every,
         resume=args.resume,
-        rest=args.rest,
+        rest=rest_steps,
     )
     n_label = min(args.label_samples, len(xtr))
     n_test = min(args.test_samples, len(xte))
@@ -601,13 +674,19 @@ def main() -> None:
         xte[:n_test],
         yte[:n_test],
         batch=args.eval_batch,
-        steps=args.steps,
+        steps=steps,
         graph=graph,
         seed=args.seed,
+        dt=args.dt,
     )
     result.update(
         rule=args.rule,
         rest=args.rest,
+        dt=args.dt,
+        presentation=args.presentation,
+        steps_per_sample=steps,
+        rest_steps=rest_steps,
+        winner_diagnostics=stats["winner_diagnostics"],
         training_seconds=stats["seconds"],
         training_samples=stats["samples"],
         training_samples_per_second=stats["samples"] / stats["seconds"],

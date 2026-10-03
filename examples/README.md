@@ -12,6 +12,11 @@ numbers and the deviations from the paper.
 | `stdp_frequency.py` | pair versus triplet STDP as a function of pairing frequency | Sjostrom et al. 2001; Pfister and Gerstner 2006 | a few seconds |
 | `balanced_network.py` | inhibitory STDP drives a postsynaptic rate to a 5 Hz target | Vogels et al. 2011 (reduced) | about 15 s |
 | `predictive_coding_mnist.py` | supervised predictive coding network on MNIST, local weight updates | Whittington and Bogacz 2017 | about 30 s |
+| `competitive_stdp.py` | additive STDP with slight depression bias: bimodal weights, output rate nearly independent of input rate, correlated inputs win | Song, Miller and Abbott 2000 | quick defaults about 2.5 min; paper-scale about 7 min per input rate |
+| `spike_pattern_detection.py` | a LIF neuron with nearest-spike STDP becomes selective to a repeating 50 ms pattern in noise | Masquelier, Guyonneau and Thorpe 2008 | about 50 s |
+| `brunel_network.py` | sparse excitatory/inhibitory LIF network in four regimes (SR, AI, SI fast, SI slow) | Brunel 2000 | about 40 s to 4 min |
+| `conv_stdp_mnist.py` | STDP-trained spiking convolutional network with latency coding on MNIST | Kheradpisheh et al. 2018 | about 1 minute on a GPU |
+| `intrinsic_timing_ramps.py` | ramping activity and a population code for elapsed time from relaxation, with no prediction (illustration) | Huang et al. 2026 (qualitative) | about 1.5 min |
 
 Run from the repository root with the package installed (`pip install -e .`):
 
@@ -23,6 +28,11 @@ python examples/diehl_cook_mnist.py --data path/to/MNIST/raw
 python examples/stdp_frequency.py
 python examples/balanced_network.py
 python examples/predictive_coding_mnist.py --data path/to/MNIST/raw
+python examples/competitive_stdp.py
+python examples/spike_pattern_detection.py
+python examples/brunel_network.py
+python examples/conv_stdp_mnist.py --data path/to/MNIST/raw --device cuda
+python examples/intrinsic_timing_ramps.py
 ```
 
 ## Results and deviations from the paper
@@ -55,12 +65,57 @@ python examples/predictive_coding_mnist.py --data path/to/MNIST/raw
   fully trained MLP reaches about 98 %). Deviations: a plain tanh MLP with one hidden layer,
   mini-batches, a fixed number of inference steps, a lowered hidden variance, no biases and
   no hyper-parameter search.
+- **competitive_stdp** (paper-scale run, 1000 s, seed 0, last 100 s, uniform initial
+  weights): output rate 9.3 Hz at 10 Hz input and 10.3 Hz at 40 Hz input (11.8 and 10.3 Hz
+  from all weights at g_max); weights below 0.1 g_max / above 0.9 g_max: 26 % / 34 % at 10 Hz
+  and 78 % / 8 % at 40 Hz. Quick defaults (100 s, A+ 5 times larger, 11.6, 19.1 and 38.5 Hz
+  at 10, 20 and 40 Hz input) are far from equilibrium and the rate is not yet independent of
+  the input. With correlated inputs (500 of 1000 afferents, c = 0.2, 10 Hz) the correlated
+  group ends at a mean weight of 0.95 g_max, the others at 0.36 g_max. Deviations: the
+  parameters were quoted from memory and not checked against the paper, dt = 1 ms, no
+  refractory period, 5 times larger A+ in the quick defaults, and my own correlation scheme.
+- **spike_pattern_detection** (150 s, seeds 0, 1, 2, last 50 s): hit rate 93.4 %, 93.7 % and
+  85.9 %, one false alarm each, latency first fifth -> last fifth 7.5 -> 3.8, 11.4 -> 3.5 and
+  11.5 -> 3.2 ms; by the example's criterion (hit rate above 90 %) 2 of 3 seeds are
+  selective. The paper reports 96 % of 100 runs, 99.1 % hits and a latency of about 4 ms.
+  Deviations: a LIF neuron with exponential current and a tuned threshold instead of the
+  spike response model, a local slow after-spike current, 150 s instead of 450 s, and my own
+  rate-change process, gap distribution and jitter.
+- **brunel_network** (2000 excitatory neurons, 2 s after 0.5 s, seed 0, excitatory
+  neurons):
+
+  | regime | g | eta | rate Hz | CV | chi | peak Hz |
+  |---|---|---|---|---|---|---|
+  | SR | 3 | 2 | 328.2 | 0.07 | 0.44 | 166 |
+  | AI | 5 | 2 | 43.4 | 1.10 | 0.14 | 0.5 |
+  | SI fast | 6 | 4 | 60.6 | 1.45 | 0.14 | 170 |
+  | SI slow | 4.5 | 0.9 | 16.4 | 0.85 | 0.20 | 42 |
+
+  Deviations: 2000 instead of 10000 excitatory neurons with J scaled to 0.5 mV, dt = 0.5 ms
+  instead of 0.1 ms, a short run from one seed, and the paper's parameters were taken from a
+  reproduction, not checked against its text. All numbers are qualitative.
+- **conv_stdp_mnist** (RTX 3060 laptop, about 1 minute, 3000 STDP images per layer, 10000
+  classifier and 10000 test images): 89.8 % with global pooling (100 features, seed 0) and
+  97.2 % with `--grid 2` (400 features, seed 1); the paper reports 98.4 % after training on
+  the whole set. Single runs. Deviations: logistic regression instead of a linear SVM, a few
+  thousand training images per layer, STDP rates 10 times the paper's, closed-form IF
+  dynamics instead of a stepped `Network`, and some values (DoG size, input threshold,
+  inhibition radius) are my choices.
+- **intrinsic_timing_ramps** (defaults, 8 sessions of 150 s, seed 0, about 1.5 min on CPU):
+  100/100 `a` cells activated and 88/100 `b` cells inhibited; fitted time constants have a
+  median of 0.77 s for the activated cells; elapsed-time decoding (chance 17 %) 71.4 % for
+  activated cells, 69.7 % for inhibited and 77.7 % for both; the deviant response is 5.90 Hz
+  in the fixed context and 5.48 Hz in the jittered one. Deviations: this is an illustration,
+  not a reproduction (the paper has no network model); the log-uniform time constants are put
+  in by hand, so the spread of tau is an assumption, and the first trial after a block
+  switch is not yet at steady state.
 - **diehl_cook_mnist**: the quick check (`--train-samples 500 --label-samples 1000
   --test-samples 1000`, CPU) only shows that the code runs; accuracy is low for the first
   few thousand training samples. A full-epoch reproduction
   (100 neurons, 60000 samples) on an RTX 3090 is in progress; its results will be added
   here. Deviations: the 150 ms rest between samples is replaced by an in-place state reset
-  plus the relaxation of theta, and a sample with fewer than 5 excitatory spikes is shown
+  plus the relaxation of theta (`--presentation` sets the sample length in ms and `--dt` the
+  step; winner diagnostics are printed), and a sample with fewer than 5 excitatory spikes is shown
   again with higher input intensity.
 - **object_recognition**, **sequence_prediction**, **two_patterns**: no numbers are stored
   in the docstrings; the scripts print them. `object_recognition` follows the voting idea of

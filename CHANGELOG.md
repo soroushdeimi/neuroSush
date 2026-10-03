@@ -6,6 +6,33 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- `Izhikevich` (`neurosush.neurons.models`, Izhikevich 2003): two-variable neuron with
+  per-neuron `a`, `b`, `c`, `d` and `substeps` Euler sub-steps of `v`; the spike test and reset
+  are in `fire`, so it works with `Fire` and with dendritic input. Runs at
+  `Order.NEURON_DYNAMICS`.
+- `SpikeTriggeredCurrent` (`neurosush.neurons.adaptation`, new `Order.ADAPTATION = 250`): a
+  current that jumps by `amplitude` at each spike and decays with `tau`, added to `group.I`
+  before the neuron model; a negative amplitude gives spike-frequency adaptation for a `LIF`.
+- `PoissonDrive` (`neurosush.neurons.inputs`, `Order.NOISE`): background drive of `count`
+  Poisson sources of rate `rate`, each spike adding `jump` to the membrane (delta synapses,
+  Brunel 2000). `CorrelatedPoissonInput` (`Order.FIRE`): spike trains with pairwise
+  correlation `c` from a mother train (multiple interaction process, Kuhn, Aertsen and Rotter
+  2003). Both implement `draw` for the compiled stepper.
+- `Traces(interaction="nearest")` and `STDP(pairing="nearest")` (also `RSTDP`): nearest-spike
+  and nearest-pair plasticity (Masquelier et al. 2008) for dense and one-to-one synapses.
+- `WeightInit(sparse=True, in_degree=k)` and `synapses.init.fixed_in_degree`: sparse
+  connections with exactly `k` distinct sources per destination.
+- `synapses.currents.delta_coef` (input coefficient that makes a spike jump a `LIF` membrane by
+  a given voltage) and `MaxPool2dInput` (a destination spikes if any source in its window did).
+- `neurosush.neurons.params`: helpers that validate a parameter given as a number or one
+  value per neuron.
+- Examples `competitive_stdp.py` (Song, Miller and Abbott 2000), `spike_pattern_detection.py`
+  (Masquelier et al. 2008), `brunel_network.py` (Brunel 2000), `conv_stdp_mnist.py`
+  (Kheradpisheh et al. 2018) and `intrinsic_timing_ramps.py` (illustrating Huang et al. 2026),
+  with rows in `examples/README.md`.
+- `diehl_cook_mnist.py` gets `--dt`, `--presentation` (ms) and winner diagnostics;
+  `spike_pattern_detection.py` and `brunel_network.py` use the library nearest-spike traces
+  and pairing, fixed in-degree, `delta_coef` and `PoissonDrive`.
 - `CompiledStepper` (`neurosush.core.compiled`): opt-in, same `step()` and `run(steps)` as
   `GraphStepper`; compiles the whole step with `torch.compile` and, on CUDA, replays it as a CUDA
   graph per key. CPU and CUDA, shared batch and `independent=True`. Equal to eager to a
@@ -53,6 +80,12 @@ All notable changes to neuroSush are documented here, following the
   layer from its spike counts, as in Diehl and Cook (2015).
 - `neurosush.data.load_mnist` and `read_idx`: read the MNIST IDX files (plain or `.gz`) with
   pure torch, optionally downloading missing files.
+
+### Changed
+- `AdaptiveELIF` (`alpha`, `beta`, `tau_w`) and `ConductanceIntegration` (`tau_exc`,
+  `tau_inh`) accept a tensor of shape `(size,)` for one value per neuron.
+- `filters.dog_kernel` defaults to `zero_mean=True`; callers that relied on the old output pass
+  `zero_mean=False`.
 
 ## [0.4.0] - 2026-09-25
 

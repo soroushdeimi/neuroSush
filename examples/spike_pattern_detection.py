@@ -27,26 +27,26 @@ about 4 ms, hit rate 99.1 % with no false alarms. Not verified: the exact rate-c
 procedure (I use my own random-walk speed) and the spike afterpotential constants
 (K1 = 2, K2 = 4 in the summary).
 
-Deviations: (1) the neuron is a LIF (tau = 10 ms, exponential synaptic current with
-tau = 2.5 ms through ``DendriteIntegration``) with its own threshold (calibrated by me,
-the paper's units differ), not an SRM; its negative afterpotential is replaced by a 1 ms
-refractory period and a slow after-spike current (see 6). (2) The library STDP is
-all-to-all (pre/post traces add up), the paper uses the nearest-spike approximation.
-(3) The library STDP is all-to-all in the depression too (every presynaptic spike after a
-postsynaptic one depresses). With it the weights of 64 Hz afferents lose about 3.5 times
-more per output spike than they gain, and every setting I tried (thresholds 40-150,
-a-/a+ 0.15-0.85, a+ 0.001-0.03) ended either silent or at 160 Hz with all weights at 1. So
-the example uses a local ``NearestPairSTDP`` subclass (nearest-pair depression) and
-``NearestTraces``; the library ``STDP`` is its base class and supplies the parameters
-and checks. (4) The paper simulates 450 s; the default here is 150 s (about 50 s of CPU).
-(5) The pattern jitter, the exact rate-change process and the gap distribution are not
-those of the paper. (6) The threshold (70) and the slow after-spike hyperpolarizing current
-(``Afterpotential``, amplitude 600, tau 20 ms, a local behavior standing in for the paper's
-negative K2 afterpotential) are tuned by me; the paper's units differ. Without the
-afterpotential (v_reset = -2 x threshold only, threshold 115) the neuron became selective
-too but its latency grew from 6-9 ms to 19-20 ms over 450 s instead of shrinking, and the
-threshold was a knife edge (105 or less ran away to 100+ Hz with all weights at 1). With
-the afterpotential, thresholds 60-90 all learn (checked on seed 0, 150 s).
+Deviations: (1) the neuron is a LIF (tau = 10 ms, exponential synaptic current with tau = 2.5
+ms through ``DendriteIntegration``) with its own threshold (calibrated by me, the paper's units
+differ), not an SRM; its negative afterpotential is replaced by a 1 ms refractory period and a
+slow after-spike current (see 6). (2) The paper uses the nearest-spike approximation: the
+traces here are ``Traces(interaction="nearest")`` (reset to 1 at a spike, so a potentiation
+uses the latest presynaptic spike only) and the library STDP uses ``pairing="nearest"``, so a
+presynaptic spike depresses only if the neuron fired since that afferent's previous spike (an
+afferent is depressed once per output spike). (3) With the default all-to-all pairing, every
+presynaptic spike after a postsynaptic one depresses: the weights of 64 Hz afferents lose about
+3.5 times more per output spike than they gain, and every setting I tried (thresholds 40-150,
+a-/a+ 0.15-0.85, a+ 0.001-0.03) ended either silent or at 160 Hz with all weights at 1. Weights
+are kept in [0, 1] by ``bound="hard"`` and ``WeightClip``. (4) The paper simulates 450 s; the
+default here is 150 s (about 50 s of CPU). (5) The pattern jitter, the exact rate-change
+process and the gap distribution are not those of the paper. (6) The threshold (70) and the
+slow after-spike hyperpolarizing current (``Afterpotential``, amplitude 600, tau 20 ms, a local
+behavior standing in for the paper's negative K2 afterpotential) are tuned by me; the paper's
+units differ. Without the afterpotential (v_reset = -2 x threshold only, threshold 115) the
+neuron became selective too but its latency grew from 6-9 ms to 19-20 ms over 450 s instead
+of shrinking, and the threshold was a knife edge (105 or less ran away to 100+ Hz with all
+weights at 1). With the afterpotential, thresholds 60-90 all learn (checked on seed 0, 150 s).
 
 Run: ``python examples/spike_pattern_detection.py`` (``--seed``, ``--seconds``).
 
@@ -94,33 +94,17 @@ from neurosush.neurons.dendrite import DendriteIntegration, DendriteStructure
 from neurosush.neurons.inputs import SpikeInput
 from neurosush.neurons.models import LIF, Fire, Refractory
 from neurosush.recording import Recorder
+from neurosush.synapses.constraints import WeightClip
 from neurosush.synapses.currents import DenseInput
 from neurosush.synapses.init import WeightInit
 from neurosush.synapses.plasticity import STDP
-from neurosush.synapses.traces import SpikeGather, Traces, trace_step
+from neurosush.synapses.traces import SpikeGather, Traces
 
 PATTERN_MS = 50
 MAX_HZ = 90.0
 NOISE_HZ = 10.0
 MAX_SPEED = 1.8  # Hz per ms, i.e. 1800 Hz/s
 SPEED_STEP = 0.05  # Hz per ms per ms: std of the random change of the rate speed
-
-
-class NearestTraces(Traces):
-    """Traces that reset to ``scale`` at a spike instead of adding: nearest-spike STDP.
-
-    With the library's STDP this makes a potentiation depend only on the latest
-    presynaptic spike before a postsynaptic one (and a depression on the latest
-    postsynaptic spike), as in the paper's nearest-spike approximation.
-    """
-
-    def forward(self, syn: SynapseGroup) -> None:
-        """Decay both traces, then set them to ``scale`` where a spike arrived."""
-        dt = syn.net.dt
-        pre = trace_step(syn.pre_trace, syn.pre_spike, tau=self.tau_pre, dt=dt, scale=0.0)
-        post = trace_step(syn.post_trace, syn.post_spike, tau=self.tau_post, dt=dt, scale=0.0)
-        syn.pre_trace = torch.where(syn.pre_spike, self.scale, pre)
-        syn.post_trace = torch.where(syn.post_spike, self.scale, post)
 
 
 class Afterpotential(Behavior):
@@ -148,40 +132,6 @@ class Afterpotential(Behavior):
         """Decay, add this step's spikes (of the previous step) and subtract."""
         group.ahp = group.ahp * (1 - group.net.dt / self.tau) + self.amplitude * group.spikes
         group.I = group.I - group.ahp
-
-
-class NearestPairSTDP(STDP):
-    """Nearest-pair STDP.
-
-    A postsynaptic spike is paired with the last presynaptic spike
-    before it (potentiation, through the reset presynaptic trace) and with the first
-    presynaptic spike after it (depression: the postsynaptic trace is used once per
-    afferent, then disarmed until the next postsynaptic spike).
-
-    The library rule is all-to-all in the depression: every presynaptic spike after a
-    postsynaptic one depresses, so a 64 Hz afferent loses about ``a_minus * 64 Hz * tau_minus``
-    per output spike, 3.5 times more than it gains, and the weights collapse.
-    """
-
-    def initialize(self, syn: SynapseGroup) -> None:
-        """Allocate the per-afferent armed flags."""
-        super().initialize(syn)
-        syn.armed = syn.src.state(False, dtype=torch.bool)
-
-    def reset_state(self, syn: SynapseGroup) -> None:
-        """Disarm every afferent."""
-        syn.armed.zero_()
-
-    def forward(self, syn: SynapseGroup) -> None:
-        """Apply the nearest-pair changes of this step."""
-        w = syn.weights.squeeze(1)
-        hit = syn.pre_spike & syn.armed
-        w.sub_(self.a_minus * syn.post_trace * hit)
-        syn.armed = syn.armed & ~syn.pre_spike
-        if syn.post_spike.any():
-            w.add_(self.a_plus * syn.pre_trace)
-            syn.armed = torch.ones_like(syn.armed)
-        w.clamp_(self.w_min, self.w_max)
 
 
 class PatternInput:
@@ -277,8 +227,9 @@ def build(
             WeightInit(weights=torch.full((n, 1), w_init)),
             DenseInput(),
             SpikeGather(),
-            NearestTraces(tau_pre=16.8, tau_post=33.7),
-            NearestPairSTDP(a_plus=a_plus, a_minus=a_minus_ratio * a_plus, bound="hard"),
+            Traces(tau_pre=16.8, tau_post=33.7, interaction="nearest"),
+            STDP(a_plus=a_plus, a_minus=a_minus_ratio * a_plus, bound="hard", pairing="nearest"),
+            WeightClip(),
         ],
         name="stdp",
     )

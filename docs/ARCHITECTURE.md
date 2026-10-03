@@ -30,24 +30,26 @@ cortical structures.
 | `core/buffers.py` | `HistoryBuffer` (past values, read with per-neuron delay), `ArrivalBuffer` (future accumulation for dendritic delays) |
 | `core/network.py` | `Network`, `NeuronGroup`, `SynapseGroup`, `Compartment` |
 | `neurons/dynamics.py` | pure LIF / ELIF / AdEx equations and threshold crossing |
-| `neurons/models.py` | `LIF`, `ELIF`, `AdaptiveELIF`, `Refractory`, `Fire` |
+| `neurons/models.py` | `LIF`, `ELIF`, `AdaptiveELIF`, `Izhikevich` (Izhikevich 2003), `Refractory`, `Fire` |
+| `neurons/adaptation.py` | `SpikeTriggeredCurrent` (after-spike current that decays with `tau`) |
+| `neurons/params.py` | `positive`, `at_least`, `per_neuron`, `state_like`: validate a parameter given as a number or per neuron |
 | `neurons/competition.py` | `KWTA`, `MinicolumnInhibition`, `InherentNoise` |
 | `neurons/axon.py` | `Axon` (spike history for delays) |
 | `neurons/dendrite.py` | `DendriteStructure`, `DendriteIntegration`, `ConductanceIntegration`, `conductance_step` |
 | `neurons/homeostasis.py` | `ActivityHomeostasis`, `VoltageHomeostasis`, `AdaptiveThreshold` |
-| `neurons/inputs.py` | `SpikeInput` (drives a group from a stream of spike frames), `PoissonInput` (random spikes at per-neuron rates) |
-| `synapses/init.py` | `WeightInit`, `DelayInit`, `sparse_random` |
-| `synapses/currents.py` | pure current functions + `DenseInput`, `OneToOneInput`, `SparseInput`, `Conv2dInput`, `Local2dInput`, `LateralInput`, `AvgPool2dInput` |
-| `synapses/traces.py` | `SpikeGather`, `Traces`, `trace_step` |
+| `neurons/inputs.py` | `SpikeInput` (drives a group from a stream of spike frames), `PoissonInput` (random spikes at per-neuron rates), `PoissonDrive` (Poisson count of delta synapses added to the membrane, Brunel 2000), `CorrelatedPoissonInput` (trains with pairwise correlation `c`, multiple interaction process of Kuhn, Aertsen and Rotter 2003) |
+| `synapses/init.py` | `WeightInit` (`sparse=True`, `in_degree=k` for a fixed in-degree), `DelayInit`, `sparse_random`, `fixed_in_degree` |
+| `synapses/currents.py` | pure current functions + `DenseInput`, `OneToOneInput`, `SparseInput`, `Conv2dInput`, `Local2dInput`, `LateralInput`, `AvgPool2dInput`, `MaxPool2dInput`, `delta_coef` (coefficient for a delta-current synapse) |
+| `synapses/traces.py` | `SpikeGather`, `Traces` (`interaction="all"` or `"nearest"`), `trace_step` |
 | `synapses/segments.py` | `ActiveSegments`, `segment_counts`, `plateau_step` |
 | `synapses/segment_learning.py` | `SegmentLearning` |
 | `synapses/bounds.py` | `soft_bound`, `hard_bound`, `no_bound` (directional learning gates) |
-| `synapses/plasticity.py` | pure STDP / iSTDP kernels per connectivity + `STDP`, `RSTDP`, `ISTDP` |
+| `synapses/plasticity.py` | pure STDP / iSTDP kernels per connectivity + `STDP`, `RSTDP`, `ISTDP` (`pairing="all"` or `"nearest"`) |
 | `synapses/triplet.py` | `TripletSTDP` (Pfister and Gerstner 2006; the Diehl and Cook 2015 rule is a special case) |
 | `synapses/constraints.py` | `WeightClip`, `WeightNormalization`, `CurrentNormalization` |
 | `modulation.py` | `Payoff`, `Dopamine` |
 | `encoding.py` | `rate_poisson`, `interval_poisson`, `intensity_to_latency` |
-| `filters.py` | `dog_kernel`, `gabor_kernel` |
+| `filters.py` | `dog_kernel` (zero mean by default), `gabor_kernel` |
 | `transforms.py` | `grid_boxes`, `GridErase`, `GridKeep`, `GridCrop`, `split_polarity`, `FilterBank` |
 | `data.py` | `LocationDataset`, `spike_frames`, `read_idx`, `load_mnist` |
 | `structure/layer.py` | `Layer`, `CorticalLayer` (named groups and ports) |
@@ -81,12 +83,13 @@ A step of `Network.step()` runs every enabled behavior's `forward` once, sorted 
 | 200 | `CurrentNormalization` | `syn.weights` | `syn.I` |
 | 220 | `DendriteStructure` | afferent `syn.I`, `syn.dst_delay` | `ng.I_proximal/distal/apical` |
 | 240 | `DendriteIntegration`, `ConductanceIntegration` | compartment currents; `syn.I`, `ng.v` | `ng.I` (`ng.g_exc`, `ng.g_inh`) |
-| 260 | `LIF`/`ELIF`/`AdaptiveELIF` | `ng.I` | `ng.v` |
-| 280 | `InherentNoise` | | `ng.v` |
+| 250 | `SpikeTriggeredCurrent` | `ng.spikes` | `ng.I` (`ng.I_adapt`) |
+| 260 | `LIF`/`ELIF`/`AdaptiveELIF`/`Izhikevich` | `ng.I` | `ng.v` (`ng.u` for `Izhikevich`) |
+| 280 | `InherentNoise`, `PoissonDrive` | | `ng.v` |
 | 300 | `KWTA` | `ng.v` | `ng.v` |
 | 310 | `VoltageHomeostasis` | `ng.v` | `ng.v` |
 | 330 | `Refractory` | `ng.spikes`, `ng.v` | `ng.v`, `ng.refractory` |
-| 340 | `Fire`, `SpikeInput`, `PoissonInput` | `ng.v`, `ng.rates` | `ng.spikes`, `ng.v` |
+| 340 | `Fire`, `SpikeInput`, `PoissonInput`, `CorrelatedPoissonInput` | `ng.v`, `ng.rates` | `ng.spikes`, `ng.v` |
 | 350 | `ActivityHomeostasis`, `AdaptiveThreshold` | `ng.spikes` | `ng.threshold` (`ng.theta`) |
 | 380 | `Axon` | `ng.spikes` | `ng.spike_history` |
 | 420 | `SpikeGather` | `spike_history`, delays | `syn.pre_spike`, `syn.post_spike` |
@@ -132,6 +135,12 @@ Synaptic input at step t uses spikes gathered at step t-1 (one step of transmiss
 - Delay buffers are rings: a step moves a head index instead of copying `depth` rows, and a
   delay tensor is validated once (remembered by identity and version), which removes a
   host-device synchronization from every read.
+- Nearest-spike plasticity (`Traces(interaction="nearest")` resets a trace to `scale` at a
+  spike instead of adding to it; `STDP(pairing="nearest")` keeps the steps since each neuron's last
+  spike, so a presynaptic spike depresses only if the neuron fired since that afferent's
+  previous spike)
+  works with dense and one-to-one synapses and also applies to `RSTDP`. `TripletSTDP` has its
+  own `interaction`.
 - Dense STDP on a single sample is event-driven and in place: potentiation touches only the
   columns of spiking postsynaptic neurons, depression only the rows of spiking presynaptic
   neurons.
@@ -235,7 +244,7 @@ the bit-exact references. Four pieces differ from the graph stepper:
   spikes step by step.
 - **Pre-drawn randomness.** Dynamo cannot trace draws from a custom `torch.Generator`.
   `Behavior.draw(host)` returns the named tensors a behavior's next `forward` needs
-  (`PoissonInput`, `InherentNoise`); the stepper calls it eagerly, in schedule order (the
+  (`PoissonInput`, `InherentNoise`, `PoissonDrive`, `CorrelatedPoissonInput`); the stepper calls it eagerly, in schedule order (the
   order eager stepping draws in), and sets `behavior.drawn` around the compiled call.
   `forward` uses `self.drawn.get(name)` and otherwise draws from the group, so eager and
   graph stepping are unchanged. Under a CUDA graph the draws are captured with it.
