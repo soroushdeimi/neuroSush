@@ -102,10 +102,11 @@ python examples/intrinsic_timing_ramps.py
   dynamics instead of a stepped `Network`, and some values (DoG size, input threshold,
   inhibition radius) are my choices.
 - **intrinsic_timing_ramps** (defaults, 8 sessions of 150 s, seed 0, about 1.5 min on CPU):
-  100/100 `a` cells activated and 88/100 `b` cells inhibited; fitted time constants have a
-  median of 0.77 s for the activated cells; elapsed-time decoding (chance 17 %) 71.4 % for
-  activated cells, 69.7 % for inhibited and 77.7 % for both; the deviant response is 5.90 Hz
-  in the fixed context and 5.48 Hz in the jittered one. Deviations: this is an illustration,
+  100/100 `a` cells activated and 91/100 `b` cells inhibited; fitted time constants have a
+  median of 0.77 s for both groups (many slow cells sit at the fit limit); elapsed-time
+  decoding (chance 17 %) 74.6 % for activated cells, 65.7 % for inhibited and 73.7 % for
+  both (no gain from combining in this run); the deviant response is 5.24 Hz in the fixed
+  context and 5.01 Hz in the jittered one. Deviations: this is an illustration,
   not a reproduction (the paper has no network model); the log-uniform time constants are put
   in by hand, so the spread of tau is an assumption, and the first trial after a block
   switch is not yet at steady state.

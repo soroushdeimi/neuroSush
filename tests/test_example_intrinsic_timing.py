@@ -1,10 +1,11 @@
 """Smoke test of the intrinsic-timing ramps example on a tiny network."""
 
 import importlib.util
+import math
 import sys
 from pathlib import Path
 
-import numpy as np
+import torch
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples"
 
@@ -19,7 +20,7 @@ def load(name):
 
 def test_schedules_follow_the_protocols():
     ex = load("intrinsic_timing_ramps")
-    rng = np.random.default_rng(0)
+    rng = torch.Generator().manual_seed(0)
     on, trials = ex.make_schedule("fixed_jitter", 4000, rng, p_deviant=0.2)
     assert on.sum() == ex.STIM_BINS * len(trials)
     fixed = [t["isi"] for t in trials[1:] if t["context"] == "fixed" and not t["deviant"]]
@@ -31,9 +32,11 @@ def test_schedules_follow_the_protocols():
 
 def test_exponential_fit_recovers_tau():
     ex = load("intrinsic_timing_ramps")
-    t = (np.arange(30) + 0.5) * ex.BIN / 1000
-    trace = (1 + 4 * np.exp(-t / 0.5))[:, None]
-    tau, amp, r2 = ex.fit_exponential(trace, np.geomspace(0.05, 3, 40))
+    t = (torch.arange(30, dtype=torch.float64) + 0.5) * ex.BIN / 1000
+    trace = (1 + 4 * torch.exp(-t / 0.5))[:, None]
+    tau, amp, r2 = ex.fit_exponential(
+        trace, torch.logspace(math.log10(0.05), math.log10(3), 40, dtype=torch.float64)
+    )
     assert abs(tau[0] - 0.5) < 0.06
     assert amp[0] > 0
     assert r2[0] > 0.99
@@ -45,8 +48,8 @@ def test_stimulus_ramps_in_a_tiny_network():
     assert out["a"].shape == (1, 240, 20)
     assert out["b"].shape == (1, 240, 20)
     x = ex._activity(out)
-    assert np.isfinite(x).all()
+    assert torch.isfinite(x).all()
     trials = out["trials"][0]
-    pre = np.mean([x[0, t["onset"] - 4 : t["onset"], :20].mean() for t in trials])
-    during = np.mean([x[0, t["onset"] + 1 : t["offset"], :20].mean() for t in trials])
+    pre = torch.tensor([x[0, t["onset"] - 4 : t["onset"], :20].mean() for t in trials]).mean()
+    during = torch.tensor([x[0, t["onset"] + 1 : t["offset"], :20].mean() for t in trials]).mean()
     assert during > pre  # the stimulus drives the A cells

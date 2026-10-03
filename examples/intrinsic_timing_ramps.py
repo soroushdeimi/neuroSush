@@ -39,34 +39,34 @@ components, trained on even and tested on odd trials, with 40 cells per conditio
 is 20 + 20), 5 random cell subsets.
 
 Everything below is measured from the model, not from the paper. Measured with the defaults
-(8 sessions of 150 s, 718 stimuli, seed 0, about 1.5 min on CPU):
+(8 sessions of 150 s, 727 stimuli, seed 0, about 1.5 min on CPU):
 
-- Classification: 100/100 ``a`` cells activated, 88/100 ``b`` cells inhibited; no cell of
+- Classification: 100/100 ``a`` cells activated, 91/100 ``b`` cells inhibited; no cell of
   the other kind.
 - Ramps: the fitted time constants of the activated cells have a median of 0.77 s (IQR
   0.41-1.30 s) for the 49 cells below the 3 s grid limit; 51 cells hit the limit because a
-  1.5 s window cannot constrain slower decays. The inhibited cells ramp up: 58 of 88 pass the
-  fit criteria, 47 at the grid limit, the rest with median 0.85 s (IQR 0.66-1.36 s). The
-  fitted tau is rank-correlated with the true kinetics (Spearman 0.87 for ``tau_exc`` of
-  ``a``, 0.59 for ``tau_inh`` of ``b``).
-- Elapsed-time decoding (chance 17%): activated-only 71.4 +- 0.9%, inhibited-only
-  69.7 +- 2.1%, both 77.7 +- 1.7% (mean absolute error 73, 83 and 57 ms).
-- Deviants: evoked response of the activated cells 5.90 Hz in the fixed context against
-  5.48 Hz in the jittered one (n = 15 each; per-cell correlation 0.99), of the inhibited
-  cells -0.25 against -0.40 Hz (correlation 0.87); both are smaller than the response to a
-  regular stimulus at 1.5 s (8.77 and -1.82 Hz), because the cells have not yet relaxed
+  1.5 s window cannot constrain slower decays. The inhibited cells ramp up: 66 of 91 pass the
+  fit criteria, 53 at the grid limit, the rest with median 0.77 s (IQR 0.62-1.44 s). The
+  fitted tau is rank-correlated with the true kinetics (Spearman 0.86 for ``tau_exc`` of
+  ``a``, 0.42 for ``tau_inh`` of ``b``).
+- Elapsed-time decoding (chance 17%): activated-only 74.6 +- 0.9%, inhibited-only
+  65.7 +- 1.6%, both 73.7 +- 1.5% (mean absolute error 64, 98 and 67 ms).
+- Deviants: evoked response of the activated cells 5.24 Hz in the fixed context against
+  5.01 Hz in the jittered one (n = 12 each; per-cell correlation 0.99), of the inhibited
+  cells -0.63 against -0.03 Hz (correlation 0.80); both are smaller than the response to a
+  regular stimulus at 1.5 s (8.76 and -1.96 Hz), because the cells have not yet relaxed
   after 0.75 s: the elapsed time, not the context, sets the response.
 - Block switches: the first trial after a switch differs from the steady-state trace by
-  0.14-0.28 of the trace range (noise level 0.03-0.09), but the second trial is already at
-  0.05-0.14 (noise 0.03-0.09), so the change is complete within one interval. The first
+  0.14-0.28 of the trace range (noise level 0.03-0.10), but the second trial is already at
+  0.05-0.14 (noise 0.03-0.10), so the change is complete within one interval. The first
   trial is not a prediction error: the slowest cells still carry the state left by the
   previous interval (checked in a separate run: trial 2 is at the noise level).
 
 Paper, qualitatively: ramps of both signs, heterogeneous time constants, a population code
 for time that is best with both groups together, deviant responses nearly identical across
-contexts, immediate changes at block switches. The model agrees on these points, with
-caveats: in the model decoding with both groups beats the single groups by 6 points only,
-the first trial after a switch is not yet fully at steady state, the stimulus drive is not
+contexts, immediate changes at block switches. The model agrees on most of these points, with
+caveats: decoding with both groups is no better than with the activated cells alone (73.7
+against 74.6%), the first trial after a switch is not yet fully at steady state, the
 stimulus-specific, and no cell is of a mixed or ambiguous kind. The kinetics are put in by
 hand (log-uniform time constants), so the spread of tau shown here is an assumption, not a
 result. The deviant here differs from the paper's only in its timing.
@@ -80,7 +80,6 @@ import argparse
 import math
 from itertools import pairwise
 
-import numpy as np
 import torch
 
 from neurosush.core.network import Network, NeuronGroup, SynapseGroup
@@ -98,6 +97,15 @@ STIM_BINS = 4  # 200 ms stimulus
 STIM_HZ = 120.0  # rate of each stimulus input neuron during a stimulus
 BG_HZ = 10.0  # rate of the background input neurons
 TAU_LO, TAU_HI = 100.0, 2000.0  # ms, range of the heterogeneous kinetics
+
+
+def _randint(lo: int, hi: int, gen: torch.Generator) -> int:
+    """One integer uniform in ``[lo, hi]`` (inclusive)."""
+    return int(torch.randint(lo, hi + 1, (1,), generator=gen))
+
+
+def _rank(x: torch.Tensor) -> torch.Tensor:
+    return torch.argsort(torch.argsort(x)).double()
 
 
 def log_uniform(n: int, lo: float, hi: float, gen: torch.Generator) -> torch.Tensor:
@@ -217,8 +225,8 @@ BETA = 0.1
 
 
 def make_schedule(
-    protocol: str, n_bins: int, rng: np.random.Generator, *, block: int = 12, p_deviant: float = 0.1
-) -> tuple[np.ndarray, list[dict]]:
+    protocol: str, n_bins: int, rng: torch.Generator, *, block: int = 12, p_deviant: float = 0.1
+) -> tuple[torch.Tensor, list[dict]]:
     """Stimulus on/off per bin and the list of trials (onset, previous offset, context ...).
 
     ``random``: ISIs uniform 0.5-2.5 s. ``fixed_jitter``: alternating blocks of fixed 1.5 s
@@ -227,19 +235,19 @@ def make_schedule(
     alternating blocks of fixed 1 s and 2 s ISIs. ISIs are measured from stimulus offset to
     the next onset and are multiples of 50 ms.
     """
-    on = np.zeros(n_bins, dtype=bool)
+    on = torch.zeros(n_bins, dtype=torch.bool)
     trials: list[dict] = []
     onset, prev_off, k = 10, None, 0
     while onset + STIM_BINS < n_bins:
         j, b = k % block, k // block
         info = {"k": k, "deviant": False, "context": protocol, "index_in_block": j, "block": b}
         if protocol == "random":
-            isi = int(rng.integers(10, 51))
+            isi = _randint(10, 50, rng)
         elif protocol == "fixed_jitter":
             fixed = b % 2 == 0
-            isi = 30 if fixed else int(rng.integers(10, 51))
+            isi = 30 if fixed else _randint(10, 50, rng)
             info["context"] = "fixed" if fixed else "jitter"
-            if k > 0 and rng.random() < p_deviant:
+            if k > 0 and float(torch.rand(1, generator=rng)) < p_deviant:
                 isi, info["deviant"] = 15, True
         else:
             isi = 20 if b % 2 == 0 else 40
@@ -262,10 +270,10 @@ def simulate(
     threads = torch.get_num_threads()
     torch.set_num_threads(min(threads, 4))  # tiny tensors: more threads only add overhead
     net, groups, taus = build(batch=len(protocols), seed=seed, **kwargs)
-    rng = np.random.default_rng(seed)
+    rng = torch.Generator().manual_seed(seed)
     n_bins = int(seconds * 1000 / BIN)
     schedules = [make_schedule(p, n_bins, rng) for p in protocols]
-    on = torch.tensor(np.stack([s[0] for s in schedules]), dtype=net.dtype)
+    on = torch.stack([s[0] for s in schedules]).to(net.dtype)
     stim = groups["stim"]
     counts = {n: torch.zeros(n_bins, len(protocols), groups[n].size) for n in "abi"}
     for t in range(n_bins):
@@ -277,17 +285,17 @@ def simulate(
     torch.set_num_threads(threads)
     out = {"protocols": protocols, "trials": [s[1] for s in schedules], "taus": taus}
     for n in "ab":
-        rate = counts[n].permute(1, 0, 2).numpy() / (BIN / 1000.0)  # (row, bin, cell) in Hz
+        rate = counts[n].permute(1, 0, 2) / (BIN / 1000.0)  # (row, bin, cell) in Hz
         out[n] = calcium(rate, calcium_tau) if calcium_tau > 0 else rate
-    out["rate_i"] = counts["i"].permute(1, 0, 2).numpy().mean(-1) / (BIN / 1000.0)
+    out["rate_i"] = counts["i"].permute(1, 0, 2).mean(-1) / (BIN / 1000.0)
     return out
 
 
-def calcium(rate: np.ndarray, tau: float) -> np.ndarray:
+def calcium(rate: torch.Tensor, tau: float) -> torch.Tensor:
     """Causal exponential smoothing of the binned rates (a GCaMP-like decay, no rise)."""
     k = math.exp(-BIN / tau)
-    out = np.empty_like(rate)
-    acc = np.zeros_like(rate[:, 0])
+    out = torch.empty_like(rate)
+    acc = torch.zeros_like(rate[:, 0])
     for t in range(rate.shape[1]):
         acc = k * acc + (1 - k) * rate[:, t]
         out[:, t] = acc
@@ -301,12 +309,12 @@ def _rows(out: dict, protocol: str) -> list[int]:
     return [r for r, p in enumerate(out["protocols"]) if p == protocol]
 
 
-def _activity(out: dict) -> np.ndarray:
+def _activity(out: dict) -> torch.Tensor:
     """Calcium-like activity of all cells, shape (row, bin, n_a + n_b)."""
-    return np.concatenate([out["a"], out["b"]], axis=2)
+    return torch.cat([out["a"], out["b"]], dim=2)
 
 
-def _post_traces(out: dict, x: np.ndarray, rows: list[int], n_bins: int, parity: int | None):
+def _post_traces(out: dict, x: torch.Tensor, rows: list[int], n_bins: int, parity: int | None):
     """Activity in the ``n_bins`` bins after each offset whose next interval is long enough.
 
     Returns an array (trial, n_bins, cell).
@@ -317,10 +325,10 @@ def _post_traces(out: dict, x: np.ndarray, rows: list[int], n_bins: int, parity:
         for cur, nxt in pairwise(trials):
             if nxt["isi"] >= n_bins and (parity is None or cur["k"] % 2 == parity):
                 traces.append(x[r, cur["offset"] : cur["offset"] + n_bins])
-    return np.stack(traces)
+    return torch.stack(traces)
 
 
-def classify_cells(out: dict, x: np.ndarray, t_crit: float = 3.0) -> np.ndarray:
+def classify_cells(out: dict, x: torch.Tensor, t_crit: float = 3.0) -> torch.Tensor:
     """+1 stimulus-activated, -1 stimulus-inhibited, 0 neither, per cell.
 
     For each cell and each trial of the random-ISI sessions (even trials only, with a
@@ -335,46 +343,46 @@ def classify_cells(out: dict, x: np.ndarray, t_crit: float = 3.0) -> np.ndarray:
             if tr["k"] % 2 == 0 and tr["isi"] is not None and tr["isi"] >= 30:
                 o, f = tr["onset"], tr["offset"]
                 diffs.append(x[r, o : f + 2].mean(0) - x[r, o - STIM_BINS : o].mean(0))
-    d = np.stack(diffs)
-    t = d.mean(0) / (d.std(0, ddof=1) / math.sqrt(len(d)) + 1e-9)
-    return np.where(t > t_crit, 1, np.where(t < -t_crit, -1, 0))
+    d = torch.stack(diffs)
+    t = d.mean(0) / (d.std(0) / math.sqrt(len(d)) + 1e-9)
+    return torch.where(t > t_crit, 1, torch.where(t < -t_crit, -1, 0))
 
 
-def fit_exponential(trace: np.ndarray, tau_grid: np.ndarray) -> tuple[np.ndarray, ...]:
+def fit_exponential(trace: torch.Tensor, tau_grid: torch.Tensor) -> tuple[torch.Tensor, ...]:
     """Per column of ``trace`` (time, cell) fit ``c + A exp(-t / tau)``, t in seconds.
 
     For each tau on the grid ``c`` and ``A`` follow by linear least squares; returns tau
     (s), A and the explained variance. A ramp-down has ``A > 0``, a ramp-up ``A < 0``.
     """
-    t = (np.arange(trace.shape[0]) + 0.5) * BIN / 1000.0
-    best_sse = np.full(trace.shape[1], np.inf)
-    best = np.zeros((3, trace.shape[1]))
-    for tau in tau_grid:
-        design = np.stack([np.ones_like(t), np.exp(-t / tau)], axis=1)
-        coef, *_ = np.linalg.lstsq(design, trace, rcond=None)
+    trace = trace.double()
+    t = (torch.arange(trace.shape[0], dtype=torch.float64) + 0.5) * BIN / 1000.0
+    best_sse = torch.full((trace.shape[1],), float("inf"), dtype=torch.float64)
+    best = torch.zeros(3, trace.shape[1], dtype=torch.float64)
+    for tau in tau_grid.double():
+        design = torch.stack([torch.ones_like(t), torch.exp(-t / tau)], dim=1)
+        coef = torch.linalg.lstsq(design, trace, driver="gelsd").solution
         sse = ((design @ coef - trace) ** 2).sum(0)
         better = sse < best_sse
-        best_sse = np.where(better, sse, best_sse)
+        best_sse = torch.where(better, sse, best_sse)
         best[0, better], best[1, better] = tau, coef[1, better]
     var = ((trace - trace.mean(0)) ** 2).sum(0) + 1e-12
     return best[0], best[1], 1 - best_sse / var
 
 
-def spearman(a: np.ndarray, b: np.ndarray) -> float:
+def spearman(a: torch.Tensor, b: torch.Tensor) -> float:
     """Rank correlation."""
-    ra, rb = np.argsort(np.argsort(a)), np.argsort(np.argsort(b))
-    return float(np.corrcoef(ra, rb)[0, 1])
+    return float(torch.corrcoef(torch.stack([_rank(a), _rank(b)]))[0, 1])
 
 
-def time_constants(out: dict, x: np.ndarray, kind: np.ndarray) -> dict:
+def time_constants(out: dict, x: torch.Tensor, kind: torch.Tensor) -> dict:
     """Exponential fits of the post-stimulus traces (odd trials, 1.5 s) per cell class."""
     traces = _post_traces(out, x, _rows(out, "random"), 30, parity=1).mean(0)  # (30, cell)
-    grid = np.geomspace(0.05, TAU_MAX, 40)
+    grid = torch.logspace(math.log10(0.05), math.log10(TAU_MAX), 40, dtype=torch.float64)
     tau, amp, r2 = fit_exponential(traces, grid)
-    truth = np.concatenate([out["taus"]["tau_a"].numpy(), out["taus"]["tau_b"].numpy()]) / 1000
+    truth = torch.cat([out["taus"]["tau_a"], out["taus"]["tau_b"]]).double() / 1000
     res = {}
     for name, sign in (("activated", 1), ("inhibited", -1)):
-        ok = (kind == sign) & (np.sign(amp) == sign) & (r2 > 0.6)
+        ok = (kind == sign) & (torch.sign(amp) == sign) & (r2 > 0.6)
         res[name] = {
             "n": int((kind == sign).sum()),
             "fitted": int(ok.sum()),
@@ -385,7 +393,13 @@ def time_constants(out: dict, x: np.ndarray, kind: np.ndarray) -> dict:
 
 
 def decode_time(
-    out: dict, x: np.ndarray, kind: np.ndarray, *, seed: int = 0, repeats: int = 5, pcs: int = 10
+    out: dict,
+    x: torch.Tensor,
+    kind: torch.Tensor,
+    *,
+    seed: int = 0,
+    repeats: int = 5,
+    pcs: int = 10,
 ) -> dict:
     """Decode elapsed time since stimulus offset (six 250 ms classes) from single bins.
 
@@ -396,36 +410,44 @@ def decode_time(
     cells (``both`` takes half of each), drawn at random ``repeats`` times.
     """
     torch.manual_seed(seed)  # the randomised PCA
-    rng = np.random.default_rng(seed)
+    rng = torch.Generator().manual_seed(seed)
     rows = _rows(out, "random")
     train = _post_traces(out, x, rows, 30, parity=0)
     test = _post_traces(out, x, rows, 30, parity=1)
-    act, inh = np.flatnonzero(kind == 1), np.flatnonzero(kind == -1)
+    act, inh = torch.nonzero(kind == 1)[:, 0], torch.nonzero(kind == -1)[:, 0]
     n = min(len(act), len(inh), 40)
-    labels = np.repeat(np.arange(6), 5)
+    labels = torch.arange(6).repeat_interleave(5)
+
+    def choice(pool: torch.Tensor, k: int) -> torch.Tensor:
+        return pool[torch.randperm(len(pool), generator=rng)[:k]]
+
     results: dict[str, list[tuple[float, float]]] = {"activated": [], "inhibited": [], "both": []}
     for _ in range(repeats):
         picks = {
-            "activated": rng.choice(act, n, replace=False),
-            "inhibited": rng.choice(inh, n, replace=False),
-            "both": np.concatenate(
-                [rng.choice(act, n // 2, replace=False), rng.choice(inh, n - n // 2, replace=False)]
-            ),
+            "activated": choice(act, n),
+            "inhibited": choice(inh, n),
+            "both": torch.cat([choice(act, n // 2), choice(inh, n - n // 2)]),
         }
         for name, cells in picks.items():
             results[name].append(_softmax_fit(train[..., cells], test[..., cells], labels, pcs))
     return {
         "n_cells": n,
-        **{k: (np.mean(v, 0), np.std(v, 0)) for k, v in results.items()},
+        **{k: _mean_std(v) for k, v in results.items()},
     }
 
 
-def _softmax_fit(train: np.ndarray, test: np.ndarray, labels: np.ndarray, pcs: int):
+def _mean_std(v: list[tuple[float, float]]) -> tuple[torch.Tensor, torch.Tensor]:
+    """Mean and (population) standard deviation over repeats, per metric."""
+    t = torch.tensor(v, dtype=torch.float64)
+    return t.mean(0), t.std(0, unbiased=False)
+
+
+def _softmax_fit(train: torch.Tensor, test: torch.Tensor, labels: torch.Tensor, pcs: int):
     """Accuracy and mean absolute time error (ms) of a PCA + softmax regression."""
-    xtr = torch.tensor(train.reshape(-1, train.shape[-1]), dtype=torch.float32)
-    xte = torch.tensor(test.reshape(-1, test.shape[-1]), dtype=torch.float32)
-    ytr = torch.tensor(np.tile(labels, len(train)))
-    yte = torch.tensor(np.tile(labels, len(test)))
+    xtr = train.reshape(-1, train.shape[-1]).float()
+    xte = test.reshape(-1, test.shape[-1]).float()
+    ytr = labels.repeat(len(train))
+    yte = labels.repeat(len(test))
     mean, std = xtr.mean(0), xtr.std(0) + 1e-6
     xtr, xte = (xtr - mean) / std, (xte - mean) / std
     _, _, v = torch.pca_lowrank(xtr, q=pcs, center=False, niter=4)
@@ -442,13 +464,13 @@ def _softmax_fit(train: np.ndarray, test: np.ndarray, labels: np.ndarray, pcs: i
     return float((pred == yte).float().mean()), float((pred - yte).abs().float().mean() * 250)
 
 
-def deviant_responses(out: dict, x: np.ndarray, kind: np.ndarray) -> dict:
+def deviant_responses(out: dict, x: torch.Tensor, kind: torch.Tensor) -> dict:
     """Evoked response of deviants in fixed and jittered blocks and of regular stimuli.
 
     The response is the mean from onset to 100 ms after offset minus the mean over the 200 ms
     before onset; regular stimuli are those at the expected 1.5 s in fixed blocks.
     """
-    groups: dict[str, list[np.ndarray]] = {"dev_fixed": [], "dev_jitter": [], "regular_fixed": []}
+    groups: dict[str, list[torch.Tensor]] = {"dev_fixed": [], "dev_jitter": [], "regular_fixed": []}
     for r in _rows(out, "fixed_jitter"):
         for tr in out["trials"][r]:
             if tr["isi"] is None:
@@ -459,7 +481,7 @@ def deviant_responses(out: dict, x: np.ndarray, kind: np.ndarray) -> dict:
                 groups["dev_fixed" if tr["context"] == "fixed" else "dev_jitter"].append(d)
             elif tr["context"] == "fixed":
                 groups["regular_fixed"].append(d)
-    res = {k: np.stack(v) for k, v in groups.items()}
+    res = {k: torch.stack(v) for k, v in groups.items()}
     summary = {}
     for name, sign in (("activated", 1), ("inhibited", -1)):
         sel = kind == sign
@@ -469,12 +491,12 @@ def deviant_responses(out: dict, x: np.ndarray, kind: np.ndarray) -> dict:
             "fixed": float(m["dev_fixed"].mean()),
             "jitter": float(m["dev_jitter"].mean()),
             "regular": float(m["regular_fixed"].mean()),
-            "corr": float(np.corrcoef(m["dev_fixed"], m["dev_jitter"])[0, 1]),
+            "corr": float(torch.corrcoef(torch.stack([m["dev_fixed"], m["dev_jitter"]]))[0, 1]),
         }
     return summary
 
 
-def block_switch(out: dict, x: np.ndarray, kind: np.ndarray) -> dict:
+def block_switch(out: dict, x: torch.Tensor, kind: torch.Tensor) -> dict:
     """Interval traces of the first two trials of a block versus the steady state.
 
     The traces cover 1 s after the previous offset, for 1 s and 2 s blocks, per cell class.
@@ -485,8 +507,8 @@ def block_switch(out: dict, x: np.ndarray, kind: np.ndarray) -> dict:
     floor). Entries are ``(rms, noise floor, n)`` for ``j = 0, 1``; ``nan`` without data.
     """
     nan = (float("nan"), float("nan"), 0)
-    early: dict[tuple[str, int], list[np.ndarray]] = {}
-    steady: dict[str, list[np.ndarray]] = {"short": [], "long": []}
+    early: dict[tuple[str, int], list[torch.Tensor]] = {}
+    steady: dict[str, list[torch.Tensor]] = {"short": [], "long": []}
     for r in _rows(out, "short_long"):
         trials = out["trials"][r]
         for prev, tr in pairwise(trials):
@@ -505,22 +527,22 @@ def block_switch(out: dict, x: np.ndarray, kind: np.ndarray) -> dict:
             res[(name, ctx)] = [nan, nan]
             if len(steady[ctx]) < 4:
                 continue
-            st = np.stack(steady[ctx])[:, :, sel]
+            st = torch.stack(steady[ctx])[:, :, sel]
             s_mean = st.mean((0, 2))
-            span = np.ptp(s_mean) + 1e-9
+            span = float(s_mean.max() - s_mean.min()) + 1e-9
             for j in (0, 1):
                 trials_j = early.get((ctx, j), [])
                 if not trials_j or len(trials_j) >= len(st):
                     continue
-                f = np.stack(trials_j)[:, :, sel].mean((0, 2))
+                f = torch.stack(trials_j)[:, :, sel].mean((0, 2))
                 floor = []
                 for seed in range(100):
-                    pick = np.random.default_rng(seed).permutation(len(st))
+                    pick = torch.randperm(len(st), generator=torch.Generator().manual_seed(seed))
                     a_ = st[pick[: len(trials_j)]].mean((0, 2))
                     b_ = st[pick[len(trials_j) :]].mean((0, 2))
-                    floor.append(np.sqrt(((a_ - b_) ** 2).mean()) / span)
-                rms = float(np.sqrt(((f - s_mean) ** 2).mean()) / span)
-                res[(name, ctx)][j] = (rms, float(np.median(floor)), len(trials_j))
+                    floor.append(float(((a_ - b_) ** 2).mean().sqrt()) / span)
+                rms = float(((f - s_mean) ** 2).mean().sqrt()) / span
+                res[(name, ctx)][j] = (rms, float(torch.tensor(floor).quantile(0.5)), len(trials_j))
     return res
 
 
@@ -561,7 +583,8 @@ def report(res: dict) -> None:
     for name, r in res["tau"].items():
         t = r["tau"]
         free = t[t < TAU_MAX * 0.99]
-        q = np.percentile(free, [25, 50, 75]) if len(free) else [np.nan] * 3
+        qs = torch.tensor([0.25, 0.5, 0.75], dtype=free.dtype)
+        q = torch.quantile(free, qs).tolist() if len(free) else [float("nan")] * 3
         print(
             f"  {name:9s}: {r['fitted']}/{r['n']} fitted, {len(t) - len(free)} at the "
             f"{TAU_MAX:g} s grid limit; the others: median {q[1]:.2f} s "
