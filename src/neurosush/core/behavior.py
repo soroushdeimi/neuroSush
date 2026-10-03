@@ -23,6 +23,9 @@ class Behavior:
     # with ``independent=True`` (no mean over the batch, per-member weights); anything else
     # makes such a network refuse to initialize.
     independent_ok: ClassVar[bool] = False
+    # Random numbers drawn ahead of this step by :meth:`draw`, set by the compiled stepper only
+    # (forward falls back to drawing from the group when a name is missing).
+    drawn: dict[str, Any] = {}  # noqa: RUF012 - never mutated; steppers assign a new dict
 
     def initialize(self, host: Any) -> None:
         """Allocate state on ``host``; called once, in schedule order."""
@@ -45,6 +48,38 @@ class Behavior:
             :attr:`graph_safe` by default.
         """
         return self.graph_safe
+
+    def compile_ready(self, host: Any) -> bool:
+        """Whether ``forward`` on ``host`` may run inside the compiled stepper.
+
+        The same contract as :meth:`graph_ready` (no host-device synchronization, no Python-side
+        state changes, Python decisions exposed through :meth:`graph_key`), except that random
+        numbers come from :meth:`draw`, so a generator does not matter.
+
+        Args:
+            host: The network, neuron group or synapse group this behavior is attached to.
+
+        Returns:
+            :meth:`graph_ready` by default.
+        """
+        return self.graph_ready(host)
+
+    def draw(self, host: Any) -> dict[str, Any]:
+        """Random numbers this behavior's next ``forward`` needs, drawn eagerly.
+
+        The compiled stepper cannot trace draws from a ``torch.Generator``, so it calls this
+        before the compiled step, in schedule order (the order eager stepping draws in), and
+        exposes the result as ``self.drawn`` during ``forward``. A behavior that overrides this
+        reads ``self.drawn.get(name)`` in ``forward`` and draws from the group when it is
+        ``None``, which keeps eager stepping unchanged.
+
+        Args:
+            host: The network, neuron group or synapse group this behavior is attached to.
+
+        Returns:
+            Named tensors; empty by default.
+        """
+        return {}
 
     def graph_key(self, host: Any) -> Hashable:
         """The Python-side decision this behavior's upcoming step depends on.

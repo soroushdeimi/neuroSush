@@ -263,6 +263,22 @@ the same benchmark measured 3,887 graph steps per second against 1,746 eager (2.
 2026-10-02). The gain depends on the platform's kernel-launch overhead. [Benchmarks](https://github.com/soroushdeimi/neuroSush/blob/main/docs/BENCHMARKS.md) has the full results, the
 method and the pitfalls.
 
+A graph still launches one kernel per tensor operation (154 per step for the Diehl and Cook
+network). `CompiledStepper` (`neurosush.core.compiled`) is an opt-in alternative: it compiles
+the whole step with `torch.compile` into a few fused kernels and, on CUDA, replays that as a
+CUDA graph per key. It has the same `step()` and `run(steps)`, works on CPU and CUDA and in
+shared-batch and `independent=True` networks, and names the behaviors it cannot compile
+(`Behavior.compile_ready`; delays longer than one step, `RSTDP` and, on the CPU, the unbatched
+dense `STDP` are refused). Its results equal eager stepping to a tolerance, not bit for bit:
+fused kernels round differently (membrane voltages agree to about 1e-5 in float32, and the
+tests check spikes over several hundred steps), so `GraphStepper` and `Network.run` remain
+the exact references. Random numbers are drawn eagerly in the eager order
+(`Behavior.draw`), so the random stream is the same. The first step of each key compiles
+(about 3 seconds for the Diehl and Cook network from an empty Inductor cache on the machine
+below). On an RTX 3060 Laptop GPU (Linux, 2026-10-03, `benchmarks/compiled.py`), 100 neurons
+unbatched ran 39,923 steps per second compiled against 5,934 as a graph and 1,011 eager;
+with 16 independent members in one batch, 11,395 against 1,525 and 838.
+
 ![Steps per second of one network on a CPU and on a GPU, eager and as a CUDA graph](https://raw.githubusercontent.com/soroushdeimi/neuroSush/main/docs/figures/single-network.svg)
 
 ## Modules

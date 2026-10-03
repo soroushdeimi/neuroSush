@@ -79,6 +79,12 @@ class _Buffer:
         """Whether every delay is zero; validates new delay tensors (once per version)."""
         if isinstance(delay, int):
             return delay == 0
+        if self.depth == 1:
+            # only delay 0 fits: decided by the depth alone, with no host-device synchronization
+            # (the compiled stepper traces this); the range is checked where delays are set
+            if delay.shape != (self.size,):
+                raise ValueError(f"delay shape must be ({self.size},), got {tuple(delay.shape)}")
+            return True
         cached = self._checked.get(id(delay))
         if cached is None or cached[0] != delay._version:
             if delay.shape != (self.size,):

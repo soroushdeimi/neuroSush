@@ -203,8 +203,21 @@ class InherentNoise(Behavior):
 
     def forward(self, group: NeuronGroup) -> None:
         """Perturb the membrane."""
-        sample = group.rand() if self.distribution == "uniform" else group.randn()
+        sample = self.drawn.get("sample")
+        if sample is None:
+            sample = self._draw(group)
         group.v = group.v + self.scale * sample + self.offset
+
+    def _draw(self, group: NeuronGroup) -> torch.Tensor:
+        return group.rand() if self.distribution == "uniform" else group.randn()
+
+    def draw(self, group: NeuronGroup) -> dict[str, torch.Tensor]:
+        """This step's samples, for the compiled stepper."""
+        return {"sample": self._draw(group)}
+
+    def compile_ready(self, group: NeuronGroup) -> bool:
+        """Always ready: the compiled stepper draws the samples itself."""
+        return True
 
     def graph_ready(self, group: NeuronGroup) -> bool:
         """Ready when the generator is on CUDA and this torch can replay its draws."""

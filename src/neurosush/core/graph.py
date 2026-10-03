@@ -52,6 +52,25 @@ def _tensor_attrs(obj: object) -> Iterator[tuple[str, torch.Tensor]]:
             yield name, value
 
 
+def tensor_snapshot(net: Network, captured: list[_Pair]) -> list[_Snapshot]:
+    """Every tensor attribute a captured step might reassign: ``(object, name, tensor, label)``."""
+    labeled: list[tuple[object, str]] = [(net, "the network")]
+    labeled += [(group, group.name) for group in net.groups]
+    labeled += [(syn, syn.name) for syn in net.synapses]
+    labeled += [
+        (behavior, f"{type(behavior).__name__} on {_host_name(host)}")
+        for host, behavior in captured
+    ]
+    return [
+        (obj, name, tensor, label) for obj, label in labeled for name, tensor in _tensor_attrs(obj)
+    ]
+
+
+def step_key(captured: list[_Pair]) -> _Key:
+    """The Python-side decisions of the upcoming step: one graph is captured per distinct key."""
+    return tuple((behavior.enabled, behavior.graph_key(host)) for host, behavior in captured)
+
+
 class GraphStepper:
     """Steps a CUDA network by capturing its step as a CUDA graph and replaying it.
 
@@ -98,9 +117,7 @@ class GraphStepper:
         if self._steps < self.warmup:
             self._eager_step()
         else:
-            key: _Key = tuple(
-                (behavior.enabled, behavior.graph_key(host)) for host, behavior in self.captured
-            )
+            key = step_key(self.captured)
             graph = self._graphs.get(key)
             if graph is None:
                 graph = self._capture()
@@ -134,19 +151,7 @@ class GraphStepper:
 
     def _snapshot(self) -> list[_Snapshot]:
         """Every tensor attribute a captured step might reassign, before it runs."""
-        net = self.net
-        labeled: list[tuple[object, str]] = [(net, "the network")]
-        labeled += [(group, group.name) for group in net.groups]
-        labeled += [(syn, syn.name) for syn in net.synapses]
-        labeled += [
-            (behavior, f"{type(behavior).__name__} on {_host_name(host)}")
-            for host, behavior in self.captured
-        ]
-        return [
-            (obj, name, tensor, label)
-            for obj, label in labeled
-            for name, tensor in _tensor_attrs(obj)
-        ]
+        return tensor_snapshot(self.net, self.captured)
 
     def _capture(self) -> torch.cuda.CUDAGraph:
         """Capture a new graph for the step ``net`` is currently set up to run.

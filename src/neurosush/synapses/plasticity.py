@@ -420,6 +420,15 @@ class STDP(Behavior):
         """Ready on a GPU only: the CPU dense path is event-driven with a ``nonzero()`` sync."""
         return syn.weights is not None and syn.weights.is_cuda
 
+    def compile_ready(self, syn: SynapseGroup) -> bool:
+        """Ready except on the CPU's event-driven path (unbatched dense: ``nonzero()``)."""
+        if syn.weights is None:
+            return False
+        event_driven = (
+            syn.connectivity == "dense" and syn.pre_spike.dim() == 1 and not syn.weights.is_cuda
+        )
+        return not event_driven
+
 
 class RSTDP(STDP):
     """Reward-modulated STDP through an eligibility trace ``syn.eligibility``.
@@ -463,6 +472,10 @@ class RSTDP(STDP):
 
     def graph_ready(self, syn: SynapseGroup) -> bool:
         """Never ready: ``forward`` multiplies by the Python float ``net.dopamine``."""
+        return False
+
+    def compile_ready(self, syn: SynapseGroup) -> bool:
+        """Never ready, for the same reason."""
         return False
 
 

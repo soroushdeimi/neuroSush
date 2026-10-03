@@ -6,6 +6,14 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- `CompiledStepper` (`neurosush.core.compiled`): opt-in, same `step()` and `run(steps)` as
+  `GraphStepper`; compiles the whole step with `torch.compile` and, on CUDA, replays it as a CUDA
+  graph per key. CPU and CUDA, shared batch and `independent=True`. Equal to eager to a
+  tolerance, not bit for bit (`GraphStepper` stays exact). New hooks `Behavior.compile_ready`
+  and `Behavior.draw` (random numbers drawn eagerly in the eager order; `PoissonInput` and
+  `InherentNoise` use them); a depth-1 `HistoryBuffer` read no longer inspects its delays.
+  `benchmarks/compiled.py` compares eager, graph and compiled; `diehl_cook_mnist.py` gets
+  `--stepper {graph,compiled}`.
 - `Network(batch_size=B, independent=True)`: the `B` batch members are `B` independent
   networks with their own weights, thresholds, `theta`, homeostasis and learning, with no
   averaging over the batch (dense `(B, n_src, n_dst)` and one-to-one `(B, n)` weights,

@@ -55,11 +55,12 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import torch
 
 from neurosush.core.behavior import Behavior
+from neurosush.core.compiled import CompiledStepper
 from neurosush.core.graph import GraphStepper
 from neurosush.core.network import Network, NeuronGroup, SynapseGroup
 from neurosush.data import load_mnist
@@ -95,7 +96,7 @@ class Model:
     exc: NeuronGroup
     inh: NeuronGroup
     syn: SynapseGroup
-    stepper: Network | GraphStepper
+    stepper: Network | GraphStepper | CompiledStepper
     learn: bool
 
 
@@ -105,7 +106,7 @@ def build_network(
     *,
     batch: int | None = None,
     learn: bool = True,
-    graph: bool = False,
+    graph: bool | Literal["graph", "compiled"] = False,
     seed: int = 0,
     rule: str = "pair",
     members: int | None = None,
@@ -195,7 +196,11 @@ def build_network(
         name="inh->exc",
     )
     net.initialize()
-    stepper = GraphStepper(net) if graph else net
+    stepper: Network | GraphStepper | CompiledStepper = net
+    if graph == "compiled":
+        stepper = CompiledStepper(net)
+    elif graph:
+        stepper = GraphStepper(net)
     return Model(net, inp, exc, inh, syn, stepper, learn)
 
 
@@ -384,7 +389,7 @@ def respond(
     device: str | torch.device,
     batch: int,
     steps: int,
-    graph: bool,
+    graph: bool | Literal["graph", "compiled"],
     seed: int,
 ) -> tuple[torch.Tensor, dict[str, int]]:
     """Spike counts of the frozen network on ``images``, batched; returns ``(samples, N)``."""
@@ -417,7 +422,7 @@ def evaluate(
     *,
     batch: int = 1000,
     steps: int = 350,
-    graph: bool = False,
+    graph: bool | Literal["graph", "compiled"] = False,
     seed: int = 0,
 ) -> dict[str, Any]:
     """Assign neurons to digits on ``label_images``, then classify ``test_images``.
@@ -485,7 +490,7 @@ def _evaluate_one(
     *,
     batch: int,
     steps: int,
-    graph: bool,
+    graph: bool | Literal["graph", "compiled"],
     seed: int,
 ) -> dict[str, Any]:
     """Evaluate one set of weights and thetas; also reports the sample steps it simulated."""
@@ -534,7 +539,14 @@ def main() -> None:
     p.add_argument("--eval-batch", type=int, default=1000)
     p.add_argument("--steps", type=int, default=350, help="simulation steps per sample")
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
-    p.add_argument("--no-graph", action="store_true", help="do not use CUDA graphs")
+    p.add_argument("--no-graph", action="store_true", help="step eagerly (no CUDA graphs)")
+    p.add_argument(
+        "--stepper",
+        choices=("graph", "compiled"),
+        default="graph",
+        help="CUDA only: replay the step as a CUDA graph, or torch.compile it first "
+        "(CompiledStepper: matches eager to a tolerance, not bit for bit)",
+    )
     p.add_argument("--seed", type=int, default=0)
     p.add_argument(
         "--members",
@@ -553,7 +565,7 @@ def main() -> None:
     args = p.parse_args()
 
     device = torch.device(args.device)
-    graph = device.type == "cuda" and not args.no_graph
+    graph = args.stepper if device.type == "cuda" and not args.no_graph else False
     xtr, ytr, xte, yte = load_mnist(args.data, download=True)
     xtr, xte = xtr.reshape(len(xtr), -1), xte.reshape(len(xte), -1)
     torch.manual_seed(args.seed)

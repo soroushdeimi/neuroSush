@@ -114,4 +114,11 @@ class PoissonInput(Behavior):
 
     def forward(self, group: NeuronGroup) -> None:
         """Draw this step's spikes from ``group.net.generator``."""
-        group.spikes = group.rand() < group.rates * group.net.dt
+        uniform = self.drawn.get("uniform")
+        if uniform is None:
+            uniform = group.rand()
+        group.spikes = uniform < group.rates * group.net.dt
+
+    def draw(self, group: NeuronGroup) -> dict[str, torch.Tensor]:
+        """This step's uniform samples, for the compiled stepper."""
+        return {"uniform": group.rand()}

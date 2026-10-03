@@ -26,6 +26,7 @@ cortical structures.
 |---|---|
 | `core/order.py` | `Order` constants: when each kind of behavior runs |
 | `core/behavior.py` | `Behavior` base class |
+| `core/compiled.py` | `CompiledStepper`: the step compiled with `torch.compile`, optionally replayed as a CUDA graph |
 | `core/buffers.py` | `HistoryBuffer` (past values, read with per-neuron delay), `ArrivalBuffer` (future accumulation for dendritic delays) |
 | `core/network.py` | `Network`, `NeuronGroup`, `SynapseGroup`, `Compartment` |
 | `neurons/dynamics.py` | pure LIF / ELIF / AdEx equations and threshold crossing |
@@ -217,6 +218,37 @@ Randomness draws from `net.generator`, a CUDA generator; when
 `torch.cuda.CUDAGraph.register_generator_state` exists, the stepper registers it with each
 graph before capturing, which is what makes `InherentNoise` graph-ready (its own
 `graph_ready` checks for a CUDA generator and that method).
+
+### Compiled stepper
+
+`neurosush.core.compiled.CompiledStepper` takes the same `captured`/`after` split but traces
+all captured `forward` calls into one function with `torch.compile(fullgraph=True)`, so
+Inductor fuses the element-wise work (154 kernels per Diehl and Cook step become about 12 to
+14). It is opt-in and tolerance-equivalent to eager; `GraphStepper` and `Network.step` stay
+the bit-exact references. Four pieces differ from the graph stepper:
+
+- **Write-back inside the function.** The compiled function reads every tensor attribute the
+  snapshot lists, runs the forwards, and for each reassigned attribute does `old.copy_(new)`
+  and `setattr(obj, name, old)`, so state keeps fixed addresses. Without the in-place
+  write-back a gathered spike tensor (`SpikeGather.read`) could alias the mutated history
+  storage, so one population would see another's spikes a step early; the tests compare
+  spikes step by step.
+- **Pre-drawn randomness.** Dynamo cannot trace draws from a custom `torch.Generator`.
+  `Behavior.draw(host)` returns the named tensors a behavior's next `forward` needs
+  (`PoissonInput`, `InherentNoise`); the stepper calls it eagerly, in schedule order (the
+  order eager stepping draws in), and sets `behavior.drawn` around the compiled call.
+  `forward` uses `self.drawn.get(name)` and otherwise draws from the group, so eager and
+  graph stepping are unchanged. Under a CUDA graph the draws are captured with it.
+- **Readiness.** `Behavior.compile_ready` defaults to `graph_ready`; `InherentNoise` (draws
+  come from `draw`) and `STDP` (ready on the CPU unless its event-driven `nonzero()` path
+  applies) override it. For depth-1 history buffers `_Buffer._no_delay` is decided by the
+  depth alone, with no data-dependent branch, which is what lets `SpikeGather` trace.
+- **Keys and warm-up.** The first step of a key runs through the compiled function on a side
+  stream (this is where compilation happens, never inside a capture); the next step of that
+  key is captured and replayed. Python decisions that vary (a homeostasis window ending, an
+  `enabled` flag) make Dynamo guard and compile a variant per value, matching the per-key
+  graphs. The stepper raises Dynamo's recompile limit to 64 so networks of several shapes
+  can coexist in one process.
 
 ## Thousand Brains models
 

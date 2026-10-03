@@ -30,7 +30,16 @@ class Axon(Behavior):
         for kind, links in (("src_delay", group.efferent), ("dst_delay", group.afferent)):
             for synapses in links.values():
                 for syn in synapses:
-                    longest = int(getattr(syn, kind).max())
+                    delays = getattr(syn, kind)
+                    if delays.is_floating_point() or delays.dtype == torch.bool:
+                        raise ValueError(
+                            f"{kind} must be integers for {syn.name}, got {delays.dtype}"
+                        )
+                    if int(delays.min()) < 0:
+                        raise ValueError(
+                            f"{kind} must not be negative for {syn.name}, got {int(delays.min())}"
+                        )
+                    longest = int(delays.max())
                     if longest >= self.max_delay:
                         raise ValueError(
                             f"{kind} must be less than max_delay={self.max_delay} for "
