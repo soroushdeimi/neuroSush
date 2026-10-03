@@ -185,3 +185,43 @@ def test_exc_block_is_recorded_and_used_in_evaluation():
     assert 0.0 <= result["accuracy"] <= 1.0
     assert "--exc-block" in dc.__doc__
     assert "timer" in dc.__doc__
+
+
+def test_black_image_hits_the_cap_and_is_counted():
+    dc = load()
+    model = dc.build_network(6, "cpu", seed=0)
+    images = torch.zeros(3, 784, dtype=torch.uint8)
+    labels = torch.zeros(3, dtype=torch.long)
+    stats = dc.train(model, images, labels, samples=3, steps=20, log_every=3, rest=10)
+    assert stats["cap_hits"] == 3.0
+    assert stats["presentations_per_sample"] == pytest.approx(dc.MAX_INTENSITY - 1)
+    assert stats["max_intensity_used"] == dc.MAX_INTENSITY
+    json.dumps(stats["cap_hits"])
+
+
+def test_no_cap_raises_at_the_safety_limit(monkeypatch):
+    dc = load()
+    monkeypatch.setattr(dc, "SAFETY_INTENSITY", 6.0)
+    model = dc.build_network(6, "cpu", seed=0)
+    black = torch.zeros(784, dtype=torch.uint8)
+    with pytest.raises(RuntimeError, match="safety limit"):
+        dc.present(model, black, 20, max_intensity=None)
+    with pytest.raises(RuntimeError, match="safety limit"):
+        dc.present(model, black, 20, max_intensity=0)
+
+
+def test_no_cap_with_members_and_rest_restores_satisfied_members():
+    dc = load()
+    model = dc.build_network(6, "cpu", seed=0, members=2)
+    image = torch.zeros(784, dtype=torch.uint8)
+    image[:200] = 255
+    # member 1 sees a dim image that needs a higher intensity than member 0's bright one
+    dim = (image // 12).to(torch.uint8)
+    images = torch.stack([image, dim])
+    before = model.syn.weights.clone()
+    counts, info = dc.present(model, images, 60, max_intensity=None, rest=150)
+    assert (counts.sum(-1) >= dc.MIN_SPIKES).all()
+    assert not info["cap_hit"].any()
+    assert info["presentations"][1] >= info["presentations"][0]
+    assert counts.shape == (2, 6)
+    assert (model.syn.weights != before).any()
