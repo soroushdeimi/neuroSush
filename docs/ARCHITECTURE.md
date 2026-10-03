@@ -88,7 +88,7 @@ A step of `Network.step()` runs every enabled behavior's `forward` once, sorted 
 | 280 | `InherentNoise`, `PoissonDrive` | | `ng.v` |
 | 300 | `KWTA` | `ng.v` | `ng.v` |
 | 310 | `VoltageHomeostasis` | `ng.v` | `ng.v` |
-| 330 | `Refractory` | `ng.spikes`, `ng.v` | `ng.v`, `ng.refractory` |
+| 330 | `Refractory` | `ng.spikes`, `ng.v` | `ng.v`, `ng.refractory` (with `block`: `ng.block_left`, `ng.fire_blocked`) |
 | 340 | `Fire`, `SpikeInput`, `PoissonInput`, `CorrelatedPoissonInput` | `ng.v`, `ng.rates` | `ng.spikes`, `ng.v` |
 | 350 | `ActivityHomeostasis`, `AdaptiveThreshold` | `ng.spikes` | `ng.threshold` (`ng.theta`) |
 | 380 | `Axon` | `ng.spikes` | `ng.spike_history` |

@@ -243,6 +243,9 @@ class NeuronGroup:
     rates: torch.Tensor
     # Refractory sets the refractory time left.
     refractory: torch.Tensor
+    # Refractory with a block also sets the block time left and the mask of blocked neurons.
+    block_left: torch.Tensor
+    fire_blocked: torch.Tensor
     # AdaptiveThreshold sets the threshold offset and the threshold it adds to.
     theta: torch.Tensor
     base_threshold: torch.Tensor

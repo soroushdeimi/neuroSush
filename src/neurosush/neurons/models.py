@@ -143,7 +143,10 @@ class LIF(Behavior):
     def fire(self, group: NeuronGroup) -> None:
         """Emit spikes where ``v >= threshold`` and reset those neurons."""
         group.spikes, group.v = dynamics.fire(
-            group.v, threshold=group.threshold, v_reset=group.v_reset
+            group.v,
+            threshold=group.threshold,
+            v_reset=group.v_reset,
+            blocked=getattr(group, "fire_blocked", None),
         )
 
 
@@ -358,7 +361,12 @@ class Izhikevich(Behavior):
     def fire(self, group: NeuronGroup) -> None:
         """Emit spikes where ``v >= v_peak``; reset ``v`` to ``c`` and add ``d`` to ``u``."""
         group.spikes, group.v, group.u = dynamics.izhikevich_reset(
-            group.v, group.u, v_peak=group.threshold, c=self._c, d=self._d
+            group.v,
+            group.u,
+            v_peak=group.threshold,
+            c=self._c,
+            d=self._d,
+            blocked=getattr(group, "fire_blocked", None),
         )
 
 
@@ -387,31 +395,58 @@ class Refractory(Behavior):
     before :class:`Fire` (``Order.REFRACTORY``). State on the group: ``refractory``, the
     time left.
 
+    With ``block``, a neuron also cannot fire for the next ``ceil(block / dt)`` steps after a
+    spike, but its voltage is only held for ``period``: once the hold ends ``v`` integrates
+    freely, so it can sit above threshold and fire on the first step the block allows.
+    This is the excitatory neuron of Diehl and Cook's code, a 5 ms hold plus a timer that
+    allows a spike only about 50 ms after the last one. Extra state on the group:
+    ``block_left``, the block time left, and ``fire_blocked``, the mask that the neuron
+    model's ``fire`` reads.
+
     Args:
         period: Refractory period, in the unit of ``dt``.
+        block: Time after a spike during which the neuron cannot fire, in the unit of ``dt``
+            (at least ``period``); ``None`` for no block.
     """
 
     order = Order.REFRACTORY
     independent_ok = True
     graph_safe = True
 
-    def __init__(self, period: float) -> None:
+    def __init__(self, period: float, *, block: float | None = None) -> None:
         _positive(period=period)
+        if block is not None:
+            _positive(block=block)
+            if block < period:
+                raise ValueError(f"block must be at least period ({period}), got {block}")
         self.period = float(period)
+        self.block = None if block is None else float(block)
 
     def initialize(self, group: NeuronGroup) -> None:
-        """Check for a neuron model and allocate the countdown."""
+        """Check for a neuron model and allocate the countdowns."""
         if not hasattr(group, "v_reset"):
             raise RuntimeError(f"Refractory on {group.name} needs a neuron model such as LIF")
         group.refractory = group.state()
+        if self.block is not None:
+            group.block_left = group.state()
+            group.fire_blocked = group.state(False, dtype=torch.bool)
 
     def reset_state(self, group: NeuronGroup) -> None:
         """End every countdown."""
         group.refractory.zero_()
+        if self.block is not None:
+            group.block_left.zero_()
+            group.fire_blocked.zero_()
 
     def forward(self, group: NeuronGroup) -> None:
-        """Start the countdown on the last step's spikes and clamp neurons still in it."""
+        """Start the countdowns on the last step's spikes and clamp neurons still in the hold."""
+        dt = group.net.dt
         group.refractory = torch.where(
-            group.spikes, self.period, (group.refractory - group.net.dt).clamp(min=0)
+            group.spikes, self.period, (group.refractory - dt).clamp(min=0)
         )
         group.v = group.v.masked_fill(group.refractory > 1e-9, group.v_reset)
+        if self.block is not None:
+            group.block_left = torch.where(
+                group.spikes, self.block, (group.block_left - dt).clamp(min=0)
+            )
+            group.fire_blocked = group.block_left > 1e-9

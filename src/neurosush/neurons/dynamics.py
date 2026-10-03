@@ -57,10 +57,19 @@ def euler_step(v: Scalar, tau_dv_dt: Scalar, *, tau: float, dt: float) -> Scalar
 
 
 def fire(
-    v: torch.Tensor, *, threshold: Scalar, v_reset: Scalar
+    v: torch.Tensor,
+    *,
+    threshold: Scalar,
+    v_reset: Scalar,
+    blocked: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Threshold crossing: the spikes and the voltage with spiking neurons reset."""
+    """Threshold crossing: the spikes and the voltage with spiking neurons reset.
+
+    Neurons in ``blocked`` (a boolean mask) cannot spike: their voltage is left as it is.
+    """
     spikes = v >= threshold
+    if blocked is not None:
+        spikes = spikes & ~blocked
     if isinstance(v_reset, torch.Tensor):
         v_after = torch.where(spikes, v_reset, v)
     else:
@@ -111,14 +120,20 @@ def izhikevich_step(
 
 
 def izhikevich_reset(
-    v: torch.Tensor, u: torch.Tensor, *, v_peak: Scalar, c: Scalar, d: Scalar
+    v: torch.Tensor,
+    u: torch.Tensor,
+    *,
+    v_peak: Scalar,
+    c: Scalar,
+    d: Scalar,
+    blocked: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Spike where ``v >= v_peak``; those neurons get ``v = c`` and ``u += d``.
 
     Returns:
         ``(spikes, v, u)``.
     """
-    spikes, v_after = fire(v, threshold=v_peak, v_reset=c)
+    spikes, v_after = fire(v, threshold=v_peak, v_reset=c, blocked=blocked)
     return spikes, v_after, u + d * spikes.to(u.dtype)
 
 

@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import sys
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
@@ -144,3 +145,43 @@ def test_winner_diagnostics_per_member():
     diag = stats["winner_diagnostics"]
     assert len(diag["distinct_neurons_mean"]) == 2
     json.dumps(diag)
+
+
+def test_exc_block_reproduces_the_original_timer():
+    dc = load()
+    plain = dc.build_network(3, "cpu")
+    assert not hasattr(plain.exc, "fire_blocked")
+    model = dc.build_network(3, "cpu", exc_block=50.0)
+    refractory = next(b for b in model.exc.behaviors if type(b).__name__ == "Refractory")
+    assert (refractory.period, refractory.block) == (5.0, 50.0)
+    # voltage held far above threshold: a blocked neuron fires at most every 51 steps
+    times = []
+    for _ in range(300):
+        model.exc.v.copy_(torch.full_like(model.exc.v, 0.0))
+        model.net.step()
+        if bool(model.exc.spikes[0]):
+            times.append(model.net.iteration)
+    assert len(times) > 2
+    assert all(b - a >= 51 for a, b in pairwise(times))
+    # the same drive without the block fires every 6 steps
+    free = []
+    for _ in range(300):
+        plain.exc.v.copy_(torch.full_like(plain.exc.v, 0.0))
+        plain.net.step()
+        if bool(plain.exc.spikes[0]):
+            free.append(plain.net.iteration)
+    assert {b - a for a, b in pairwise(free)} == {6}
+
+
+def test_exc_block_is_recorded_and_used_in_evaluation():
+    dc = load()
+    images = (torch.rand(8, 784, generator=torch.Generator().manual_seed(1)) * 255).to(torch.uint8)
+    labels = torch.randint(0, 10, (8,), generator=torch.Generator().manual_seed(1))
+    model = dc.build_network(4, "cpu", seed=0, exc_block=50.0)
+    dc.train(model, images, labels, samples=4, steps=60)
+    result = dc.evaluate(
+        model, images[:4], labels[:4], images[4:], labels[4:], batch=4, steps=60, exc_block=50.0
+    )
+    assert 0.0 <= result["accuracy"] <= 1.0
+    assert "--exc-block" in dc.__doc__
+    assert "timer" in dc.__doc__

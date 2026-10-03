@@ -28,6 +28,16 @@ the rule of the paper's code: potentiation on a postsynaptic spike scales with a
 postsynaptic trace (40 ms) and traces are nearest-spike (set to one at a spike), implemented
 with ``TripletSTDP``.
 
+``--exc-block`` (ms, default none). The paper's text gives the excitatory neurons a 5 ms
+refractory period only. The authors' code (github.com/peter-u-diehl/stdp-mnist) also has a
+timer (``dtimer/dt = 100 ms/s``, reset to 0 at a spike) and lets a neuron fire only while the
+timer is above 5 ms, that is about 50 ms after its last spike, while the voltage keeps
+integrating (it is clamped at the reset only for the first 5 ms). The text does not mention
+it. ``--exc-block 50`` reproduces it with ``Refractory(5.0, block=50.0)``: a neuron cannot fire
+for ``ceil(50 / dt)`` steps after a spike and fires on the first step after that when its
+voltage is already above threshold. The default is the plain refractory period. The value is
+recorded in the JSON as ``exc_block``.
+
 ``--dt`` (ms, default 1.0) sets the simulation step; every duration stays in ms and is
 converted to steps with ``round(ms / dt)`` (presentation, rest). The paper's Brian code uses
 dt = 0.5 ms; with it the one-step synaptic transmission makes exc -> inh -> exc inhibition
@@ -123,6 +133,7 @@ def build_network(
     rule: str = "pair",
     members: int | None = None,
     dt: float = 1.0,
+    exc_block: float | None = None,
 ) -> Model:
     """Build the Diehl and Cook network; ``learn=False`` leaves out plasticity and theta.
 
@@ -147,7 +158,7 @@ def build_network(
     exc_behaviors: list[Behavior] = [
         ConductanceIntegration(e_exc=0.0, e_inh=-100.0, tau_exc=1.0, tau_inh=2.0),
         LIF(tau=100.0, threshold=-52.0, v_reset=-65.0, v_rest=-65.0),
-        Refractory(5.0),
+        Refractory(5.0, block=exc_block),
         Fire(),
         SpikeCounter(),
         Axon(),
@@ -444,6 +455,7 @@ def respond(
     graph: bool | Literal["graph", "compiled"],
     seed: int,
     dt: float = 1.0,
+    exc_block: float | None = None,
 ) -> tuple[torch.Tensor, dict[str, int]]:
     """Spike counts of the frozen network on ``images``, batched; returns ``(samples, N)``."""
     neurons = weights.shape[1]
@@ -455,7 +467,14 @@ def respond(
         size = len(chunk)
         if size not in models:
             m = build_network(
-                neurons, device, batch=size, learn=False, graph=graph, seed=seed, dt=dt
+                neurons,
+                device,
+                batch=size,
+                learn=False,
+                graph=graph,
+                seed=seed,
+                dt=dt,
+                exc_block=exc_block,
             )
             m.syn.weights.copy_(weights)
             m.exc.threshold.copy_(m.exc.threshold + theta.to(m.net.device))
@@ -480,6 +499,7 @@ def evaluate(
     graph: bool | Literal["graph", "compiled"] = False,
     seed: int = 0,
     dt: float = 1.0,
+    exc_block: float | None = None,
 ) -> dict[str, Any]:
     """Assign neurons to digits on ``label_images``, then classify ``test_images``.
 
@@ -502,6 +522,7 @@ def evaluate(
                 graph=graph,
                 seed=seed,
                 dt=dt,
+                exc_block=exc_block,
             )
             for b in range(model.net.batch_size or 1)
         ]
@@ -532,6 +553,7 @@ def evaluate(
         graph=graph,
         seed=seed,
         dt=dt,
+        exc_block=exc_block,
     )
     del result["evaluation_sample_steps"]
     return result
@@ -551,6 +573,7 @@ def _evaluate_one(
     graph: bool | Literal["graph", "compiled"],
     seed: int,
     dt: float = 1.0,
+    exc_block: float | None = None,
 ) -> dict[str, Any]:
     """Evaluate one set of weights and thetas; also reports the sample steps it simulated."""
     kwargs: dict[str, Any] = {
@@ -560,6 +583,7 @@ def _evaluate_one(
         "graph": graph,
         "seed": seed,
         "dt": dt,
+        "exc_block": exc_block,
     }
     t0 = time.perf_counter()
     label_counts, info1 = respond(weights, theta, label_images, **kwargs)
@@ -623,6 +647,13 @@ def main() -> None:
         help="train this many independent networks at once (different random draws)",
     )
     p.add_argument("--rest", type=float, default=REST, help="ms of rest after each training sample")
+    p.add_argument(
+        "--exc-block",
+        type=float,
+        default=None,
+        help="ms after a spike during which an excitatory neuron cannot fire (the original "
+        "code's timer; 50 reproduces it); default none",
+    )
     p.add_argument("--rule", choices=RULES, default="pair", help="synaptic learning rule")
     p.add_argument("--data", default="data/MNIST/raw", help="folder of MNIST IDX files")
     p.add_argument("--out", help="write the results as JSON")
@@ -651,6 +682,7 @@ def main() -> None:
         rule=args.rule,
         members=args.members if args.members > 1 else None,
         dt=args.dt,
+        exc_block=args.exc_block,
     )
     stats = train(
         model,
@@ -678,10 +710,12 @@ def main() -> None:
         graph=graph,
         seed=args.seed,
         dt=args.dt,
+        exc_block=args.exc_block,
     )
     result.update(
         rule=args.rule,
         rest=args.rest,
+        exc_block=args.exc_block,
         dt=args.dt,
         presentation=args.presentation,
         steps_per_sample=steps,

@@ -135,7 +135,7 @@ def build_competition(device, batch_size=None, seed=0):
         [
             ConductanceIntegration(tau_exc=1.0, tau_inh=2.0),
             LIF(**lif),
-            Refractory(3.0),
+            Refractory(3.0, block=6.0),
             Fire(),
             AdaptiveThreshold(increment=0.5, tau=50.0),
             Axon(),

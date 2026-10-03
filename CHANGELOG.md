@@ -5,6 +5,14 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+### Added
+- `Refractory(period, *, block=None)`: with `block` a neuron also cannot fire for
+  `ceil(block / dt)` steps after a spike while its voltage integrates freely once the `period`
+  hold ends (the timer of the original Diehl and Cook code); `None` keeps the plain refractory
+  period. `dynamics.fire` and `izhikevich_reset` take an optional `blocked` mask.
+- `examples/diehl_cook_mnist.py --exc-block MS` (50 reproduces the original code's firing
+  timer; the paper's text does not mention it), recorded in the JSON as `exc_block`.
+
 ## [0.5.0] - 2026-10-03
 
 ### Added

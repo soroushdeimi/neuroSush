@@ -46,8 +46,10 @@ def _skip_without_a_compiler(device):
             pytest.skip("torch.compile on the CPU needs a C++ compiler")
 
 
-def dc_model(device, *, rule="pair", members=None, seed=0):
-    model = _dc().build_network(40, device, rule=rule, members=members, seed=seed)
+def dc_model(device, *, rule="pair", members=None, seed=0, exc_block=None):
+    model = _dc().build_network(
+        40, device, rule=rule, members=members, seed=seed, exc_block=exc_block
+    )
     model.input.rates.fill_(0.06)
     return model
 
@@ -96,6 +98,15 @@ def test_diehl_cook_matches_eager(device, rule, members):
     ref, got, _ = compare(lambda: dc_model(device, rule=rule, members=members), steps, device)
     assert torch.allclose(ref.exc.v, got.exc.v, atol=1e-4)
     assert torch.allclose(ref.syn.weights, got.syn.weights, atol=1e-4)
+    assert torch.allclose(ref.exc.theta, got.exc.theta, atol=1e-4)
+
+
+@pytest.mark.parametrize(("device", "members"), CASES)
+def test_excitatory_block_matches_eager(device, members):
+    steps = 300 if device == "cuda" else 120
+    ref, got, _ = compare(lambda: dc_model(device, members=members, exc_block=20.0), steps, device)
+    assert torch.equal(ref.exc.fire_blocked, got.exc.fire_blocked)
+    assert torch.allclose(ref.exc.v, got.exc.v, atol=1e-4)
     assert torch.allclose(ref.exc.theta, got.exc.theta, atol=1e-4)
 
 
