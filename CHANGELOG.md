@@ -6,6 +6,10 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- `neurosush.viz.catalog`: the machine-readable plate catalog (`PlateSpec`, `PLATES` for all
+  43 planned plates with English and Persian titles, waves and flagship flags, `PLANNED`)
+  and the coverage introspector (`public_models`, `EXEMPT`, `uncovered`) that a test keeps
+  honest: every public model must be covered by a plate or explicitly exempted.
 - `benchmarks/profile_step.py`: per-step wall time, operator, CUDA-kernel and launch-bound
   profiling for the dense STDP and Diehl and Cook workloads across eager, graph and compiled
   steppers.
