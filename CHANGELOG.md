@@ -6,6 +6,10 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- `neurosush.viz.export`: `render_plate`, `write_html` and `available_plates` produce a single
+  self-contained HTML plate (inline CSS, JavaScript and packed trace data, light and dark
+  themes) from the Atlas web shell in `neurosush/viz/web`; JavaScript logic is tested with
+  `node --test`.
 - `neurosush.viz.trace`: compact JSON-serializable `Trace` with base64 little-endian array
   packing and `TraceRecorder` behavior preallocating device-side buffers.
 - `neurosush.viz.schedule`: `schedule_table` and `schedule_lanes` for inspecting simulation
