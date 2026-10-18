@@ -1,0 +1,774 @@
+{
+  "membrane_potential": {
+    "term": "Membrane potential",
+    "short": "Voltage across the neuron membrane, the difference in potential between inside and outside.",
+    "long": "The membrane potential is the voltage difference between the inside and the outside of a neuron. It rises when positive ions enter and falls when they leave. The neuron spikes when the potential reaches threshold.",
+    "plates": [
+      "N01",
+      "N05",
+      "N09"
+    ],
+    "symbol": "V_m"
+  },
+  "resting_potential": {
+    "term": "Resting potential",
+    "short": "Membrane voltage of a neuron at rest, when no input is applied.",
+    "long": "The resting potential is the steady membrane voltage of a neuron that receives no net input, set by leak currents and ion gradients. In the squid-axon convention used by the library it is about -65 mV. It is the voltage the membrane returns to between inputs.",
+    "plates": [
+      "N01",
+      "N05",
+      "N07"
+    ],
+    "symbol": "V_rest"
+  },
+  "threshold": {
+    "term": "Threshold",
+    "short": "Membrane voltage at which a neuron emits a spike.",
+    "long": "The threshold is the membrane voltage above which a neuron fires a spike. It is often near -55 to -50 mV, above the resting potential. After a spike the voltage resets, and some models raise the threshold to slow firing.",
+    "plates": [
+      "N01",
+      "N06",
+      "C02"
+    ],
+    "symbol": "V_th"
+  },
+  "action_potential": {
+    "term": "Action potential",
+    "short": "Fast, all-or-none voltage pulse by which a neuron transmits a signal.",
+    "long": "An action potential is a brief, stereotyped rise and fall of the membrane voltage that travels along the axon. Sodium channels open first and depolarize the membrane, then potassium channels open and repolarize it. Its size does not depend on the strength of the stimulus once threshold is crossed.",
+    "plates": [
+      "N01",
+      "N05",
+      "D02",
+      "W01",
+      "X01"
+    ],
+    "symbol": null
+  },
+  "spike": {
+    "term": "Spike",
+    "short": "The event of a neuron firing; in the library a boolean value per neuron per step.",
+    "long": "A spike is the moment a neuron crosses threshold and sends a signal to its targets. In simulations it is recorded as a binary event, one value per neuron per time step. Each spike can add current to the neurons it connects to, often after a delay.",
+    "plates": [
+      "N01",
+      "D02",
+      "W01",
+      "X01",
+      "Y05"
+    ],
+    "symbol": null
+  },
+  "refractory_period": {
+    "term": "Refractory period",
+    "short": "Short time after a spike during which a neuron cannot fire again.",
+    "long": "The refractory period is the interval just after a spike when the neuron is hard or impossible to excite again. It stops spikes from overlapping and limits the maximum firing rate. In many models the voltage is held or clamped during this time.",
+    "plates": [
+      "N06",
+      "W01"
+    ],
+    "symbol": null
+  },
+  "leak": {
+    "term": "Leak",
+    "short": "Passive current that pulls the membrane voltage toward the resting potential.",
+    "long": "The leak is the passive flow of ions through the membrane that always pushes the voltage toward the resting potential. It is what makes an integrate-and-fire neuron leaky: without input, the voltage decays back to rest. It is modelled by a resistance or conductance with a reversal potential at rest.",
+    "plates": [
+      "N01"
+    ],
+    "symbol": null
+  },
+  "membrane_time_constant": {
+    "term": "Membrane time constant",
+    "short": "Time for the membrane voltage to relax toward rest, tau = R * C.",
+    "long": "The membrane time constant tau is the product of resistance and capacitance and sets how fast the voltage responds to current. A current step moves the voltage toward its final value with this time constant. Larger tau means a slower, more integrating membrane.",
+    "plates": [
+      "N01",
+      "N02"
+    ],
+    "symbol": "tau"
+  },
+  "capacitance": {
+    "term": "Membrane capacitance",
+    "short": "Ability of the membrane to store charge, proportional to its area.",
+    "long": "The membrane capacitance is the charge the membrane stores per volt, created by the lipid bilayer separating inside and outside. It slows the voltage change and is proportional to the membrane area. It is a standard parameter of every neuron model.",
+    "plates": [
+      "N01",
+      "N05"
+    ],
+    "symbol": "C_m"
+  },
+  "resistance": {
+    "term": "Membrane resistance",
+    "short": "Opposition of the membrane to current flow; the inverse of leak conductance.",
+    "long": "The membrane resistance is the inverse of the leak conductance and measures how hard it is for current to cross the membrane. High resistance means a small current makes a large voltage change. With capacitance it sets the membrane time constant.",
+    "plates": [
+      "N01"
+    ],
+    "symbol": "R"
+  },
+  "input_current": {
+    "term": "Input current",
+    "short": "Current injected into a neuron from outside or from other neurons.",
+    "long": "The input current is the current a neuron receives, whether injected by an electrode or delivered by synapses. It charges the membrane capacitance and drives the voltage toward threshold. A constant input current is the usual way to measure a neuron's response.",
+    "plates": [
+      "N01",
+      "N02",
+      "N08"
+    ],
+    "symbol": "I"
+  },
+  "rheobase": {
+    "term": "Rheobase",
+    "short": "Smallest constant current that makes a neuron fire, however long it lasts.",
+    "long": "The rheobase is the minimum amplitude of a constant input current that can bring a neuron to threshold no matter how long it is applied. It marks the boundary between subthreshold and firing responses. It is a classic point on the frequency-current curve.",
+    "plates": [
+      "N02",
+      "N08"
+    ],
+    "symbol": "I_rh"
+  },
+  "firing_rate": {
+    "term": "Firing rate",
+    "short": "Number of spikes a neuron emits per unit time, in hertz.",
+    "long": "The firing rate is how often a neuron spikes, usually counted over a fixed window and given in hertz. It grows with the input current and is limited by the refractory period. Population rate is the average over many neurons.",
+    "plates": [
+      "N08",
+      "Y02",
+      "C01",
+      "W01"
+    ],
+    "symbol": "f"
+  },
+  "f_i_curve": {
+    "term": "Frequency-current (f-I) curve",
+    "short": "Graph of a neuron's firing rate against the amplitude of a constant current.",
+    "long": "The f-I curve plots the steady firing rate of a neuron versus the applied current. It is zero below the rheobase and then rises, with a slope that differs between neuron types. Its shape separates Type I neurons, which start from zero rate, from Type II neurons, which jump on at a finite rate.",
+    "plates": [
+      "N02",
+      "N08"
+    ],
+    "symbol": "f-I"
+  },
+  "bifurcation": {
+    "term": "Bifurcation",
+    "short": "Qualitative change in a neuron's dynamics when a parameter crosses a critical value.",
+    "long": "A bifurcation is a sudden change in the qualitative behaviour of a dynamical system when a parameter passes a critical value. In neurons the onset of repetitive firing as current increases is such a transition. The type of bifurcation decides whether firing starts at zero or at a finite rate.",
+    "plates": [
+      "N02",
+      "N08"
+    ],
+    "symbol": null
+  },
+  "adaptation": {
+    "term": "Adaptation",
+    "short": "Slow process that makes a neuron fire less in response to a sustained input.",
+    "long": "Adaptation is the gradual reduction of a neuron's response to a maintained stimulus. A slow current or an increased threshold builds up with each spike and opposes firing. It lets neurons signal change rather than absolute level.",
+    "plates": [
+      "N03",
+      "N06"
+    ],
+    "symbol": "omega"
+  },
+  "spike_frequency_adaptation": {
+    "term": "Spike-frequency adaptation",
+    "short": "Slowing of firing during a sustained input, first intervals short and later ones long.",
+    "long": "Spike-frequency adaptation is the increase of the intervals between spikes when a constant current keeps flowing. Each spike adds to a slow adapting current that subtracts from the drive. It is a common feature of real cortical neurons and of the adaptive exponential model.",
+    "plates": [
+      "N03",
+      "N06"
+    ],
+    "symbol": null
+  },
+  "exponential_integrate_and_fire": {
+    "term": "Exponential integrate-and-fire (EIF)",
+    "short": "Leaky integrate-and-fire neuron with an exponential term that sharpens spike onset.",
+    "long": "The exponential integrate-and-fire neuron adds an exponential current to the leaky integrate-and-fire model that grows sharply near threshold. This reproduces the fast voltage upstroke of a real spike initiation without the full conductance model. Below threshold it behaves like a simple leaky neuron.",
+    "plates": [
+      "N02"
+    ],
+    "symbol": "delta"
+  },
+  "izhikevich_neuron": {
+    "term": "Izhikevich neuron",
+    "short": "Two-variable neuron model that reproduces many firing patterns at low cost.",
+    "long": "The Izhikevich neuron is a two-variable model with a quadratic voltage equation and a slow recovery variable. By choosing its four parameters it can reproduce regular spiking, bursting, fast spiking and other patterns. It is much cheaper than a conductance model while staying biologically plausible.",
+    "plates": [
+      "N04"
+    ],
+    "symbol": null
+  },
+  "ion_channel": {
+    "term": "Ion channel",
+    "short": "Protein pore in the membrane through which specific ions pass.",
+    "long": "An ion channel is a protein that forms a pore in the membrane and lets particular ions cross it. Channels open and close, changing the membrane conductance to that ion. Their opening depends on voltage, chemicals or stretch.",
+    "plates": [
+      "N05",
+      "N09"
+    ],
+    "symbol": null
+  },
+  "voltage_gated_channel": {
+    "term": "Voltage-gated channel",
+    "short": "Ion channel whose opening is controlled by the membrane voltage.",
+    "long": "A voltage-gated channel opens or closes according to the membrane voltage. A charged part of the protein senses the voltage and moves, opening the pore. Sodium and potassium channels of the action potential are of this kind.",
+    "plates": [
+      "N05",
+      "N09"
+    ],
+    "symbol": null
+  },
+  "sodium_channel": {
+    "term": "Sodium channel",
+    "short": "Voltage-gated channel that carries Na+ into the cell and depolarizes it.",
+    "long": "The sodium channel opens when the membrane depolarizes and lets Na+ flow in, pushing the voltage up. The sodium gradient and the negative inside give it a reversal potential of about +50 mV. It inactivates quickly, which helps end the action potential.",
+    "plates": [
+      "N05",
+      "N09"
+    ],
+    "symbol": "g_Na"
+  },
+  "potassium_channel": {
+    "term": "Potassium channel",
+    "short": "Voltage-gated channel that carries K+ out of the cell and repolarizes it.",
+    "long": "The potassium channel opens more slowly during an action potential and lets K+ leave the cell, pulling the voltage back down. Its reversal potential is about -77 mV. Its slow closing causes the hyperpolarization that follows a spike.",
+    "plates": [
+      "N05",
+      "N09"
+    ],
+    "symbol": "g_K"
+  },
+  "activation_gate": {
+    "term": "Activation gate",
+    "short": "Part of a channel that must open for the channel to conduct.",
+    "long": "The activation gate is the moving part of a voltage-gated channel that opens when the membrane depolarizes. In the Hodgkin-Huxley model it is described by a gating variable between zero and one. More open activation gates mean a larger conductance.",
+    "plates": [
+      "N05"
+    ],
+    "symbol": "m"
+  },
+  "inactivation_gate": {
+    "term": "Inactivation gate",
+    "short": "Part of a channel that closes it after opening, as for sodium.",
+    "long": "The inactivation gate is a second part of a channel that closes the pore even while the activation gate is open. In sodium channels it works on a slower timescale and ends the action potential. Removing inactivation lengthens the spike.",
+    "plates": [
+      "N05"
+    ],
+    "symbol": "h"
+  },
+  "gating_variable": {
+    "term": "Gating variable",
+    "short": "Number between zero and one giving the open fraction of a channel gate.",
+    "long": "A gating variable is a dimensionless number between zero and one that represents how open a channel gate is. It relaxes toward a voltage-dependent value with its own time constant. In the Hodgkin-Huxley model three gating variables describe sodium activation, sodium inactivation and potassium activation.",
+    "plates": [
+      "N05"
+    ],
+    "symbol": null
+  },
+  "conductance": {
+    "term": "Conductance",
+    "short": "Ease with which ions cross the membrane; the inverse of resistance.",
+    "long": "Conductance is how easily current flows through a channel or the membrane, measured in siemens. Synaptic conductances add in parallel and, together with their reversal potentials, shape the postsynaptic voltage. Opening more channels raises the conductance.",
+    "plates": [
+      "N05",
+      "N07"
+    ],
+    "symbol": "g"
+  },
+  "reversal_potential": {
+    "term": "Reversal potential",
+    "short": "Voltage at which the current through a channel is zero and flips sign.",
+    "long": "The reversal potential is the membrane voltage at which there is no net current through a given ion channel. If the voltage is above it the current flows one way, below it the other. For a pure ion channel it equals the Nernst potential of that ion.",
+    "plates": [
+      "N05",
+      "N07"
+    ],
+    "symbol": "E_rev"
+  },
+  "nernst_potential": {
+    "term": "Nernst potential",
+    "short": "Equilibrium voltage for one ion set by its concentration gradient.",
+    "long": "The Nernst potential is the voltage that exactly balances the concentration gradient of a single ion, so no net current flows. It grows with the logarithm of the outside-to-inside concentration ratio. Typical values are about +50 mV for Na+ and about -77 mV for K+.",
+    "plates": [
+      "N05",
+      "N07"
+    ],
+    "symbol": "E_ion"
+  },
+  "hodgkin_huxley_model": {
+    "term": "Hodgkin-Huxley model",
+    "short": "Conductance-based model of the action potential with sodium and potassium channels.",
+    "long": "The Hodgkin-Huxley model describes the action potential with voltage-dependent sodium and potassium conductances plus a leak. Each conductance is the product of a maximal value and gating variables that follow first-order kinetics. Hodgkin and Huxley derived it from squid-axon voltage-clamp experiments and won the 1963 Nobel Prize.",
+    "plates": [
+      "N05"
+    ],
+    "symbol": null
+  },
+  "patch_clamp": {
+    "term": "Patch clamp",
+    "short": "Technique that records the current through single ion channels.",
+    "long": "Patch clamp uses a glass pipette sealed onto a small patch of membrane to record the current through one or a few channels. It revealed that channels open and close in discrete steps. It is the basis for single-channel measurements of conductance and kinetics.",
+    "plates": [
+      "N05",
+      "N09"
+    ],
+    "symbol": null
+  },
+  "voltage_clamp": {
+    "term": "Voltage clamp",
+    "short": "Technique that holds the membrane voltage fixed and measures the current.",
+    "long": "Voltage clamp keeps the membrane voltage at a chosen value by injecting whatever current is needed. The injected current reveals how much current the channels carry at that voltage. Hodgkin and Huxley used it to map the sodium and potassium conductances.",
+    "plates": [
+      "N05"
+    ],
+    "symbol": null
+  },
+  "current_clamp": {
+    "term": "Current clamp",
+    "short": "Technique that injects a set current and records the resulting voltage.",
+    "long": "Current clamp injects a chosen current into a neuron and records how the membrane voltage responds. It is the natural way to observe spikes, resting potential and adaptation. A step of current produces the charging curve from which the time constant is read.",
+    "plates": [
+      "N05"
+    ],
+    "symbol": null
+  },
+  "synapse": {
+    "term": "Synapse",
+    "short": "Junction where one neuron passes a signal to another.",
+    "long": "A synapse is the connection from one neuron to another where a spike of the source changes the current or voltage of the target. Most are chemical: a spike releases transmitter that opens channels. Its strength can change with learning.",
+    "plates": [
+      "N07",
+      "D03",
+      "Y01"
+    ],
+    "symbol": null
+  },
+  "excitatory_synapse": {
+    "term": "Excitatory synapse",
+    "short": "Synapse whose activation raises the target's voltage toward threshold.",
+    "long": "An excitatory synapse depolarizes the target neuron and makes it more likely to spike. It usually passes positive current through channels with a reversal potential above threshold. Glutamate is the main excitatory transmitter in the cortex.",
+    "plates": [
+      "N07",
+      "W02"
+    ],
+    "symbol": null
+  },
+  "inhibitory_synapse": {
+    "term": "Inhibitory synapse",
+    "short": "Synapse whose activation lowers the target's voltage away from threshold.",
+    "long": "An inhibitory synapse hyperpolarizes or shunts the target neuron and makes it less likely to spike. Its channels often have a reversal potential near or below rest. GABA is the main inhibitory transmitter in the cortex.",
+    "plates": [
+      "N07",
+      "W02",
+      "Y04",
+      "C03"
+    ],
+    "symbol": null
+  },
+  "synaptic_weight": {
+    "term": "Synaptic weight",
+    "short": "Strength of a synapse, scaling how much a spike affects the target.",
+    "long": "The synaptic weight is the number that scales the effect of a source spike on the target neuron. Learning rules such as STDP change it up or down. In the library it is stored as a tensor that can differ per synapse.",
+    "plates": [
+      "Y01",
+      "Y05",
+      "Y06"
+    ],
+    "symbol": "w"
+  },
+  "synaptic_delay": {
+    "term": "Synaptic delay",
+    "short": "Time between a presynaptic spike and its effect on the target.",
+    "long": "The synaptic delay is the lag between the arrival of a presynaptic spike and the postsynaptic current it produces. It comes from transmitter release, diffusion and channel opening. In simulations it is a fixed number of time steps.",
+    "plates": [
+      "D02"
+    ],
+    "symbol": "d"
+  },
+  "axonal_delay": {
+    "term": "Axonal delay",
+    "short": "Delay for a spike to travel along the axon to its target.",
+    "long": "The axonal delay is the time a spike needs to travel down the axon before it reaches a synapse. It depends on the length of the axon and on conduction velocity, which is larger for myelinated fibres. Together with the synaptic delay it sets the total conduction delay.",
+    "plates": [
+      "D02"
+    ],
+    "symbol": "d"
+  },
+  "dendrite": {
+    "term": "Dendrite",
+    "short": "Branching input structure of a neuron that receives synaptic contacts.",
+    "long": "Dendrites are the branched processes of a neuron that receive most synapses. Their voltage can differ from the soma because of their cable properties. Active channels in dendrites let them compute local nonlinear operations.",
+    "plates": [
+      "D01",
+      "H06"
+    ],
+    "symbol": null
+  },
+  "dendritic_spike": {
+    "term": "Dendritic spike",
+    "short": "Local regenerative voltage event in a dendrite, not in the axon.",
+    "long": "A dendritic spike is a local, active depolarization in a dendrite carried by its own voltage-gated channels. It does not always reach the soma, so it can be a hidden computation. When it does propagate it can trigger or boost somatic spikes.",
+    "plates": [
+      "D01",
+      "H06",
+      "H08"
+    ],
+    "symbol": null
+  },
+  "nmda_plateau": {
+    "term": "NMDA plateau",
+    "short": "Sustained high dendritic voltage from NMDA receptor currents.",
+    "long": "The NMDA receptor passes current only when the cell is already depolarized, because magnesium blocks its pore at rest. This nonlinearity can hold a dendrite at a high plateau voltage for a long time. It underlies coincidence detection and some forms of learning.",
+    "plates": [
+      "D01",
+      "H06"
+    ],
+    "symbol": null
+  },
+  "soma": {
+    "term": "Soma",
+    "short": "Cell body of a neuron, containing the nucleus and summing inputs.",
+    "long": "The soma is the cell body of a neuron, where the axon starts and where the spike threshold is usually tested. It sums the currents arriving from the dendrites. In many models the soma voltage is the single state variable of the neuron.",
+    "plates": [
+      "D01"
+    ],
+    "symbol": null
+  },
+  "axon": {
+    "term": "Axon",
+    "short": "Long output fibre of a neuron that carries spikes away.",
+    "long": "The axon is the thin output process of a neuron that carries the action potential away from the soma toward the synapses. Its initial segment is where spikes usually start. Myelination speeds conduction by saltatory jumping between nodes.",
+    "plates": [
+      "D02"
+    ],
+    "symbol": null
+  },
+  "trace": {
+    "term": "Synaptic trace",
+    "short": "Running variable that remembers a neuron's recent spikes for plasticity.",
+    "long": "A trace is a value that rises at each spike and decays between them, letting a synapse know how recently each side fired. STDP compares the presynaptic and postsynaptic traces to decide whether to strengthen or weaken the weight. Traces are the standard way to implement spike-timing rules online.",
+    "plates": [
+      "Y01"
+    ],
+    "symbol": "x"
+  },
+  "stdp": {
+    "term": "Spike-timing-dependent plasticity (STDP)",
+    "short": "Learning rule that changes a weight by the order and timing of pre- and postsynaptic spikes.",
+    "long": "STDP strengthens a synapse when the presynaptic spike comes before the postsynaptic spike and weakens it when the order is reversed. The change decays with the time between the spikes, giving a characteristic window. It is a leading model of learning in the brain.",
+    "plates": [
+      "Y01",
+      "Y02",
+      "Y03"
+    ],
+    "symbol": null
+  },
+  "ltp": {
+    "term": "Long-term potentiation (LTP)",
+    "short": "Lasting increase in synaptic strength after certain patterns of activity.",
+    "long": "Long-term potentiation is a persistent strengthening of a synapse that can last minutes to hours. It is often triggered by strong or high-frequency presynaptic activity paired with postsynaptic depolarization. It is widely seen as a cellular basis of memory.",
+    "plates": [
+      "Y01"
+    ],
+    "symbol": null
+  },
+  "ltd": {
+    "term": "Long-term depression (LTD)",
+    "short": "Lasting decrease in synaptic strength after certain patterns of activity.",
+    "long": "Long-term depression is a persistent weakening of a synapse. It can follow low-frequency presynaptic activity or a spike order opposite to that which causes potentiation. Together with LTP it keeps synaptic strengths in balance.",
+    "plates": [
+      "Y01"
+    ],
+    "symbol": null
+  },
+  "triplet_stdp": {
+    "term": "Triplet STDP",
+    "short": "STDP rule that also uses triplets of spikes, giving frequency dependence.",
+    "long": "Triplet STDP extends the pair-based rule with terms that involve three spikes, so the size of a weight change depends on the firing rate. It reproduces experiments that pair-based STDP cannot, such as stronger potentiation at high frequency. It needs both pre- and postsynaptic traces.",
+    "plates": [
+      "Y02"
+    ],
+    "symbol": null
+  },
+  "inhibitory_plasticity": {
+    "term": "Inhibitory plasticity",
+    "short": "Activity-dependent change in the strength of inhibitory synapses.",
+    "long": "Inhibitory plasticity changes the strength of synapses from inhibitory to target neurons. A common rule strengthens inhibition when the target fires too much and weakens it when the target is quiet. It helps keep firing rates stable.",
+    "plates": [
+      "Y04"
+    ],
+    "symbol": null
+  },
+  "dopamine": {
+    "term": "Dopamine",
+    "short": "Neuromodulator that gates learning with a reward-related signal.",
+    "long": "Dopamine is a neuromodulator released by midbrain neurons that carries a reward-prediction signal. It can turn three-factor plasticity rules on or off, so a weight changes only when a reward is present. Its concentration rises for unexpected rewards and dips below baseline when a reward is missed.",
+    "plates": [
+      "Y03"
+    ],
+    "symbol": "DA"
+  },
+  "eligibility_trace": {
+    "term": "Eligibility trace",
+    "short": "Short-lived memory of a synapse's recent activity that tags it for reward.",
+    "long": "An eligibility trace marks a synapse as recently active so that a later reward signal can change it. It decays over a few hundred milliseconds to seconds. This lets a delayed reward credit the synapses that caused it.",
+    "plates": [
+      "Y03"
+    ],
+    "symbol": "e"
+  },
+  "reward_prediction_error": {
+    "term": "Reward-prediction error",
+    "short": "Difference between received reward and the reward that was expected.",
+    "long": "The reward-prediction error is the received reward minus the expected reward. A positive value means better than expected and drives learning; zero means no update. Dopamine neurons are thought to carry this signal.",
+    "plates": [
+      "Y03"
+    ],
+    "symbol": "delta"
+  },
+  "homeostasis": {
+    "term": "Homeostasis",
+    "short": "Negative feedback that keeps a neuron's firing rate near a set point.",
+    "long": "Homeostasis adjusts a neuron's excitability to keep its long-term firing rate near a target value. If the rate is too high it lowers excitability, and if too low it raises it. It differs from fast adaptation by working over hours or days.",
+    "plates": [
+      "Y04",
+      "Y06",
+      "C02"
+    ],
+    "symbol": null
+  },
+  "adaptive_threshold": {
+    "term": "Adaptive threshold",
+    "short": "Threshold that rises after a spike and decays back, slowing firing.",
+    "long": "An adaptive threshold is a firing threshold that increases by a step at each spike and then decays toward its base value. It makes a neuron need more input right after a spike, giving spike-frequency adaptation. It is one mechanism behind homeostasis.",
+    "plates": [
+      "C02"
+    ],
+    "symbol": "theta"
+  },
+  "winner_take_all": {
+    "term": "Winner-take-all",
+    "short": "Competition in which only the most active neuron stays on.",
+    "long": "In a winner-take-all circuit the neurons inhibit each other so that only the one with the strongest drive keeps firing while the rest are silenced. It turns a graded input into a decision. A softer version keeps the k most active neurons instead of one.",
+    "plates": [
+      "C01",
+      "Y05"
+    ],
+    "symbol": null
+  },
+  "lateral_inhibition": {
+    "term": "Lateral inhibition",
+    "short": "Inhibition from active neurons onto their neighbours, sharpening a response.",
+    "long": "Lateral inhibition is inhibition that active neurons send to their nearby neighbours. It suppresses weaker activity and lets the strongest response stand out, sharpening a pattern. It is common in sensory systems and in competitive network models.",
+    "plates": [
+      "D03",
+      "C03",
+      "Y05"
+    ],
+    "symbol": null
+  },
+  "minicolumn": {
+    "term": "Minicolumn",
+    "short": "Small vertical group of neurons with similar response properties.",
+    "long": "A minicolumn is a narrow vertical cluster of cortical neurons that share input and response properties. Several minicolumns form a cortical column. The concept underlies models of competition and of object representation.",
+    "plates": [
+      "C03",
+      "W03",
+      "H07"
+    ],
+    "symbol": null
+  },
+  "raster_plot": {
+    "term": "Raster plot",
+    "short": "Plot of many spike times, one row per neuron.",
+    "long": "A raster plot shows spike times as marks, usually one horizontal row per neuron and time along the horizontal axis. It reveals synchrony and patterns that a rate curve hides. It is the standard way to display spiking network activity.",
+    "plates": [
+      "W01",
+      "X03"
+    ],
+    "symbol": null
+  },
+  "population_rate": {
+    "term": "Population rate",
+    "short": "Average firing rate across a group of neurons over time.",
+    "long": "The population rate is the number of spikes in a group of neurons per unit time, often expressed as a rate per neuron. It smooths the spike train of many cells into a single curve. It is useful to compare regimes of network activity.",
+    "plates": [
+      "W01"
+    ],
+    "symbol": "r"
+  },
+  "poisson_process": {
+    "term": "Poisson process",
+    "short": "Random spike train in which spikes occur independently at a constant rate.",
+    "long": "A Poisson process produces spikes at random times with a constant average rate and no memory of past spikes. The number of spikes in an interval follows a Poisson distribution. It is used to model background input and to generate spike trains for rate-coded signals.",
+    "plates": [
+      "N09",
+      "X01"
+    ],
+    "symbol": "lambda"
+  },
+  "balanced_network": {
+    "term": "Balanced network",
+    "short": "Network with strong excitation and inhibition that nearly cancel.",
+    "long": "A balanced network has large excitatory and inhibitory currents that cancel on average, so neurons fire irregularly at a low rate. This regime reproduces the irregular firing seen in cortex. It needs both conductances to scale together.",
+    "plates": [
+      "W01",
+      "W02"
+    ],
+    "symbol": null
+  },
+  "receptive_field": {
+    "term": "Receptive field",
+    "short": "Region of the input, or set of inputs, that drives a given neuron.",
+    "long": "The receptive field of a neuron is the part of the sensory or input space that changes its firing. In a network it is the set of source neurons that connect to it, weighted by their synapses. Learning such as STDP can shape receptive fields into features.",
+    "plates": [
+      "D03",
+      "Y05",
+      "X02"
+    ],
+    "symbol": null
+  },
+  "sdr": {
+    "term": "Sparse distributed representation (SDR)",
+    "short": "Pattern of activity with many bits available but only a few active.",
+    "long": "A sparse distributed representation is a vector with many elements of which only a small fraction are active. Such patterns overlap little, so they can store many items and still resist noise. It is the core data type of HTM models.",
+    "plates": [
+      "H01",
+      "H02",
+      "H03"
+    ],
+    "symbol": null
+  },
+  "sparsity": {
+    "term": "Sparsity",
+    "short": "Fraction of units that are active at a given time; small in sparse codes.",
+    "long": "Sparsity is the fraction of units that are active at a given time. In a sparse code only a small part of the population is active, about 2% in HTM. Low overlap between such patterns lets them store many items and resist noise.",
+    "plates": [
+      "H01",
+      "H03"
+    ],
+    "symbol": null
+  },
+  "spatial_pooler": {
+    "term": "Spatial pooler",
+    "short": "HTM algorithm that turns an input pattern into a sparse code.",
+    "long": "The spatial pooler maps an input vector to a sparse representation using columns with overlapping receptive fields. Its homeostatic rules keep each column active at a target rate so no column dominates. Similar inputs give overlapping sparse codes.",
+    "plates": [
+      "H03"
+    ],
+    "symbol": null
+  },
+  "temporal_memory": {
+    "term": "Temporal memory",
+    "short": "HTM algorithm that learns sequences by predicting the next input.",
+    "long": "Temporal memory learns transitions between sparse patterns by predicting which columns will be active next. When a prediction is right, specific cells of the column fire; when it is wrong, the whole column bursts. It gives a network memory of sequences rather than single patterns.",
+    "plates": [
+      "H04",
+      "H08"
+    ],
+    "symbol": null
+  },
+  "burst": {
+    "term": "Burst",
+    "short": "Short group of spikes from one cell close together in time.",
+    "long": "A burst is a brief cluster of spikes from a single neuron, often two to five, with little time between them. In HTM the same word also means that when no cell of a minicolumn was predicted, all of its cells fire together, signalling that the input was not predicted. A burst can show that a cell is surprised or that a prediction failed.",
+    "plates": [
+      "H04",
+      "C03",
+      "H08"
+    ],
+    "symbol": null
+  },
+  "predictive_cell": {
+    "term": "Predictive cell",
+    "short": "HTM cell that fires when its column's prediction is confirmed.",
+    "long": "In temporal memory several cells share each column, and a predictive cell is one that was depolarized by a learned context and fires when the prediction comes true. It represents a specific context, not just activity. This lets the model tell the same pattern in different contexts apart.",
+    "plates": [
+      "H04"
+    ],
+    "symbol": null
+  },
+  "grid_cell": {
+    "term": "Grid cell",
+    "short": "Neuron that fires at the vertices of a regular hexagonal lattice over space.",
+    "long": "A grid cell becomes active when an animal passes through points that form a periodic triangular or hexagonal grid. Its firing depends on position over the whole environment, not on one landmark. Grid cells are thought to support the brain's map of space.",
+    "plates": [
+      "H05"
+    ],
+    "symbol": null
+  },
+  "path_integration": {
+    "term": "Path integration",
+    "short": "Keeping track of position by integrating self-motion over time.",
+    "long": "Path integration estimates the current position by accumulating the distance and direction travelled, without external landmarks. It drifts over time but works in the dark. Grid cells may implement it with their periodic firing.",
+    "plates": [
+      "H05"
+    ],
+    "symbol": null
+  },
+  "voting": {
+    "term": "Voting (thousand brains)",
+    "short": "Combining evidence from many columns to agree on an object.",
+    "long": "Voting is how the thousand-brains theory has cortical columns share their hypotheses so the network agrees on the identity and pose of an object. Each column sends its own guess and receives the others. Consensus is reached through repeated exchange.",
+    "plates": [
+      "H07"
+    ],
+    "symbol": null
+  },
+  "predictive_coding": {
+    "term": "Predictive coding",
+    "short": "Theory in which the brain predicts input and sends up only errors.",
+    "long": "Predictive coding is a theory of cortical computation in which higher areas predict lower-level activity and lower areas send back the prediction error. Only what is not predicted is passed upward. It explains many response properties with one principle.",
+    "plates": [
+      "R01",
+      "R02"
+    ],
+    "symbol": null
+  },
+  "prediction_error": {
+    "term": "Prediction error",
+    "short": "Difference between the actual input and the prediction of it.",
+    "long": "A prediction error is the mismatch between a received signal and the prediction made for it. In predictive coding it is passed up the hierarchy to correct the model. Small errors mean the prediction was good.",
+    "plates": [
+      "R01"
+    ],
+    "symbol": null
+  },
+  "free_energy": {
+    "term": "Free energy",
+    "short": "Quantity the brain minimises under predictive coding; bounds surprise.",
+    "long": "In the free-energy principle the brain minimises an upper bound on surprise about its inputs. Minimising free energy drives both better predictions and actions that change the input. Prediction error and this bound are closely related.",
+    "plates": [
+      "R01"
+    ],
+    "symbol": "F"
+  },
+  "backpropagation": {
+    "term": "Backpropagation",
+    "short": "Algorithm that trains networks by sending gradients backward through layers.",
+    "long": "Backpropagation computes the gradient of an error with respect to every weight by applying the chain rule backward through the network. It is the basis of most deep-learning training. Predictive coding is sometimes studied as a biologically plausible route to the same result.",
+    "plates": [
+      "R02"
+    ],
+    "symbol": null
+  },
+  "cuda_graph": {
+    "term": "CUDA graph",
+    "short": "Recorded GPU sequence replayed as one unit to cut launch overhead.",
+    "long": "A CUDA graph records a sequence of GPU kernels once and replays it as a single operation, removing per-kernel launch overhead. In the library the graph stepper uses it to run many simulation steps quickly. The replay gives results identical to eager execution.",
+    "plates": [
+      "E03",
+      "E04"
+    ],
+    "symbol": null
+  },
+  "batch": {
+    "term": "Batch",
+    "short": "Group of examples or networks processed together as tensors.",
+    "long": "A batch is a set of items, neurons, examples or whole networks, processed at once in one tensor operation. Running a batch uses the hardware better than looping over items. In the library a batch can either share one network or hold several independent ones.",
+    "plates": [
+      "W04",
+      "E04"
+    ],
+    "symbol": null
+  }
+}

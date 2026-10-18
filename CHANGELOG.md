@@ -6,6 +6,9 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- `neurosush/viz/i18n/glossary_en.json`: an English glossary of 78 core neuroscience terms
+  (`term`, `short` and `long`, the plate ids it appears on and the library `symbol`) for the
+  Atlas plate hover callouts, validated in `tests/viz/test_glossary.py`.
 - `neurosush.viz.catalog`: the machine-readable plate catalog (`PlateSpec`, `PLATES` for all
   43 planned plates with their English titles, waves and flagship flags, `PLANNED`)
   and the coverage introspector (`public_models`, `EXEMPT`, `uncovered`) that a test keeps
