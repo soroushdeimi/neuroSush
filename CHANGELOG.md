@@ -13,6 +13,10 @@ All notable changes to neuroSush are documented here, following the
 - `benchmarks/profile_step.py`: per-step wall time, operator, CUDA-kernel and launch-bound
   profiling for the dense STDP and Diehl and Cook workloads across eager, graph and compiled
   steppers.
+- `lif_terms`, `elif_terms`, `adex_terms`, `izhikevich_terms` (`neurosush.neurons.dynamics`):
+  pure functions decomposing one membrane update step into its named terms (leak, input,
+  spike initiation, adaptation, quadratic, linear, recovery), verified to sum to the step
+  update; deterministic golden vectors in `tests/golden/equations.json`.
 - `Refractory(period, *, block=None)`: with `block` a neuron also cannot fire for
   `ceil(block / dt)` steps after a spike while its voltage integrates freely once the `period`
   hold ends (the timer of the original Diehl and Cook code); `None` keeps the plain refractory

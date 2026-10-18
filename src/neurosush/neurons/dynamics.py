@@ -1,7 +1,8 @@
-"""Pure equations of the leaky integrate-and-fire family.
+"""Pure equations of the leaky integrate-and-fire family and neuron dynamics.
 
 Every function returns new tensors and leaves its inputs unchanged; the derivative
-functions return ``tau * dv/dt``.
+functions return ``tau * dv/dt``, and the term decomposition functions return dictionaries
+of voltage changes per term for one Euler step.
 """
 
 from __future__ import annotations
@@ -158,3 +159,166 @@ def correlated_pair_correlation(*, correlation: float, p_mother: float) -> float
     Independent of the bin length; ``c`` as ``p = rate dt / c`` goes to 0 (Poisson mother).
     """
     return correlation * (1 - p_mother) / (1 - correlation * p_mother)
+
+
+def lif_terms(
+    v: torch.Tensor,
+    current: Scalar,
+    *,
+    v_rest: Scalar,
+    resistance: Scalar,
+    tau: Scalar,
+    dt: float,
+) -> dict[str, torch.Tensor]:
+    """Decompose one LIF Euler step into leak and input terms.
+
+    Args:
+        v: Membrane voltage before the step.
+        current: Input current drive.
+        v_rest: Resting membrane potential.
+        resistance: Membrane resistance.
+        tau: Membrane time constant.
+        dt: Integration time step.
+
+    Returns:
+        Dictionary with ``leak`` and ``input`` voltage increments.
+    """
+    step = dt / torch.as_tensor(tau, dtype=v.dtype, device=v.device)
+    vr = torch.as_tensor(v_rest, dtype=v.dtype, device=v.device)
+    r = torch.as_tensor(resistance, dtype=v.dtype, device=v.device)
+    c = torch.as_tensor(current, dtype=v.dtype, device=v.device)
+    terms = {
+        "leak": (vr - v) * step,
+        "input": (r * c) * step,
+    }
+    broadcasted = torch.broadcast_tensors(*terms.values())  # type: ignore[no-untyped-call]
+    return {k: broadcasted[i] for i, k in enumerate(terms)}
+
+
+def elif_terms(
+    v: torch.Tensor,
+    current: Scalar,
+    *,
+    v_rest: Scalar,
+    resistance: Scalar,
+    delta: float,
+    theta_rh: float,
+    tau: Scalar,
+    dt: float,
+) -> dict[str, torch.Tensor]:
+    """Decompose one ELIF Euler step into leak, input, and spike initiation terms.
+
+    Args:
+        v: Membrane voltage before the step.
+        current: Input current drive.
+        v_rest: Resting membrane potential.
+        resistance: Membrane resistance.
+        delta: Exponential boost scale.
+        theta_rh: Rheobase threshold of the exponential term.
+        tau: Membrane time constant.
+        dt: Integration time step.
+
+    Returns:
+        Dictionary with ``leak``, ``input``, and ``spike_initiation`` voltage increments.
+    """
+    terms = lif_terms(v, current, v_rest=v_rest, resistance=resistance, tau=tau, dt=dt)
+    step = dt / torch.as_tensor(tau, dtype=v.dtype, device=v.device)
+    terms["spike_initiation"] = exponential_boost(v, delta=delta, theta_rh=theta_rh) * step
+    broadcasted = torch.broadcast_tensors(*terms.values())  # type: ignore[no-untyped-call]
+    return {k: broadcasted[i] for i, k in enumerate(terms)}
+
+
+def adex_terms(
+    v: torch.Tensor,
+    current: Scalar,
+    omega: Scalar,
+    *,
+    v_rest: Scalar,
+    resistance: Scalar,
+    delta: float,
+    theta_rh: float,
+    tau: Scalar,
+    dt: float,
+) -> dict[str, torch.Tensor]:
+    """Decompose one AdEx Euler step into leak, input, spike initiation, and adaptation terms.
+
+    Args:
+        v: Membrane voltage before the step.
+        current: Input current drive.
+        omega: Adaptation variable before the step.
+        v_rest: Resting membrane potential.
+        resistance: Membrane resistance.
+        delta: Exponential boost scale.
+        theta_rh: Rheobase threshold of the exponential term.
+        tau: Membrane time constant.
+        dt: Integration time step.
+
+    Returns:
+        Dictionary with ``leak``, ``input``, ``spike_initiation``, and ``adaptation`` increments.
+    """
+    terms = elif_terms(
+        v,
+        current,
+        v_rest=v_rest,
+        resistance=resistance,
+        delta=delta,
+        theta_rh=theta_rh,
+        tau=tau,
+        dt=dt,
+    )
+    step = dt / torch.as_tensor(tau, dtype=v.dtype, device=v.device)
+    r = torch.as_tensor(resistance, dtype=v.dtype, device=v.device)
+    w = torch.as_tensor(omega, dtype=v.dtype, device=v.device)
+    terms["adaptation"] = -(r * w) * step
+    broadcasted = torch.broadcast_tensors(*terms.values())  # type: ignore[no-untyped-call]
+    return {k: broadcasted[i] for i, k in enumerate(terms)}
+
+
+def izhikevich_terms(
+    v: torch.Tensor,
+    u: torch.Tensor,
+    current: Scalar,
+    *,
+    dt: float,
+    substeps: int = 2,
+) -> dict[str, torch.Tensor]:
+    """Decompose one Izhikevich step into quadratic, linear, recovery, and input terms.
+
+    Args:
+        v: Membrane voltage before the step.
+        u: Membrane recovery variable before the step.
+        current: Input current drive.
+        dt: Integration time step.
+        substeps: Number of Euler sub-steps for membrane voltage integration.
+
+    Returns:
+        Dictionary with ``quadratic``, ``linear``, ``recovery``, and ``input`` increments.
+    """
+    u_tensor = torch.as_tensor(u, dtype=v.dtype, device=v.device)
+    current_t = torch.as_tensor(current, dtype=v.dtype, device=v.device)
+    v_b, u_b, current_b = torch.broadcast_tensors(v, u_tensor, current_t)  # type: ignore[no-untyped-call]
+
+    h = dt / substeps
+    v_curr = v_b
+    quad = torch.zeros_like(v_b)
+    lin = torch.zeros_like(v_b)
+    rec = torch.zeros_like(v_b)
+    inp = torch.zeros_like(v_b)
+
+    for _ in range(substeps):
+        step_quad = h * (0.04 * v_curr * v_curr)
+        step_lin = h * (5.0 * v_curr + 140.0)
+        step_rec = -h * u_b
+        step_inp = h * current_b
+        quad = quad + step_quad
+        lin = lin + step_lin
+        rec = rec + step_rec
+        inp = inp + step_inp
+        v_curr = v_curr + h * (0.04 * v_curr * v_curr + 5.0 * v_curr + 140.0 - u_b + current_b)
+
+    return {
+        "quadratic": quad,
+        "linear": lin,
+        "recovery": rec,
+        "input": inp,
+    }
