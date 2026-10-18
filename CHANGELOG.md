@@ -6,6 +6,7 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- Atlas plate `H01`: sparse distributed representation plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
 - Atlas plate `M03`: Nernst equation plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
 - Atlas plate `M02`: Poisson spike rain plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
 - Atlas plate `Y01`: STDP traces and spike-pair plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
