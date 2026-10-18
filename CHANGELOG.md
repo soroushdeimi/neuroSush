@@ -6,6 +6,10 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- `neurosush.viz.trace`: compact JSON-serializable `Trace` with base64 little-endian array
+  packing and `TraceRecorder` behavior preallocating device-side buffers.
+- `neurosush.viz.schedule`: `schedule_table` and `schedule_lanes` for inspecting simulation
+  step execution order and `Behavior.reads`/`Behavior.writes` dataflow metadata.
 - `neurosush/viz/i18n/glossary_en.json`: an English glossary of 78 core neuroscience terms
   (`term`, `short` and `long`, the plate ids it appears on and the library `symbol`) for the
   Atlas plate hover callouts, validated in `tests/viz/test_glossary.py`.

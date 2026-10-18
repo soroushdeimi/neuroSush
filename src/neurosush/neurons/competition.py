@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import ClassVar
 
 import torch
 
@@ -62,6 +63,8 @@ class KWTA(Behavior):
     """
 
     order = Order.COMPETITION
+    reads: ClassVar[tuple[str, ...]] = ("v",)
+    writes: ClassVar[tuple[str, ...]] = ("v",)
     independent_ok = True
     graph_safe = True
 

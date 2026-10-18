@@ -8,7 +8,7 @@ voltage in between. State written on the group: ``v``, ``spikes``, ``I`` (if abs
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import ClassVar, TypedDict
 
 import torch
 from typing_extensions import NotRequired, Unpack
@@ -51,6 +51,8 @@ class LIF(Behavior):
     """
 
     order = Order.NEURON_DYNAMICS
+    reads: ClassVar[tuple[str, ...]] = ("I",)
+    writes: ClassVar[tuple[str, ...]] = ("v",)
     independent_ok = True
     graph_safe = True
 
@@ -374,6 +376,8 @@ class Fire(Behavior):
     """Calls the group's neuron model to emit spikes (after noise and competition)."""
 
     order = Order.FIRE
+    reads: ClassVar[tuple[str, ...]] = ("v",)
+    writes: ClassVar[tuple[str, ...]] = ("spikes", "v")
     independent_ok = True
     graph_safe = True
 

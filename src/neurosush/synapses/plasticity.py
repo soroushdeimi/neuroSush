@@ -11,7 +11,7 @@ so are the weights' leading dimension: every member gets its own change, with no
 
 from __future__ import annotations
 
-from typing import Any, Literal, TypedDict
+from typing import Any, ClassVar, Literal, TypedDict
 
 import torch
 import torch.nn.functional as F
@@ -348,6 +348,14 @@ class STDP(Behavior):
     """
 
     order = Order.PLASTICITY
+    reads: ClassVar[tuple[str, ...]] = (
+        "pre_spike",
+        "post_spike",
+        "pre_trace",
+        "post_trace",
+        "weights",
+    )
+    writes: ClassVar[tuple[str, ...]] = ("weights",)
     independent_ok = True
     supported: tuple[str, ...] = ("dense", "one_to_one", "sparse", "conv2d", "local2d")
     _nearest_supported = ("dense", "one_to_one")

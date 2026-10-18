@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import ClassVar, Literal
 
 import torch
 
@@ -40,6 +40,8 @@ class SpikeGather(Behavior):
     """
 
     order = Order.SPIKE_GATHER
+    reads: ClassVar[tuple[str, ...]] = ("src_delay", "dst_delay", "spike_history")
+    writes: ClassVar[tuple[str, ...]] = ("pre_spike", "post_spike")
     independent_ok = True
 
     def initialize(self, syn: SynapseGroup) -> None:
@@ -81,6 +83,8 @@ class Traces(Behavior):
     """
 
     order = Order.TRACE
+    reads: ClassVar[tuple[str, ...]] = ("pre_spike", "post_spike")
+    writes: ClassVar[tuple[str, ...]] = ("pre_trace", "post_trace")
     independent_ok = True
     graph_safe = True
 

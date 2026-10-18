@@ -8,6 +8,7 @@ currents; average pooling needs no weights.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import ClassVar
 
 import torch
 import torch.nn.functional as F
@@ -307,6 +308,8 @@ class DenseInput(_SynapticInput):
         coef: Multiplier applied to the current.
     """
 
+    reads: ClassVar[tuple[str, ...]] = ("pre_spike", "weights")
+    writes: ClassVar[tuple[str, ...]] = ("I",)
     connectivity = "dense"
     independent_ok = True
 
