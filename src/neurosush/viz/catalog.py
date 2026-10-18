@@ -1,7 +1,5 @@
 """Machine-readable catalog of the atlas plates and the coverage check for the library models."""
 
-# ruff: noqa: RUF001 - the Persian titles are Unicode text by design; the letter lints target
-# ASCII-lookalike mistyping in English strings.
 from __future__ import annotations
 
 import importlib
@@ -40,7 +38,6 @@ class PlateSpec:
     Args:
         id: Plate id from the plan, such as ``"N01"``; stable across waves.
         title_en: Honest English title of the plate.
-        title_fa: Persian title of the plate.
         wave: Planned build wave, ``1`` through ``4``.
         flagship: ``True`` when the plan marks the plate as a flagship plate.
         covers: Fully qualified public class names (``"neurosush.neurons.models.LIF"``)
@@ -49,7 +46,6 @@ class PlateSpec:
 
     id: str
     title_en: str
-    title_fa: str
     wave: int
     flagship: bool
     covers: tuple[str, ...]
@@ -59,7 +55,6 @@ PLATES: dict[str, PlateSpec] = {
     "N01": PlateSpec(
         id="N01",
         title_en="LIF: the leaky bucket",
-        title_fa="LIF: سطل آب نشتی",
         wave=2,
         flagship=False,
         covers=("neurosush.neurons.models.LIF", "neurosush.neurons.models.Fire"),
@@ -67,7 +62,6 @@ PLATES: dict[str, PlateSpec] = {
     "N02": PlateSpec(
         id="N02",
         title_en="ELIF at rheobase: a ball in a potential well",
-        title_fa="ELIF و رئوباز: توپ در چاه پتانسیل",
         wave=2,
         flagship=False,
         covers=("neurosush.neurons.models.ELIF",),
@@ -75,7 +69,6 @@ PLATES: dict[str, PlateSpec] = {
     "N03": PlateSpec(
         id="N03",
         title_en="AdEx: adaptation in the phase plane",
-        title_fa="AdEx: سازش در صفحه فاز",
         wave=2,
         flagship=False,
         covers=("neurosush.neurons.models.AdaptiveELIF",),
@@ -83,7 +76,6 @@ PLATES: dict[str, PlateSpec] = {
     "N04": PlateSpec(
         id="N04",
         title_en="Izhikevich: a zoo of firing patterns",
-        title_fa="ایزایکویچ: باغ‌وحش الگوهای تکانش",
         wave=2,
         flagship=False,
         covers=("neurosush.neurons.models.Izhikevich",),
@@ -91,7 +83,6 @@ PLATES: dict[str, PlateSpec] = {
     "N05": PlateSpec(
         id="N05",
         title_en="Hodgkin-Huxley: membrane cross-section, Na and K channels, gates m, h, n",
-        title_fa="هادگکین–هاکسلی: مقطع غشا، کانال‌های یونی سدیم و پتاسیم، دروازه‌های m و h و n",
         wave=2,
         flagship=True,
         covers=(),
@@ -99,7 +90,6 @@ PLATES: dict[str, PlateSpec] = {
     "N06": PlateSpec(
         id="N06",
         title_en="Refractory and the spike-triggered current",
-        title_fa="دوره ناتوانی و جریان برانگیخته از اسپایک",
         wave=2,
         flagship=False,
         covers=(
@@ -110,7 +100,6 @@ PLATES: dict[str, PlateSpec] = {
     "N07": PlateSpec(
         id="N07",
         title_en="Conductance synapse: tug of war between reversal potentials",
-        title_fa="سیناپس رسانایی: طناب‌کشی پتانسیل‌های وارونگی",
         wave=2,
         flagship=False,
         covers=("neurosush.neurons.dendrite.ConductanceIntegration",),
@@ -118,7 +107,6 @@ PLATES: dict[str, PlateSpec] = {
     "N08": PlateSpec(
         id="N08",
         title_en="f-I curve and bifurcation",
-        title_fa="منحنی f-I و دوشاخه‌شدگی",
         wave=2,
         flagship=False,
         covers=("neurosush.neurons.models.LIF",),
@@ -126,7 +114,6 @@ PLATES: dict[str, PlateSpec] = {
     "N09": PlateSpec(
         id="N09",
         title_en="Noise and stochastic channels",
-        title_fa="نویز و کانال‌های تصادفی",
         wave=3,
         flagship=False,
         covers=("neurosush.neurons.competition.InherentNoise",),
@@ -134,7 +121,6 @@ PLATES: dict[str, PlateSpec] = {
     "D01": PlateSpec(
         id="D01",
         title_en="Compartments and the NMDA-like plateau",
-        title_fa="کامپارتمان‌ها و صفحه NMDA",
         wave=3,
         flagship=False,
         covers=(
@@ -146,7 +132,6 @@ PLATES: dict[str, PlateSpec] = {
     "D02": PlateSpec(
         id="D02",
         title_en="Axonal and dendritic delay: spikes travelling, ring buffer inside",
-        title_fa="تأخیر آکسونی و دندریتی: اسپایک‌های مسافر و بافر حلقوی",
         wave=3,
         flagship=False,
         covers=("neurosush.neurons.axon.Axon", "neurosush.synapses.init.DelayInit"),
@@ -154,7 +139,6 @@ PLATES: dict[str, PlateSpec] = {
     "D03": PlateSpec(
         id="D03",
         title_en="Connectivity kernels: dense, sparse, conv, local, lateral, pool",
-        title_fa="هسته‌های اتصال: چگال، پراکنده، کانولوشنی، موضعی، جانبی و تجمیع",
         wave=3,
         flagship=False,
         covers=(
@@ -172,7 +156,6 @@ PLATES: dict[str, PlateSpec] = {
     "Y01": PlateSpec(
         id="Y01",
         title_en="Traces and the STDP window, with a spike-pair builder",
-        title_fa="رد اسپایک و پنجره STDP با سازنده جفت اسپایک",
         wave=2,
         flagship=False,
         covers=(
@@ -183,7 +166,6 @@ PLATES: dict[str, PlateSpec] = {
     "Y02": PlateSpec(
         id="Y02",
         title_en="Triplet rule and frequency dependence",
-        title_fa="قاعده سه‌گانه و وابستگی به فرکانس",
         wave=3,
         flagship=False,
         covers=("neurosush.synapses.triplet.TripletSTDP",),
@@ -191,7 +173,6 @@ PLATES: dict[str, PlateSpec] = {
     "Y03": PlateSpec(
         id="Y03",
         title_en="RSTDP: dopamine and the eligibility trace",
-        title_fa="RSTDP: دوپامین و رد شایستگی",
         wave=3,
         flagship=False,
         covers=(
@@ -203,7 +184,6 @@ PLATES: dict[str, PlateSpec] = {
     "Y04": PlateSpec(
         id="Y04",
         title_en="iSTDP: the inhibitory balance",
-        title_fa="iSTDP: تعادل مهاری",
         wave=3,
         flagship=False,
         covers=("neurosush.synapses.plasticity.ISTDP",),
@@ -211,7 +191,6 @@ PLATES: dict[str, PlateSpec] = {
     "Y05": PlateSpec(
         id="Y05",
         title_en="Weights as images: receptive fields forming (Diehl and Cook)",
-        title_fa="وزن‌ها به‌سان تصویر: شکل‌گیری میدان‌های گیرشی (Diehl و Cook)",
         wave=3,
         flagship=True,
         covers=(),
@@ -219,7 +198,6 @@ PLATES: dict[str, PlateSpec] = {
     "Y06": PlateSpec(
         id="Y06",
         title_en="Bounds and normalization",
-        title_fa="کران‌ها و نرمال‌سازی",
         wave=3,
         flagship=False,
         covers=(
@@ -231,7 +209,6 @@ PLATES: dict[str, PlateSpec] = {
     "C01": PlateSpec(
         id="C01",
         title_en="KWTA: the winners-take-all race",
-        title_fa="مسابقه KWTA",
         wave=3,
         flagship=False,
         covers=("neurosush.neurons.competition.KWTA",),
@@ -239,7 +216,6 @@ PLATES: dict[str, PlateSpec] = {
     "C02": PlateSpec(
         id="C02",
         title_en="Homeostasis and the adaptive threshold",
-        title_fa="هموستازی و آستانه سازگار",
         wave=3,
         flagship=False,
         covers=(
@@ -251,7 +227,6 @@ PLATES: dict[str, PlateSpec] = {
     "C03": PlateSpec(
         id="C03",
         title_en="Minicolumn inhibition",
-        title_fa="مهار ریزستونی",
         wave=3,
         flagship=False,
         covers=("neurosush.neurons.competition.MinicolumnInhibition",),
@@ -259,7 +234,6 @@ PLATES: dict[str, PlateSpec] = {
     "W01": PlateSpec(
         id="W01",
         title_en="Raster, rates and the Brunel regimes",
-        title_fa="رستر و نرخ‌ها: رژیم‌های برونل",
         wave=3,
         flagship=False,
         covers=(
@@ -271,7 +245,6 @@ PLATES: dict[str, PlateSpec] = {
     "W02": PlateSpec(
         id="W02",
         title_en="The balanced network",
-        title_fa="شبکه متوازن",
         wave=3,
         flagship=False,
         covers=(),
@@ -279,7 +252,6 @@ PLATES: dict[str, PlateSpec] = {
     "W03": PlateSpec(
         id="W03",
         title_en="Columns, layers and ports: the spec graph",
-        title_fa="ستون‌ها، لایه‌ها و پورت‌ها: نمودار spec",
         wave=3,
         flagship=False,
         covers=(
@@ -296,7 +268,6 @@ PLATES: dict[str, PlateSpec] = {
     "W04": PlateSpec(
         id="W04",
         title_en="Batch versus independent: the multiverse",
-        title_fa="دسته در برابر مستقل: چندجهان",
         wave=4,
         flagship=False,
         covers=(),
@@ -304,7 +275,6 @@ PLATES: dict[str, PlateSpec] = {
     "W05": PlateSpec(
         id="W05",
         title_en="Checkpoints: fork and resume on a timeline",
-        title_fa="چک‌پوینت: خط زمانی انشعاب و ازسرگیری",
         wave=4,
         flagship=False,
         covers=(),
@@ -312,7 +282,6 @@ PLATES: dict[str, PlateSpec] = {
     "E01": PlateSpec(
         id="E01",
         title_en="The Score: every behavior a note",
-        title_fa="پارتیتور: هر رفتار یک نت",
         wave=2,
         flagship=False,
         covers=(),
@@ -320,7 +289,6 @@ PLATES: dict[str, PlateSpec] = {
     "E02": PlateSpec(
         id="E02",
         title_en="The tensor lens",
-        title_fa="عدسی تانسور",
         wave=4,
         flagship=False,
         covers=(),
@@ -328,7 +296,6 @@ PLATES: dict[str, PlateSpec] = {
     "E03": PlateSpec(
         id="E03",
         title_en="Eager versus CUDA graph versus compiled: the kernel timeline",
-        title_fa="اجرای مشتاق در برابر CUDA Graph و کامپایل: خط زمانی هسته‌ها",
         wave=4,
         flagship=False,
         covers=("neurosush.core.graph.GraphStepper", "neurosush.core.compiled.CompiledStepper"),
@@ -336,7 +303,6 @@ PLATES: dict[str, PlateSpec] = {
     "E04": PlateSpec(
         id="E04",
         title_en="Reproducibility: same seed, bitwise diff",
-        title_fa="بازتولیدپذیری: بذر یکسان، مقایسه بیتی",
         wave=4,
         flagship=False,
         covers=(),
@@ -344,7 +310,6 @@ PLATES: dict[str, PlateSpec] = {
     "H01": PlateSpec(
         id="H01",
         title_en="SDR overlap, union and the false match",
-        title_fa="همپوشانی و اجتماع SDR و تطبیق نادرست",
         wave=3,
         flagship=False,
         covers=(),
@@ -352,7 +317,6 @@ PLATES: dict[str, PlateSpec] = {
     "H02": PlateSpec(
         id="H02",
         title_en="The encoders",
-        title_fa="رمزگذارها",
         wave=3,
         flagship=False,
         covers=(
@@ -364,7 +328,6 @@ PLATES: dict[str, PlateSpec] = {
     "H03": PlateSpec(
         id="H03",
         title_en="The spatial pooler",
-        title_fa="Spatial Pooler: تجمیع مکانی رقابتی",
         wave=4,
         flagship=False,
         covers=("neurosush.htm.spatial_pooler.SpatialPooler",),
@@ -372,7 +335,6 @@ PLATES: dict[str, PlateSpec] = {
     "H04": PlateSpec(
         id="H04",
         title_en="Temporal memory: cells, segments, burst versus predict",
-        title_fa="حافظه زمانی (Temporal Memory): سلول‌ها و سگمنت‌ها، بورست در برابر پیش‌بینی",
         wave=4,
         flagship=True,
         covers=(
@@ -383,7 +345,6 @@ PLATES: dict[str, PlateSpec] = {
     "H05": PlateSpec(
         id="H05",
         title_en="Grid cells on a torus: path integration",
-        title_fa="سلول‌های شبکه‌ای روی چنبره: انتگرال‌گیری مسیر",
         wave=4,
         flagship=False,
         covers=(
@@ -394,7 +355,6 @@ PLATES: dict[str, PlateSpec] = {
     "H06": PlateSpec(
         id="H06",
         title_en="Active dendrites: context gating",
-        title_fa="دندریت‌های فعال و دروازه‌زنی زمینه",
         wave=4,
         flagship=False,
         covers=("neurosush.htm.active_dendrites.ActiveDendrites",),
@@ -402,7 +362,6 @@ PLATES: dict[str, PlateSpec] = {
     "H07": PlateSpec(
         id="H07",
         title_en="The voting columns",
-        title_fa="ستون‌های رأی‌دهنده",
         wave=4,
         flagship=False,
         covers=(
@@ -414,7 +373,6 @@ PLATES: dict[str, PlateSpec] = {
     "H08": PlateSpec(
         id="H08",
         title_en="The spiking temporal memory: plateau and race",
-        title_fa="حافظه زمانی اسپایکی: صفحه و مسابقه",
         wave=4,
         flagship=False,
         covers=(
@@ -426,7 +384,6 @@ PLATES: dict[str, PlateSpec] = {
     "R01": PlateSpec(
         id="R01",
         title_en="Predictive coding: prediction down, error up, free energy",
-        title_fa="کدگذاری پیش‌بین: پیش‌بینی به پایین، خطا به بالا، انرژی آزاد",
         wave=4,
         flagship=False,
         covers=("neurosush.predictive_coding.PredictiveCodingNetwork",),
@@ -434,7 +391,6 @@ PLATES: dict[str, PlateSpec] = {
     "R02": PlateSpec(
         id="R02",
         title_en="Predictive coding converges to backpropagation",
-        title_fa="همگرایی کدگذاری پیش‌بین به پس‌انتشار",
         wave=4,
         flagship=False,
         covers=(),
@@ -442,7 +398,6 @@ PLATES: dict[str, PlateSpec] = {
     "X01": PlateSpec(
         id="X01",
         title_en="Poisson and latency encoders",
-        title_fa="رمزگذار پواسون و رمزگذار تأخیری",
         wave=3,
         flagship=False,
         covers=(
@@ -455,7 +410,6 @@ PLATES: dict[str, PlateSpec] = {
     "X02": PlateSpec(
         id="X02",
         title_en="DoG and Gabor filters",
-        title_fa="پالایه‌های DoG و گابور",
         wave=3,
         flagship=False,
         covers=(
@@ -468,7 +422,6 @@ PLATES: dict[str, PlateSpec] = {
     "X03": PlateSpec(
         id="X03",
         title_en="Spike frames",
-        title_fa="قاب‌های اسپایک",
         wave=4,
         flagship=False,
         covers=(),

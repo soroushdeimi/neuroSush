@@ -105,13 +105,6 @@ EXPECTED_FLAGSHIPS = ("H04", "N05", "Y05")
 EXTRA: dict[str, str] = {}
 
 
-def has_arabic_script(text):
-    return any(
-        "\u0600" <= ch <= "\u06ff" or "\u0750" <= ch <= "\u077f" or "\u08a0" <= ch <= "\u08ff"
-        for ch in text
-    )
-
-
 def resolves(name):
     module_name, _, attr = name.rpartition(".")
     return getattr(importlib.import_module(module_name), attr)
@@ -136,12 +129,6 @@ def test_flagship_flags_match_the_plan():
 def test_titles_are_non_empty():
     for spec in PLATES.values():
         assert spec.title_en
-        assert spec.title_fa
-
-
-def test_persian_titles_use_arabic_script():
-    for spec in PLATES.values():
-        assert has_arabic_script(spec.title_fa), spec.id
 
 
 def test_planned_names_are_qualified_class_paths():
