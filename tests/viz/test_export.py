@@ -220,3 +220,36 @@ def test_chrome_rendered_controls_match_strings(tmp_path: Path) -> None:
     ]
     for token in expected_tokens:
         assert token in rendered_dom, f"Expected token {token!r} missing from rendered DOM"
+
+
+def test_render_plate_live_timeline_hidden() -> None:
+    trace_live = {"meta": {"live": True}, "steps": [0], "series": {}}
+    html_live = render_plate("demo", trace_live, source="live")
+    assert '<div id="atlas-root" data-live="true">' in html_live
+
+    trace_replay = _make_dummy_trace()
+    html_replay = render_plate("demo", trace_replay, source="replay")
+    assert '<div id="atlas-root" data-live="true">' not in html_replay
+    assert '<div id="atlas-root"></div>' in html_replay
+
+
+def test_chrome_rendered_live_plate_hides_timeline(tmp_path: Path) -> None:
+    chrome_bin = shutil.which("google-chrome") or shutil.which("chromium")
+    if not chrome_bin:
+        pytest.skip("Chrome binary is not found on PATH")
+
+    trace_live = {"meta": {"live": True}, "steps": [0], "series": {}}
+    html_path = write_html(tmp_path / "chrome_live_test.html", "demo", trace_live, source="live")
+
+    result = subprocess.run(
+        [chrome_bin, "--headless=new", "--disable-gpu", "--dump-dom", f"file://{html_path}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, f"Chrome dump-dom failed: {result.stderr}"
+    rendered_dom = result.stdout
+
+    # Live plate root and container have data-live="true"
+    assert 'data-live="true"' in rendered_dom
+    assert "Live" in rendered_dom or "LIVE" in rendered_dom

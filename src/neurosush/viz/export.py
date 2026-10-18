@@ -95,10 +95,14 @@ def render_plate(
     escaped_strings_json = _escape_script_json(strings_data)
     escaped_notes_json = _escape_script_json(notes if notes is not None else {})
 
+    is_live = bool(source == "live" or trace_dict.get("meta", {}).get("live"))
+    root_live_attr = ' data-live="true"' if is_live else ""
+
     bootstrap_spec = {
         "plateId": plate_id,
         "source": source,
         "theme": theme,
+        "live": is_live,
     }
     escaped_spec_json = _escape_script_json(bootstrap_spec)
 
@@ -113,7 +117,7 @@ def render_plate(
   </style>
 </head>
 <body>
-  <div id="atlas-root"></div>
+  <div id="atlas-root"{root_live_attr}></div>
   <script type="application/json" id="atlas-strings">{escaped_strings_json}</script>
   <script type="application/json" id="atlas-trace">{escaped_trace_json}</script>
   <script type="application/json" id="atlas-notes">{escaped_notes_json}</script>

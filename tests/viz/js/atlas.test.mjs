@@ -242,3 +242,54 @@ test('formatNumber: handles decimals, negatives, NaN, and zeros', () => {
   assert.strictEqual(Atlas.formatNumber(null, 2), '-');
   assert.strictEqual(Atlas.formatNumber(undefined, 2), '-');
 });
+
+test('isMarginEmpty: correctly detects empty or whitespace-only margin elements', () => {
+  assert.strictEqual(Atlas.isMarginEmpty(null), true);
+  assert.strictEqual(Atlas.isMarginEmpty(undefined), true);
+  assert.strictEqual(Atlas.isMarginEmpty({ children: [], textContent: '' }), true);
+  assert.strictEqual(Atlas.isMarginEmpty({ children: [], textContent: '   \n  \t  ' }), true);
+  assert.strictEqual(Atlas.isMarginEmpty({ children: [{ tagName: 'DIV' }], textContent: '' }), false);
+  assert.strictEqual(Atlas.isMarginEmpty({ children: [], textContent: 'Equation dV/dt' }), false);
+});
+
+test('shouldIgnoreKeyboardEvent: ignores when default is prevented or in inputs', () => {
+  // Ignored when event is null/undefined
+  assert.strictEqual(Atlas.shouldIgnoreKeyboardEvent(null), true);
+
+  // Ignored when plate handler already prevented default
+  assert.strictEqual(
+    Atlas.shouldIgnoreKeyboardEvent({ defaultPrevented: true, target: { tagName: 'DIV' } }),
+    true
+  );
+
+  // Ignored when typing in inputs/selects/textareas
+  assert.strictEqual(
+    Atlas.shouldIgnoreKeyboardEvent({ defaultPrevented: false, target: { tagName: 'INPUT' } }),
+    true
+  );
+  assert.strictEqual(
+    Atlas.shouldIgnoreKeyboardEvent({ defaultPrevented: false, target: { tagName: 'SELECT' } }),
+    true
+  );
+  assert.strictEqual(
+    Atlas.shouldIgnoreKeyboardEvent({ defaultPrevented: false, target: { tagName: 'TEXTAREA' } }),
+    true
+  );
+  assert.strictEqual(
+    Atlas.shouldIgnoreKeyboardEvent({
+      defaultPrevented: false,
+      target: { tagName: 'DIV', isContentEditable: true }
+    }),
+    true
+  );
+
+  // Allowed for regular elements when not prevented
+  assert.strictEqual(
+    Atlas.shouldIgnoreKeyboardEvent({ defaultPrevented: false, target: { tagName: 'DIV' } }),
+    false
+  );
+  assert.strictEqual(
+    Atlas.shouldIgnoreKeyboardEvent({ defaultPrevented: false, target: { tagName: 'BODY' } }),
+    false
+  );
+});

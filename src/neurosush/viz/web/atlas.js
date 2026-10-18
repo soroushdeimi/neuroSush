@@ -644,6 +644,85 @@
     }
   }
 
+  /**
+   * Check if a container element (such as .atlas-margin) is empty.
+   * Considers whitespace text nodes as empty.
+   * @param {Element|object} el
+   * @returns {boolean}
+   */
+  function isMarginEmpty(el) {
+    if (!el) return true;
+    if (el.children && el.children.length > 0) return false;
+    const text = el.textContent || '';
+    return text.trim().length === 0;
+  }
+
+  /**
+   * Check whether a keyboard event should be ignored by the shell.
+   * Ignored if default was already prevented by a plate handler or if focus is in an input.
+   * @param {KeyboardEvent|object} e
+   * @returns {boolean}
+   */
+  function shouldIgnoreKeyboardEvent(e) {
+    if (!e) return true;
+    if (e.defaultPrevented) return true;
+    const target = e.target;
+    if (!target) return false;
+    if (target.isContentEditable) return true;
+    const tag = target.tagName ? target.tagName.toUpperCase() : '';
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return true;
+    if (typeof target.closest === 'function' && target.closest('input, select, textarea, [contenteditable]')) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Helper to construct a margin block element.
+   * @param {string|object} labelOrOpts
+   * @param {string|Node} maybeContent
+   * @returns {Element|null}
+   */
+  function createMarginBlock(labelOrOpts, maybeContent) {
+    if (typeof document === 'undefined') return null;
+    const sec = document.createElement('div');
+    sec.className = 'atlas-margin-section';
+    if (typeof labelOrOpts === 'string') {
+      const lbl = document.createElement('div');
+      lbl.className = 'atlas-margin-label';
+      lbl.textContent = labelOrOpts;
+      sec.appendChild(lbl);
+      if (typeof maybeContent === 'string') {
+        const val = document.createElement('div');
+        val.className = 'atlas-margin-value';
+        val.textContent = maybeContent;
+        sec.appendChild(val);
+      } else if (maybeContent && (maybeContent.nodeType || maybeContent instanceof Node)) {
+        sec.appendChild(maybeContent);
+      }
+    } else if (labelOrOpts && typeof labelOrOpts === 'object') {
+      if (labelOrOpts.label) {
+        const lbl = document.createElement('div');
+        lbl.className = 'atlas-margin-label';
+        lbl.textContent = labelOrOpts.label;
+        sec.appendChild(lbl);
+      }
+      if (labelOrOpts.value !== undefined) {
+        const val = document.createElement('div');
+        val.className = 'atlas-margin-value';
+        val.textContent = String(labelOrOpts.value);
+        sec.appendChild(val);
+      }
+      if (labelOrOpts.html) {
+        sec.insertAdjacentHTML('beforeend', labelOrOpts.html);
+      }
+      if (labelOrOpts.content && (labelOrOpts.content.nodeType || labelOrOpts.content instanceof Node)) {
+        sec.appendChild(labelOrOpts.content);
+      }
+    }
+    return sec;
+  }
+
   // Registry for plate definitions
   const plateRegistry = new Map();
   const Plate = {
@@ -690,6 +769,16 @@
       loop: true
     });
 
+    const isLive = Boolean(
+      spec.live ||
+      (trace.meta && trace.meta.live) ||
+      spec.source === 'live' ||
+      (rootEl && typeof rootEl.getAttribute === 'function' && rootEl.getAttribute('data-live') === 'true')
+    );
+    if (isLive && rootEl && typeof rootEl.setAttribute === 'function') {
+      rootEl.setAttribute('data-live', 'true');
+    }
+
     // Check reduced-motion preference
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       clock.pause();
@@ -714,30 +803,33 @@
 
     // Build the shell HTML structure
     rootEl.innerHTML = `
-      <div class="atlas-plate" lang="en" dir="ltr">
+      <div class="atlas-plate" lang="en" dir="ltr"${isLive ? ' data-live="true"' : ''}>
         <header class="atlas-header">
+          <div class="atlas-header-top">
+            <span class="atlas-brand" id="atlas-brand">neuroSush</span>
+            <div class="atlas-header-controls">
+              <button class="atlas-btn" id="atlas-btn-theme" title="${t('toggle_theme_title')}" aria-label="${t('toggle_theme_aria')}">
+                <span id="atlas-theme-text" class="atlas-mono">${getThemeLabel()}</span>
+              </button>
+              <button class="atlas-btn" id="atlas-btn-help" title="${t('help_btn_title')}" aria-label="${t('help_btn_aria')}">
+                <span class="atlas-btn-icon">?</span>
+              </button>
+            </div>
+          </div>
           <div class="atlas-title-group">
             <span class="atlas-plate-id" id="atlas-plate-badge">${t('plate_badge', { id: plateId.toUpperCase() })}</span>
             <h1 class="atlas-title" id="atlas-title">${plateTitle}</h1>
           </div>
-          <div class="atlas-header-controls">
-            <button class="atlas-btn" id="atlas-btn-theme" title="${t('toggle_theme_title')}" aria-label="${t('toggle_theme_aria')}">
-              <span id="atlas-theme-text" class="atlas-mono">${getThemeLabel()}</span>
-            </button>
-            <button class="atlas-btn" id="atlas-btn-help" title="${t('help_btn_title')}" aria-label="${t('help_btn_aria')}">
-              <span class="atlas-btn-icon">?</span>
-            </button>
-          </div>
         </header>
 
-        <main class="atlas-main">
+        <main class="atlas-main" id="atlas-main">
           <aside class="atlas-margin" id="atlas-margin"></aside>
           <section class="atlas-figure" id="atlas-figure">
             <div class="atlas-canvas-container" id="atlas-canvas-container"></div>
           </section>
         </main>
 
-        <nav class="atlas-timeline">
+        <nav class="atlas-timeline" id="atlas-timeline"${isLive ? ' style="display: none;" hidden' : ''}>
           <div class="atlas-scrubber-row">
             <div class="atlas-scrubber-track" id="atlas-scrubber" role="slider" tabindex="0" aria-label="${t('scrubber_aria')}">
               <canvas class="atlas-scrubber-canvas" id="atlas-scrubber-canvas"></canvas>
@@ -794,7 +886,7 @@
         <footer class="atlas-footer">
           <div class="atlas-footer-item">
             <span>${t('source')}</span>:
-            <span class="atlas-badge" id="atlas-source-label">${getSourceBadge(spec.source || (plate && plate.source) || 'replay')}</span>
+            <span class="atlas-badge" id="atlas-source-label">${getSourceBadge(spec.source || (plate && plate.source) || (isLive ? 'live' : 'replay'))}</span>
           </div>
           <div class="atlas-footer-item">
             <span>${t('library')} <span class="atlas-mono">${trace.meta.version || '0.6.0'}</span></span>
@@ -833,6 +925,15 @@
     const figureContainer = document.getElementById('atlas-canvas-container');
     const marginContainer = document.getElementById('atlas-margin');
 
+    if (marginContainer) {
+      marginContainer.block = function (labelOrOpts, maybeContent) {
+        const sec = createMarginBlock(labelOrOpts, maybeContent);
+        if (sec) marginContainer.appendChild(sec);
+        return sec;
+      };
+      marginContainer.section = marginContainer.block;
+    }
+
     const ctx = {
       trace,
       clock,
@@ -849,6 +950,9 @@
         if (h) c.height = h;
         figureContainer.appendChild(c);
         fitCanvas(c);
+        if (w && h) {
+          figureContainer.style.aspectRatio = `${w} / ${h}`;
+        }
         return c;
       },
       onFrame(fn) {
@@ -859,6 +963,13 @@
         };
       }
     };
+
+    if (typeof ResizeObserver !== 'undefined' && figureContainer) {
+      const ro = new ResizeObserver(() => {
+        figureContainer.querySelectorAll('canvas.atlas-canvas').forEach(fitCanvas);
+      });
+      ro.observe(figureContainer);
+    }
 
     // UI elements
     const btnPlay = document.getElementById('atlas-btn-play');
@@ -956,8 +1067,8 @@
 
     // Global keyboard listener
     window.addEventListener('keydown', (e) => {
-      // Don't intercept if user is typing in an input
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+      // Don't intercept if prevented by plate handler or if typing in input
+      if (shouldIgnoreKeyboardEvent(e)) {
         return;
       }
       if (e.code === 'Space') {
@@ -983,13 +1094,13 @@
         clock.seek(clock.steps - 1);
       } else if (e.key === 'f' || e.key === 'F') {
         e.preventDefault();
-        btnFork.click();
+        if (btnFork) btnFork.click();
       } else if (e.key === 't' || e.key === 'T') {
         e.preventDefault();
-        btnTheory.click();
+        if (btnTheory) btnTheory.click();
       } else if (e.key === 'm' || e.key === 'M') {
         e.preventDefault();
-        btnMute.click();
+        if (btnMute) btnMute.click();
       } else if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) {
         e.preventDefault();
         toggleHelp();
@@ -1005,6 +1116,15 @@
       mountRoot.figure = figureContainer;
       mountRoot.margin = marginContainer;
       plate.mount(mountRoot, ctx);
+    }
+
+    // Check if margin is empty after mount; collapse if plate drew nothing into it
+    if (isMarginEmpty(marginContainer)) {
+      marginContainer.classList.add('atlas-margin-collapsed');
+      const mainEl = document.getElementById('atlas-main') || marginContainer.closest('.atlas-main');
+      if (mainEl) {
+        mainEl.classList.add('atlas-no-margin');
+      }
     }
 
     return { clock, timeline, ctx };
@@ -1023,6 +1143,9 @@
     lineSeries,
     fitCanvas,
     colors,
+    isMarginEmpty,
+    shouldIgnoreKeyboardEvent,
+    createMarginBlock,
     Plate,
     start
   };
