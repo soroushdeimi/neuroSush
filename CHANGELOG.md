@@ -28,6 +28,10 @@ All notable changes to neuroSush are documented here, following the
   pure functions decomposing one membrane update step into its named terms (leak, input,
   spike initiation, adaptation, quadratic, linear, recovery), verified to sum to the step
   update; deterministic golden vectors in `tests/golden/equations.json`.
+- `HodgkinHuxley` (`neurosush.neurons.hodgkin_huxley`, Hodgkin and Huxley 1952):
+  squid-axon neuron model with visible ion-channel state (gates `m`, `h`, `n` and
+  `i_na`, `i_k`, `i_leak` currents), forward Euler on `v`, exact analytic gating steps, and
+  upward-crossing spike detection without reset. Runs at `Order.NEURON_DYNAMICS`.
 - `Refractory(period, *, block=None)`: with `block` a neuron also cannot fire for
   `ceil(block / dt)` steps after a spike while its voltage integrates freely once the `period`
   hold ends (the timer of the original Diehl and Cook code); `None` keeps the plain refractory

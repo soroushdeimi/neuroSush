@@ -132,7 +132,7 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
 | 220 | `DendriteStructure` | 420 | `SpikeGather` |
 | 240 | `DendriteIntegration`, `ConductanceIntegration` | 460 | `Traces` |
 | 250 | `SpikeTriggeredCurrent` | 500 | `STDP`, `RSTDP`, `ISTDP`, `TripletSTDP`, `SegmentLearning` |
-| 260 | `LIF`, `ELIF`, `AdaptiveELIF`, `Izhikevich` | 520, 540 | `WeightNormalization`, `WeightClip` |
+| 260 | `LIF`, `ELIF`, `AdaptiveELIF`, `Izhikevich`, `HodgkinHuxley` | 520, 540 | `WeightNormalization`, `WeightClip` |
 | 280 | `InherentNoise`, `PoissonDrive` | 1000 | `Recorder` |
 | 300 | `KWTA`, `MinicolumnInhibition` | | |
 
@@ -289,6 +289,7 @@ with 16 independent members in one batch, 11,395 against 1,525 and 838.
 |---|---|
 | `neurosush.core` | `Network`, `NeuronGroup`, `SynapseGroup`, `Behavior`, `Order`, delay buffers |
 | `neurosush.neurons.models` | `LIF`, `ELIF`, `AdaptiveELIF`, `Izhikevich`, `Refractory`, `Fire` (equations in `dynamics`) |
+| `neurosush.neurons.hodgkin_huxley` | `HodgkinHuxley` (Hodgkin and Huxley 1952 squid axon with visible `m`, `h`, `n` gates and `i_na`, `i_k`, `i_leak` currents) |
 | `neurosush.neurons.adaptation` | `SpikeTriggeredCurrent` (after-spike current, spike-frequency adaptation) |
 | `neurosush.neurons.params` | helpers that check a parameter given as a number or one value per neuron |
 | `neurosush.neurons.competition` | `KWTA`, `MinicolumnInhibition`, `InherentNoise` |

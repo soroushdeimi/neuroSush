@@ -12,6 +12,7 @@ from neurosush.core.behavior import Behavior
 
 if TYPE_CHECKING:
     from neurosush.core.buffers import ArrivalBuffer, HistoryBuffer
+    from neurosush.neurons.hodgkin_huxley import HodgkinHuxley
     from neurosush.neurons.models import LIF, Izhikevich
     from neurosush.synapses.currents import _SynapticInput
 
@@ -216,7 +217,7 @@ class NeuronGroup:
     v_rest: float
     v_reset: float | torch.Tensor
     threshold: torch.Tensor
-    model: LIF | Izhikevich
+    model: LIF | Izhikevich | HodgkinHuxley
     # LIF and SpikeInput set spikes; SpikeInput also sets the label.
     spikes: torch.Tensor
     label: object
@@ -224,6 +225,14 @@ class NeuronGroup:
     omega: torch.Tensor
     # Izhikevich sets the recovery variable.
     u: torch.Tensor
+    # HodgkinHuxley sets gating variables, currents, and previous voltage.
+    m: torch.Tensor
+    h: torch.Tensor
+    n: torch.Tensor
+    i_na: torch.Tensor
+    i_k: torch.Tensor
+    i_leak: torch.Tensor
+    v_prev: torch.Tensor
     # SpikeTriggeredCurrent sets its decaying current.
     I_adapt: torch.Tensor
     # LIF and DendriteIntegration set the input current.

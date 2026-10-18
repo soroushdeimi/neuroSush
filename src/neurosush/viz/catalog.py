@@ -85,7 +85,7 @@ PLATES: dict[str, PlateSpec] = {
         title_en="Hodgkin-Huxley: membrane cross-section, Na and K channels, gates m, h, n",
         wave=2,
         flagship=True,
-        covers=(),
+        covers=("neurosush.neurons.hodgkin_huxley.HodgkinHuxley",),
     ),
     "N06": PlateSpec(
         id="N06",

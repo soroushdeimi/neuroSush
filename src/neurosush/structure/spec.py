@@ -19,6 +19,7 @@ from neurosush.neurons.adaptation import SpikeTriggeredCurrent
 from neurosush.neurons.axon import Axon
 from neurosush.neurons.competition import KWTA, InherentNoise, MinicolumnInhibition
 from neurosush.neurons.dendrite import DendriteIntegration, DendriteStructure
+from neurosush.neurons.hodgkin_huxley import HodgkinHuxley
 from neurosush.neurons.homeostasis import ActivityHomeostasis, VoltageHomeostasis
 from neurosush.neurons.inputs import CorrelatedPoissonInput, PoissonDrive
 from neurosush.neurons.models import ELIF, LIF, AdaptiveELIF, Fire, Izhikevich
@@ -63,6 +64,7 @@ for _cls in (
     ELIF,
     AdaptiveELIF,
     Izhikevich,
+    HodgkinHuxley,
     SpikeTriggeredCurrent,
     PoissonDrive,
     CorrelatedPoissonInput,
