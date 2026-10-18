@@ -10,14 +10,17 @@ import pytest
 
 
 def test_atlas_js_suite() -> None:
-    """Run node --test tests/viz/js and assert all tests pass."""
+    """Run every tests/viz/js/*.test.mjs suite under node and assert all pass."""
     node_bin = shutil.which("node")
     if not node_bin:
         pytest.skip("Node.js is not installed on PATH")
 
     repo_root = Path(__file__).resolve().parents[2]
+    suites = sorted(
+        str(f.relative_to(repo_root)) for f in (repo_root / "tests/viz/js").glob("*.test.mjs")
+    )
     result = subprocess.run(
-        [node_bin, "--test", "tests/viz/js"],
+        [node_bin, "--test", *suites],
         cwd=repo_root,
         capture_output=True,
         text=True,

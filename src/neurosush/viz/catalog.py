@@ -307,6 +307,27 @@ PLATES: dict[str, PlateSpec] = {
         flagship=False,
         covers=(),
     ),
+    "M01": PlateSpec(
+        id="M01",
+        title_en="Why (1 - dt/tau)^k: Euler steps, convergence and instability",
+        wave=1,
+        flagship=False,
+        covers=(),
+    ),
+    "M02": PlateSpec(
+        id="M02",
+        title_en="Rain on a timeline: Poisson spikes, binomial counts",
+        wave=1,
+        flagship=False,
+        covers=(),
+    ),
+    "M03": PlateSpec(
+        id="M03",
+        title_en="The Nernst equation: why a membrane has a voltage",
+        wave=1,
+        flagship=False,
+        covers=(),
+    ),
     "H01": PlateSpec(
         id="H01",
         title_en="SDR overlap, union and the false match",
