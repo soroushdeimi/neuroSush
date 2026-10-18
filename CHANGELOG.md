@@ -6,6 +6,7 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- Atlas plate `Y01`: STDP traces and spike-pair plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
 - Atlas plate `N01`: leaky integrate-and-fire bucket plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
 - Atlas plate `N05`: Hodgkin-Huxley membrane plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
 - `neurosush.viz.export`: `render_plate`, `write_html` and `available_plates` produce a single
