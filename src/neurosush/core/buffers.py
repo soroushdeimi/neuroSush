@@ -89,9 +89,13 @@ class _Buffer:
         if cached is None or cached[0] != delay._version:
             if delay.shape != (self.size,):
                 raise ValueError(f"delay shape must be ({self.size},), got {tuple(delay.shape)}")
-            if bool(((delay < 0) | (delay >= self.depth)).any()):
+            # Transfer both decisions together instead of synchronizing for each scalar.
+            invalid, nonzero = torch.stack(
+                (((delay < 0) | (delay >= self.depth)).any(), delay.any())
+            ).tolist()
+            if invalid:
                 raise ValueError(f"delay must be in [0, {self.depth}), got {delay.tolist()}")
-            cached = (delay._version, not bool(delay.any()))
+            cached = (delay._version, not nonzero)
             self._checked[id(delay)] = cached
         return cached[1]
 

@@ -7,6 +7,7 @@ from typing import Any
 
 from neurosush.core.network import Network, NeuronGroup, SynapseGroup
 from neurosush.core.order import Order
+from neurosush.viz.trace import TraceRecorder
 
 
 def _first_doc_line(cls: type) -> str:
@@ -54,7 +55,16 @@ def schedule_table(net: Network) -> list[dict[str, Any]]:
             host_kind = "unknown"
 
         summary = _first_doc_line(type(behavior))
-        reads = list(getattr(behavior, "reads", ()))
+        # Recorder dependencies expand to the selected host attributes.
+        reads = [
+            name
+            for dependency in behavior.reads
+            for name in (
+                behavior.attributes
+                if isinstance(behavior, TraceRecorder) and dependency == "*attributes"
+                else (dependency,)
+            )
+        ]
         writes = list(getattr(behavior, "writes", ()))
 
         rows.append(

@@ -303,6 +303,44 @@ with 16 independent members in one batch, 11,395 against 1,525 and 838.
 
 ![Steps per second of one network on a CPU and on a GPU, eager and as a CUDA graph](https://raw.githubusercontent.com/soroushdeimi/neuroSush/main/docs/figures/single-network.svg)
 
+## Visualization
+
+`neurosush.viz` records packed tensor traces and exports self-contained HTML plates.
+Attach `TraceRecorder` to record host attributes, then use `render_plate` to get HTML
+or `write_html` to save it. `available_plates()` lists the installed plate IDs.
+The shipped teaching plates are live ports of the equations; for now only `demo`
+shows a recorded trace. Selecting `source="replay"` labels provenance; it does not
+turn a live plate into a trace renderer.
+
+```python
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from neurosush.core.network import Network, NeuronGroup
+from neurosush.neurons.models import LIF, Fire
+from neurosush.viz import Trace, TraceRecorder, available_plates, render_plate, write_html
+
+net = Network(seed=42)
+recorder = TraceRecorder("v", "spikes", max_steps=20)
+NeuronGroup(
+    net,
+    5,
+    [
+        LIF(tau=10.0, threshold=-55.0, v_reset=-70.0, v_rest=-65.0),
+        Fire(),
+        recorder,
+    ],
+)
+net.run(20)
+trace = recorder.trace(**Trace.make_meta(net))
+assert "demo" in available_plates()
+html = render_plate("demo", trace.to_dict(), source="replay")
+assert 'id="atlas-trace"' in html
+with TemporaryDirectory() as directory:
+    path = write_html(Path(directory) / "replay.html", "demo", trace.to_dict())
+    assert path.read_text(encoding="utf-8") == html
+```
+
 ## Modules
 
 | module | contents |
@@ -330,6 +368,7 @@ with 16 independent members in one batch, 11,395 against 1,525 and 838.
 | `neurosush.filters`, `.transforms` | DoG (zero mean by default) and Gabor kernels; grid masks, polarity split, filter bank |
 | `neurosush.data` | `LocationDataset`, `spike_frames`, `load_mnist` (IDX files, optional download) |
 | `neurosush.structure` | layers, ports, `connect`, `CorticalColumn`, JSON specs, `sequence_memory` |
+| `neurosush.viz` | `Trace`, `TraceRecorder`, `render_plate`, `write_html`, `available_plates`, schedule inspection |
 | `neurosush.recording` | `Recorder`, `SpikeCounter` (per-neuron spike counts, graph-safe) |
 | `neurosush.readout` | `assign_labels`, `classify`, `accuracy` (label an unsupervised layer, Diehl and Cook 2015) |
 | `neurosush.checkpoint` | `state_dict`, `load_state_dict`, `save`, `load` |

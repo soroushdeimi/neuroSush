@@ -65,8 +65,12 @@ def render_plate(
 
     Raises:
         FileNotFoundError: If plate_id is not in available_plates().
-        ValueError: If source is not one of ('live', 'replay', 'sweep').
+        ValueError: If source or theme is outside its documented set.
     """
+    valid_themes = ("auto", "light", "dark")
+    if theme not in valid_themes:
+        raise ValueError(f"theme must be one of {valid_themes}, got {theme!r}")
+
     valid_sources = ("live", "replay", "sweep")
     if source not in valid_sources:
         raise ValueError(f"source must be one of {valid_sources}, got {source!r}")
