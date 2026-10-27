@@ -14,6 +14,8 @@ All notable changes to neuroSush are documented here, following the
   selected by each TraceRecorder. README includes an executable visualization example.
 
 ### Added
+- Atlas plate `N03`: AdEx adaptation in the phase plane, a live figure with nullclines, spike-triggered adaptation and an inter-spike-interval ladder.
+- Atlas plate `N07`: conductance synapse tug of war, a live rope-and-teams figure with conductance-dependent forces and the effective time constant.
 - Atlas plate `Y02`: triplet STDP and frequency dependence, a live figure with fast and slow traces, pair versus triplet weight curves and the frequency sweep.
 - Atlas plate `N04`: Izhikevich zoo of firing patterns, eight live cells with a computed pattern fingerprint, draggable parameter maps and the theory ghost.
 - Graph readiness inventory for every behavior, with CPU AST guards and seeded 200-step delay-buffer equivalence tests.
