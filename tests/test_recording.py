@@ -58,6 +58,37 @@ def test_reset_drops_the_history():
     assert recorder.get("v").tolist() == [[3.0]]
 
 
+def test_get_last_returns_only_the_last_samples():
+    net = Network()
+    NeuronGroup(net, 1, [Counter(), recorder := Recorder("v")])
+    net.run(5)
+    assert recorder.get("v").tolist() == [[1.0], [2.0], [3.0], [4.0], [5.0]]
+    assert recorder.get("v", last=2).tolist() == [[4.0], [5.0]]
+    assert recorder.get("v", last=1).tolist() == [[5.0]]
+    assert recorder.get("v", last=5).tolist() == recorder.get("v").tolist()
+    assert recorder.get("v", last=10).tolist() == recorder.get("v").tolist()  # shorter history
+
+
+def test_get_last_does_not_change_the_stored_history():
+    net = Network()
+    NeuronGroup(net, 1, [Counter(), recorder := Recorder("v")])
+    net.run(3)
+    recorder.get("v", last=1)
+    assert recorder.get("v").tolist() == [[1.0], [2.0], [3.0]]
+
+
+def test_get_last_is_validated():
+    recorder = Recorder("v")
+    with pytest.raises(ValueError, match=r"last must be a positive integer or None, got 0"):
+        recorder.get("v", last=0)
+    with pytest.raises(ValueError, match=r"got -1"):
+        recorder.get("v", last=-1)
+    with pytest.raises(ValueError, match=r"got 2\.5"):
+        recorder.get("v", last=2.5)
+    with pytest.raises(ValueError, match=r"got True"):
+        recorder.get("v", last=True)
+
+
 def test_missing_attribute_fails_at_initialization():
     net = Network()
     NeuronGroup(net, 1, [Recorder("v")], name="n")

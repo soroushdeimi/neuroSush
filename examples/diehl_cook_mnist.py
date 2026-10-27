@@ -28,6 +28,16 @@ the rule of the paper's code: potentiation on a postsynaptic spike scales with a
 postsynaptic trace (40 ms) and traces are nearest-spike (set to one at a spike), implemented
 with ``TripletSTDP``.
 
+``--exc-block`` (ms, default none). The paper's text gives the excitatory neurons a 5 ms
+refractory period only. The authors' code (github.com/peter-u-diehl/stdp-mnist) also has a
+timer (``dtimer/dt = 100 ms/s``, reset to 0 at a spike) and lets a neuron fire only while the
+timer is above 5 ms, that is about 50 ms after its last spike, while the voltage keeps
+integrating (it is clamped at the reset only for the first 5 ms). The text does not mention
+it. ``--exc-block 50`` reproduces it with ``Refractory(5.0, block=50.0)``: a neuron cannot fire
+for ``ceil(50 / dt)`` steps after a spike and fires on the first step after that when its
+voltage is already above threshold. The default is the plain refractory period. The value is
+recorded in the JSON as ``exc_block``.
+
 ``--dt`` (ms, default 1.0) sets the simulation step; every duration stays in ms and is
 converted to steps with ``round(ms / dt)`` (presentation, rest). The paper's Brian code uses
 dt = 0.5 ms; with it the one-step synaptic transmission makes exc -> inh -> exc inhibition
@@ -97,6 +107,7 @@ RULES = ("pair", "triplet")
 THETA_TAU = 1e7
 REST = 150  # ms of rest after every training presentation in the paper
 MAX_INTENSITY = 10.0
+SAFETY_INTENSITY = 200.0  # hard limit when there is no cap (``--max-intensity none``)
 
 
 @dataclass
@@ -123,6 +134,7 @@ def build_network(
     rule: str = "pair",
     members: int | None = None,
     dt: float = 1.0,
+    exc_block: float | None = None,
 ) -> Model:
     """Build the Diehl and Cook network; ``learn=False`` leaves out plasticity and theta.
 
@@ -147,7 +159,7 @@ def build_network(
     exc_behaviors: list[Behavior] = [
         ConductanceIntegration(e_exc=0.0, e_inh=-100.0, tau_exc=1.0, tau_inh=2.0),
         LIF(tau=100.0, threshold=-52.0, v_reset=-65.0, v_rest=-65.0),
-        Refractory(5.0),
+        Refractory(5.0, block=exc_block),
         Fire(),
         SpikeCounter(),
         Axon(),
@@ -238,19 +250,24 @@ def present(
     intensity: float = 2.0,
     *,
     min_spikes: int = MIN_SPIKES,
-    max_intensity: float = MAX_INTENSITY,
+    max_intensity: float | None = MAX_INTENSITY,
     rest: int = 0,
-) -> tuple[torch.Tensor, dict[str, int]]:
+) -> tuple[torch.Tensor, dict[str, Any]]:
     """Show images until each makes the excitatory layer fire ``min_spikes`` spikes.
 
     ``images`` is ``(784,)`` uint8 (unbatched network; with independent members every member
     sees it) or ``(batch, 784)``. A sample with too
     few spikes is shown again with the intensity raised by one, up to ``max_intensity``;
-    each sample keeps the counts of its last presentation. With independent members, the
-    weights and thetas of a member whose sample was already good are restored after a repeat
+    each sample keeps the counts of its last presentation. ``max_intensity`` None (or 0) means
+    no cap, as in the original code: the sample is shown until it fires, and a RuntimeError is
+    raised if the intensity reaches ``SAFETY_INTENSITY`` (200) without that. With independent
+    members, the weights and thetas of a member whose sample was already good are restored after
+    a repeat
     that other members needed, so each member learns as if it were alone. Returns the spike
     counts (shape of ``exc.spike_count``) and
-    ``{"repeats": samples shown again, "sim_steps": steps run}``, with a batch counted as one
+    ``{"repeats": samples shown again, "sim_steps": steps run}`` plus device tensors (shape of
+    the members, scalars otherwise) ``"cap_hit"`` (accepted with fewer than ``min_spikes``
+    spikes at the cap) and ``"presentations"`` per sample, with a batch counted as one
     run per step. With ``rest`` > 0 (training) every presentation, re-presentations included,
     is followed by ``rest`` steps of rest, of which only the relaxation of theta is applied
     (see :func:`relax_theta`).
@@ -260,6 +277,9 @@ def present(
     result: torch.Tensor | None = None
     pending = torch.zeros((), dtype=torch.bool, device=net.device)
     repeats = sim_steps = 0
+    cap = max_intensity if max_intensity else None
+    limit = cap if cap is not None else SAFETY_INTENSITY
+    shown = torch.ones((), device=net.device)
     while True:
         saved = None
         if result is not None and model.learn and net.independent:
@@ -281,11 +301,21 @@ def present(
             pending = counts.sum(-1) < min_spikes
         else:
             result = torch.where(pending.unsqueeze(-1), counts, result)
+            shown = shown + pending.float()
             repeats += int(pending.sum().item())
             pending = pending & (counts.sum(-1) < min_spikes)
-        if intensity >= max_intensity or not bool(pending.any().item()):
-            return result, {"repeats": repeats, "sim_steps": sim_steps}
+        if not bool(pending.any().item()):
+            break
+        if intensity >= limit:
+            if cap is None:
+                raise RuntimeError(
+                    f"a sample still fired fewer than {min_spikes} spikes at intensity "
+                    f"{intensity:g} (safety limit {SAFETY_INTENSITY:g}, no cap)"
+                )
+            break
         intensity += 1.0
+    info = {"repeats": repeats, "sim_steps": sim_steps, "cap_hit": pending, "presentations": shown}
+    return result, info
 
 
 def _save_checkpoint(path: Path, model: Model, state: dict[str, Any]) -> None:
@@ -315,13 +345,16 @@ def train(
     window: int = 10000,
     rest: int = REST,
     block: int = 10000,
+    max_intensity: float | None = MAX_INTENSITY,
 ) -> dict[str, Any]:
     """Train online, one sample at a time, for ``epochs * samples`` presentations.
 
     ``steps`` and ``rest`` are in simulation steps (``main`` converts from ms). Winner
     diagnostics (distinct firing neurons, top neuron's share of spikes) of every sample are
     kept on the device and reduced only at log time and at the end (``winner_diagnostics``,
-    with means per ``block`` samples).
+    with means per ``block`` samples). Cap diagnostics (samples accepted with too few spikes at
+    the cap, presentations per sample, highest intensity used) are accumulated on the device the
+    same way, and cover only the samples run in this call (not those before a resume).
 
     Samples are taken in order from ``images`` (wrapping around). Returns timing and counts;
     the running accuracy follows the paper: labels are assigned from the previous ``window``
@@ -348,9 +381,19 @@ def train(
         (total - start, 2, *model.exc.spike_count.shape[:-1]), device=model.net.device
     )
     diag_log = 0
+    zero = torch.zeros(model.exc.spike_count.shape[:-1], device=model.net.device)
+    cap_all = {"cap": zero.clone(), "pres": zero.clone(), "top": zero.clone()}
+    cap_win = {k: v.clone() for k, v in cap_all.items()}
     for i in range(start, total):
         normalize_weights(model)
-        counts, info = present(model, images[i % len(images)], steps, rest=rest)
+        counts, info = present(
+            model, images[i % len(images)], steps, max_intensity=max_intensity, rest=rest
+        )
+        top = 2.0 + info["presentations"] - 1.0  # intensity of the last presentation
+        for acc in (cap_all, cap_win):
+            acc["cap"] += info["cap_hit"].float()
+            acc["pres"] += info["presentations"]
+            acc["top"] = torch.maximum(acc["top"], top)
         stats["repeats"] += info["repeats"]
         stats["sim_steps"] += info["sim_steps"]
         label = int(labels[i % len(labels)])
@@ -374,6 +417,13 @@ def train(
                 f"top share {window_diag[1].item():.2f}"
             )
             diag_log = done - start
+            n_win = done - done_log
+            line += (
+                f", cap hits {cap_win['cap'].sum().item():.0f}, "
+                f"{cap_win['pres'].mean().item() / n_win:.2f} presentations/sample, "
+                f"max intensity {cap_win['top'].max().item():g}"
+            )
+            cap_win = {k: torch.zeros_like(v) for k, v in cap_win.items()}
             if len(recent) > log_every:
                 labelled, latest = recent[:-log_every], recent[-log_every:]
                 old = torch.stack([c for c, _ in labelled])
@@ -411,6 +461,10 @@ def train(
     stats["samples"] = total
     stats["running_accuracy"] = accuracies  # type: ignore[assignment]
     stats["winner_diagnostics"] = _winner_summary(diag, start, block)
+    n_run = max(total - start, 1)
+    stats["cap_hits"] = cap_all["cap"].tolist()
+    stats["presentations_per_sample"] = (cap_all["pres"] / n_run).tolist()
+    stats["max_intensity_used"] = cap_all["top"].tolist()
     normalize_weights(model)
     return stats
 
@@ -444,6 +498,7 @@ def respond(
     graph: bool | Literal["graph", "compiled"],
     seed: int,
     dt: float = 1.0,
+    exc_block: float | None = None,
 ) -> tuple[torch.Tensor, dict[str, int]]:
     """Spike counts of the frozen network on ``images``, batched; returns ``(samples, N)``."""
     neurons = weights.shape[1]
@@ -455,7 +510,14 @@ def respond(
         size = len(chunk)
         if size not in models:
             m = build_network(
-                neurons, device, batch=size, learn=False, graph=graph, seed=seed, dt=dt
+                neurons,
+                device,
+                batch=size,
+                learn=False,
+                graph=graph,
+                seed=seed,
+                dt=dt,
+                exc_block=exc_block,
             )
             m.syn.weights.copy_(weights)
             m.exc.threshold.copy_(m.exc.threshold + theta.to(m.net.device))
@@ -480,6 +542,7 @@ def evaluate(
     graph: bool | Literal["graph", "compiled"] = False,
     seed: int = 0,
     dt: float = 1.0,
+    exc_block: float | None = None,
 ) -> dict[str, Any]:
     """Assign neurons to digits on ``label_images``, then classify ``test_images``.
 
@@ -502,6 +565,7 @@ def evaluate(
                 graph=graph,
                 seed=seed,
                 dt=dt,
+                exc_block=exc_block,
             )
             for b in range(model.net.batch_size or 1)
         ]
@@ -532,6 +596,7 @@ def evaluate(
         graph=graph,
         seed=seed,
         dt=dt,
+        exc_block=exc_block,
     )
     del result["evaluation_sample_steps"]
     return result
@@ -551,6 +616,7 @@ def _evaluate_one(
     graph: bool | Literal["graph", "compiled"],
     seed: int,
     dt: float = 1.0,
+    exc_block: float | None = None,
 ) -> dict[str, Any]:
     """Evaluate one set of weights and thetas; also reports the sample steps it simulated."""
     kwargs: dict[str, Any] = {
@@ -560,6 +626,7 @@ def _evaluate_one(
         "graph": graph,
         "seed": seed,
         "dt": dt,
+        "exc_block": exc_block,
     }
     t0 = time.perf_counter()
     label_counts, info1 = respond(weights, theta, label_images, **kwargs)
@@ -623,6 +690,20 @@ def main() -> None:
         help="train this many independent networks at once (different random draws)",
     )
     p.add_argument("--rest", type=float, default=REST, help="ms of rest after each training sample")
+    p.add_argument(
+        "--max-intensity",
+        default=str(MAX_INTENSITY),
+        help="highest input intensity a too quiet sample is re-presented at (default 10); "
+        "'none' or 0 means no cap as in the original code, with a hard safety limit of "
+        "200 that raises an error if reached",
+    )
+    p.add_argument(
+        "--exc-block",
+        type=float,
+        default=None,
+        help="ms after a spike during which an excitatory neuron cannot fire (the original "
+        "code's timer; 50 reproduces it); default none",
+    )
     p.add_argument("--rule", choices=RULES, default="pair", help="synaptic learning rule")
     p.add_argument("--data", default="data/MNIST/raw", help="folder of MNIST IDX files")
     p.add_argument("--out", help="write the results as JSON")
@@ -635,6 +716,15 @@ def main() -> None:
         p.error("--dt must be positive")
     steps = max(1, round(args.presentation / args.dt))
     rest_steps = round(args.rest / args.dt)
+    if args.max_intensity.lower() == "none":
+        max_intensity = None
+    else:
+        try:
+            max_intensity = float(args.max_intensity) or None
+        except ValueError:
+            p.error("--max-intensity must be a number or 'none'")
+        if max_intensity is not None and max_intensity < 2:
+            p.error("--max-intensity must be at least 2 (the starting intensity), or none/0")
 
     device = torch.device(args.device)
     graph = args.stepper if device.type == "cuda" and not args.no_graph else False
@@ -651,6 +741,7 @@ def main() -> None:
         rule=args.rule,
         members=args.members if args.members > 1 else None,
         dt=args.dt,
+        exc_block=args.exc_block,
     )
     stats = train(
         model,
@@ -664,6 +755,7 @@ def main() -> None:
         checkpoint_every=args.checkpoint_every,
         resume=args.resume,
         rest=rest_steps,
+        max_intensity=max_intensity,
     )
     n_label = min(args.label_samples, len(xtr))
     n_test = min(args.test_samples, len(xte))
@@ -678,10 +770,12 @@ def main() -> None:
         graph=graph,
         seed=args.seed,
         dt=args.dt,
+        exc_block=args.exc_block,
     )
     result.update(
         rule=args.rule,
         rest=args.rest,
+        exc_block=args.exc_block,
         dt=args.dt,
         presentation=args.presentation,
         steps_per_sample=steps,
@@ -692,6 +786,10 @@ def main() -> None:
         training_samples_per_second=stats["samples"] / stats["seconds"],
         training_steps_per_second=stats["sim_steps"] / stats["seconds"],
         training_repeats=stats["repeats"],
+        max_intensity=max_intensity,
+        cap_hits=stats["cap_hits"],
+        presentations_per_sample=stats["presentations_per_sample"],
+        max_intensity_used=stats["max_intensity_used"],
         running_accuracy=stats["running_accuracy"],
         parameters={**vars(args), "graph": graph},
         machine=machine_info(device),

@@ -83,7 +83,7 @@ target = NeuronGroup(
     [
         DendriteStructure(),  # routes synaptic currents to the soma
         DendriteIntegration(),
-        LIF(tau=10.0, threshold=-55.0, v_reset=-70.0, v_rest=-65.0),
+        LIF(tau=10.0, threshold=-55.0, v_reset=-70.0, v_rest=-65.0, resistance=1.0),
         Fire(),
         Axon(),
     ],
@@ -132,7 +132,7 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
 | 220 | `DendriteStructure` | 420 | `SpikeGather` |
 | 240 | `DendriteIntegration`, `ConductanceIntegration` | 460 | `Traces` |
 | 250 | `SpikeTriggeredCurrent` | 500 | `STDP`, `RSTDP`, `ISTDP`, `TripletSTDP`, `SegmentLearning` |
-| 260 | `LIF`, `ELIF`, `AdaptiveELIF`, `Izhikevich` | 520, 540 | `WeightNormalization`, `WeightClip` |
+| 260 | `LIF`, `ELIF`, `AdaptiveELIF`, `Izhikevich`, `HodgkinHuxley` | 520, 540 | `WeightNormalization`, `WeightClip` |
 | 280 | `InherentNoise`, `PoissonDrive` | 1000 | `Recorder` |
 | 300 | `KWTA`, `MinicolumnInhibition` | | |
 
@@ -141,7 +141,9 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
   both; building without them is an error, not a silent network.
 - **Delays** are integers in steps: `src_delay` is axonal (read from the source's `Axon`
   history), `dst_delay` is dendritic (arrival in the destination's `DendriteStructure`).
-- **Units**: every time constant shares the unit of `dt` (milliseconds by convention).
+- **Units**: voltage in mV, time in ms (every time constant shares the unit of `dt`),
+  resistance in MOhm, current in nA, as in all examples; the library is unit-agnostic as long
+  as one consistent system is used.
 - **Signs**: weights are magnitudes; `NeuronGroup(..., inhibitory=True)` makes its outgoing
   currents negative.
 - **Batches**: `Network(batch_size=B)` simulates `B` samples side by side. State tensors get
@@ -289,6 +291,7 @@ with 16 independent members in one batch, 11,395 against 1,525 and 838.
 |---|---|
 | `neurosush.core` | `Network`, `NeuronGroup`, `SynapseGroup`, `Behavior`, `Order`, delay buffers |
 | `neurosush.neurons.models` | `LIF`, `ELIF`, `AdaptiveELIF`, `Izhikevich`, `Refractory`, `Fire` (equations in `dynamics`) |
+| `neurosush.neurons.hodgkin_huxley` | `HodgkinHuxley` (Hodgkin and Huxley 1952 squid axon with visible `m`, `h`, `n` gates and `i_na`, `i_k`, `i_leak` currents) |
 | `neurosush.neurons.adaptation` | `SpikeTriggeredCurrent` (after-spike current, spike-frequency adaptation) |
 | `neurosush.neurons.params` | helpers that check a parameter given as a number or one value per neuron |
 | `neurosush.neurons.competition` | `KWTA`, `MinicolumnInhibition`, `InherentNoise` |

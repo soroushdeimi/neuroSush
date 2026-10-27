@@ -13,11 +13,15 @@ class Behavior:
     arguments in ``__init__``, allocate state in :meth:`initialize` and update it in
     :meth:`forward`. Setting ``enabled = False`` skips :meth:`forward`. State kept on the
     behavior itself (not on its host) goes through :meth:`state_dict` so that checkpoints
-    can restore it.
+    can restore it. Class variables ``reads`` and ``writes`` declare host attribute names
+    accessed during :meth:`forward` (for synapse behaviors, attributes live on the synapse
+    group unless documented as living on a connected neuron group).
     """
 
     order: ClassVar[int]
     enabled: bool = True
+    reads: ClassVar[tuple[str, ...]] = ()
+    writes: ClassVar[tuple[str, ...]] = ()
     graph_safe: ClassVar[bool] = False  # True when forward() is unconditionally graph-ready
     # True when the behavior computes every batch member on its own state in a network created
     # with ``independent=True`` (no mean over the batch, per-member weights); anything else

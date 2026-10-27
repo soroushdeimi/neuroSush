@@ -31,6 +31,7 @@ cortical structures.
 | `core/network.py` | `Network`, `NeuronGroup`, `SynapseGroup`, `Compartment` |
 | `neurons/dynamics.py` | pure LIF / ELIF / AdEx equations and threshold crossing |
 | `neurons/models.py` | `LIF`, `ELIF`, `AdaptiveELIF`, `Izhikevich` (Izhikevich 2003), `Refractory`, `Fire` |
+| `neurons/hodgkin_huxley.py` | `HodgkinHuxley` (Hodgkin and Huxley 1952 squid axon with visible `m`, `h`, `n` gates and `i_na`, `i_k`, `i_leak` currents) |
 | `neurons/adaptation.py` | `SpikeTriggeredCurrent` (after-spike current that decays with `tau`) |
 | `neurons/params.py` | `positive`, `at_least`, `per_neuron`, `state_like`: validate a parameter given as a number or per neuron |
 | `neurons/competition.py` | `KWTA`, `MinicolumnInhibition`, `InherentNoise` |
@@ -84,11 +85,11 @@ A step of `Network.step()` runs every enabled behavior's `forward` once, sorted 
 | 220 | `DendriteStructure` | afferent `syn.I`, `syn.dst_delay` | `ng.I_proximal/distal/apical` |
 | 240 | `DendriteIntegration`, `ConductanceIntegration` | compartment currents; `syn.I`, `ng.v` | `ng.I` (`ng.g_exc`, `ng.g_inh`) |
 | 250 | `SpikeTriggeredCurrent` | `ng.spikes` | `ng.I` (`ng.I_adapt`) |
-| 260 | `LIF`/`ELIF`/`AdaptiveELIF`/`Izhikevich` | `ng.I` | `ng.v` (`ng.u` for `Izhikevich`) |
+| 260 | `LIF`/`ELIF`/`AdaptiveELIF`/`Izhikevich`/`HodgkinHuxley` | `ng.I` | `ng.v` (`ng.u` for `Izhikevich`; `m`, `h`, `n`, `i_na`, `i_k`, `i_leak`, `spikes` for `HodgkinHuxley`) |
 | 280 | `InherentNoise`, `PoissonDrive` | | `ng.v` |
 | 300 | `KWTA` | `ng.v` | `ng.v` |
 | 310 | `VoltageHomeostasis` | `ng.v` | `ng.v` |
-| 330 | `Refractory` | `ng.spikes`, `ng.v` | `ng.v`, `ng.refractory` |
+| 330 | `Refractory` | `ng.spikes`, `ng.v` | `ng.v`, `ng.refractory` (with `block`: `ng.block_left`, `ng.fire_blocked`) |
 | 340 | `Fire`, `SpikeInput`, `PoissonInput`, `CorrelatedPoissonInput` | `ng.v`, `ng.rates` | `ng.spikes`, `ng.v` |
 | 350 | `ActivityHomeostasis`, `AdaptiveThreshold` | `ng.spikes` | `ng.threshold` (`ng.theta`) |
 | 380 | `Axon` | `ng.spikes` | `ng.spike_history` |

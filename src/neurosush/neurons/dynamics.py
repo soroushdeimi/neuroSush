@@ -1,11 +1,13 @@
-"""Pure equations of the leaky integrate-and-fire family.
+"""Pure equations of the leaky integrate-and-fire family and neuron dynamics.
 
 Every function returns new tensors and leaves its inputs unchanged; the derivative
-functions return ``tau * dv/dt``.
+functions return ``tau * dv/dt``, and the term decomposition functions return dictionaries
+of voltage changes per term for one Euler step.
 """
 
 from __future__ import annotations
 
+import math
 from typing import overload
 
 import torch
@@ -34,6 +36,40 @@ def lif_derivative(v: Scalar, current: Scalar, *, v_rest: float, resistance: flo
     return (v_rest - v) + resistance * current
 
 
+def lif_rate(
+    *,
+    tau: float,
+    v_rest: float,
+    v_reset: float,
+    threshold: float,
+    resistance: float,
+    current: float,
+    t_ref: float = 0.0,
+) -> float:
+    """Closed-form firing rate of a LIF neuron under constant current, in Hz.
+
+    ``1000 / (t_ref + tau * ln((v_inf - v_reset) / (v_inf - threshold)))`` with
+    ``v_inf = v_rest + R I``; zero when ``R I <= threshold - v_rest``. ``tau`` and
+    ``t_ref`` are in milliseconds (the unit of ``dt``), hence the 1000.
+
+    Args:
+        tau: Membrane time constant.
+        v_rest: Resting membrane potential.
+        v_reset: Voltage after a spike.
+        threshold: Voltage threshold for spiking.
+        resistance: Membrane resistance.
+        current: Constant input current.
+        t_ref: Absolute refractory period after each spike.
+
+    Returns:
+        Mean firing rate in spikes per second.
+    """
+    v_inf = v_rest + resistance * current
+    if v_inf <= threshold:
+        return 0.0
+    return 1000.0 / (t_ref + tau * math.log((v_inf - v_reset) / (v_inf - threshold)))
+
+
 def exponential_boost(v: torch.Tensor, *, delta: float, theta_rh: float) -> torch.Tensor:
     """Spike-initiation term of the exponential LIF, ``delta * exp((v - theta_rh) / delta)``."""
     return delta * torch.exp((v - theta_rh) / delta)
@@ -56,17 +92,62 @@ def euler_step(v: Scalar, tau_dv_dt: Scalar, *, tau: float, dt: float) -> Scalar
     return v + tau_dv_dt * (dt / tau)
 
 
+@overload
 def fire(
-    v: torch.Tensor, *, threshold: Scalar, v_reset: Scalar
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Threshold crossing: the spikes and the voltage with spiking neurons reset."""
-    spikes = v >= threshold
-    if isinstance(v_reset, torch.Tensor):
-        v_after = torch.where(spikes, v_reset, v)
-    else:
-        # masked_fill takes the scalar directly: no host-to-device copy every step
-        v_after = v.masked_fill(spikes, v_reset)
-    return spikes, v_after
+    v: torch.Tensor,
+    *,
+    threshold: Scalar,
+    v_reset: Scalar,
+    blocked: torch.Tensor | None = None,
+) -> tuple[torch.Tensor, torch.Tensor]: ...
+
+
+@overload
+def fire(
+    v: float,
+    *,
+    threshold: float,
+    v_reset: float,
+    blocked: bool | None = None,
+) -> tuple[bool, float]: ...
+
+
+def fire(
+    v: Scalar,
+    *,
+    threshold: Scalar,
+    v_reset: Scalar,
+    blocked: torch.Tensor | bool | None = None,
+) -> tuple[Scalar, Scalar]:
+    """Threshold crossing: the spikes and the voltage with spiking neurons reset.
+
+    Neurons in ``blocked`` cannot spike: their voltage is left as it is. With a tensor
+    ``v`` (and an optional boolean-mask tensor ``blocked``) it returns tensors; with a
+    float ``v`` (and an optional bool ``blocked``) it returns a ``(bool, float)`` pair.
+
+    Args:
+        v: Membrane voltage, a tensor or a float.
+        threshold: Voltage threshold for spiking.
+        v_reset: Voltage after a spike.
+        blocked: Mask (bool tensor or bool) of neurons that must not spike.
+
+    Returns:
+        ``(spikes, v_after)``, both with the type of ``v``.
+    """
+    if isinstance(v, torch.Tensor):
+        spikes = v >= threshold
+        if blocked is not None:
+            if not isinstance(blocked, torch.Tensor):
+                raise TypeError(f"blocked must be a tensor with a tensor v, got {blocked!r}")
+            spikes = spikes & ~blocked
+        if isinstance(v_reset, torch.Tensor):
+            v_after = torch.where(spikes, v_reset, v)
+        else:
+            # masked_fill takes the scalar directly: no host-to-device copy every step
+            v_after = v.masked_fill(spikes, v_reset)
+        return spikes, v_after
+    spiked = v >= float(threshold) and not blocked
+    return spiked, float(v_reset) if spiked else v
 
 
 def adaptation_step(
@@ -111,14 +192,20 @@ def izhikevich_step(
 
 
 def izhikevich_reset(
-    v: torch.Tensor, u: torch.Tensor, *, v_peak: Scalar, c: Scalar, d: Scalar
+    v: torch.Tensor,
+    u: torch.Tensor,
+    *,
+    v_peak: Scalar,
+    c: Scalar,
+    d: Scalar,
+    blocked: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Spike where ``v >= v_peak``; those neurons get ``v = c`` and ``u += d``.
 
     Returns:
         ``(spikes, v, u)``.
     """
-    spikes, v_after = fire(v, threshold=v_peak, v_reset=c)
+    spikes, v_after = fire(v, threshold=v_peak, v_reset=c, blocked=blocked)
     return spikes, v_after, u + d * spikes.to(u.dtype)
 
 
@@ -143,3 +230,166 @@ def correlated_pair_correlation(*, correlation: float, p_mother: float) -> float
     Independent of the bin length; ``c`` as ``p = rate dt / c`` goes to 0 (Poisson mother).
     """
     return correlation * (1 - p_mother) / (1 - correlation * p_mother)
+
+
+def lif_terms(
+    v: torch.Tensor,
+    current: Scalar,
+    *,
+    v_rest: Scalar,
+    resistance: Scalar,
+    tau: Scalar,
+    dt: float,
+) -> dict[str, torch.Tensor]:
+    """Decompose one LIF Euler step into leak and input terms.
+
+    Args:
+        v: Membrane voltage before the step.
+        current: Input current drive.
+        v_rest: Resting membrane potential.
+        resistance: Membrane resistance.
+        tau: Membrane time constant.
+        dt: Integration time step.
+
+    Returns:
+        Dictionary with ``leak`` and ``input`` voltage increments.
+    """
+    step = dt / torch.as_tensor(tau, dtype=v.dtype, device=v.device)
+    vr = torch.as_tensor(v_rest, dtype=v.dtype, device=v.device)
+    r = torch.as_tensor(resistance, dtype=v.dtype, device=v.device)
+    c = torch.as_tensor(current, dtype=v.dtype, device=v.device)
+    terms = {
+        "leak": (vr - v) * step,
+        "input": (r * c) * step,
+    }
+    broadcasted = torch.broadcast_tensors(*terms.values())  # type: ignore[no-untyped-call]
+    return {k: broadcasted[i] for i, k in enumerate(terms)}
+
+
+def elif_terms(
+    v: torch.Tensor,
+    current: Scalar,
+    *,
+    v_rest: Scalar,
+    resistance: Scalar,
+    delta: float,
+    theta_rh: float,
+    tau: Scalar,
+    dt: float,
+) -> dict[str, torch.Tensor]:
+    """Decompose one ELIF Euler step into leak, input, and spike initiation terms.
+
+    Args:
+        v: Membrane voltage before the step.
+        current: Input current drive.
+        v_rest: Resting membrane potential.
+        resistance: Membrane resistance.
+        delta: Exponential boost scale.
+        theta_rh: Rheobase threshold of the exponential term.
+        tau: Membrane time constant.
+        dt: Integration time step.
+
+    Returns:
+        Dictionary with ``leak``, ``input``, and ``spike_initiation`` voltage increments.
+    """
+    terms = lif_terms(v, current, v_rest=v_rest, resistance=resistance, tau=tau, dt=dt)
+    step = dt / torch.as_tensor(tau, dtype=v.dtype, device=v.device)
+    terms["spike_initiation"] = exponential_boost(v, delta=delta, theta_rh=theta_rh) * step
+    broadcasted = torch.broadcast_tensors(*terms.values())  # type: ignore[no-untyped-call]
+    return {k: broadcasted[i] for i, k in enumerate(terms)}
+
+
+def adex_terms(
+    v: torch.Tensor,
+    current: Scalar,
+    omega: Scalar,
+    *,
+    v_rest: Scalar,
+    resistance: Scalar,
+    delta: float,
+    theta_rh: float,
+    tau: Scalar,
+    dt: float,
+) -> dict[str, torch.Tensor]:
+    """Decompose one AdEx Euler step into leak, input, spike initiation, and adaptation terms.
+
+    Args:
+        v: Membrane voltage before the step.
+        current: Input current drive.
+        omega: Adaptation variable before the step.
+        v_rest: Resting membrane potential.
+        resistance: Membrane resistance.
+        delta: Exponential boost scale.
+        theta_rh: Rheobase threshold of the exponential term.
+        tau: Membrane time constant.
+        dt: Integration time step.
+
+    Returns:
+        Dictionary with ``leak``, ``input``, ``spike_initiation``, and ``adaptation`` increments.
+    """
+    terms = elif_terms(
+        v,
+        current,
+        v_rest=v_rest,
+        resistance=resistance,
+        delta=delta,
+        theta_rh=theta_rh,
+        tau=tau,
+        dt=dt,
+    )
+    step = dt / torch.as_tensor(tau, dtype=v.dtype, device=v.device)
+    r = torch.as_tensor(resistance, dtype=v.dtype, device=v.device)
+    w = torch.as_tensor(omega, dtype=v.dtype, device=v.device)
+    terms["adaptation"] = -(r * w) * step
+    broadcasted = torch.broadcast_tensors(*terms.values())  # type: ignore[no-untyped-call]
+    return {k: broadcasted[i] for i, k in enumerate(terms)}
+
+
+def izhikevich_terms(
+    v: torch.Tensor,
+    u: torch.Tensor,
+    current: Scalar,
+    *,
+    dt: float,
+    substeps: int = 2,
+) -> dict[str, torch.Tensor]:
+    """Decompose one Izhikevich step into quadratic, linear, recovery, and input terms.
+
+    Args:
+        v: Membrane voltage before the step.
+        u: Membrane recovery variable before the step.
+        current: Input current drive.
+        dt: Integration time step.
+        substeps: Number of Euler sub-steps for membrane voltage integration.
+
+    Returns:
+        Dictionary with ``quadratic``, ``linear``, ``recovery``, and ``input`` increments.
+    """
+    u_tensor = torch.as_tensor(u, dtype=v.dtype, device=v.device)
+    current_t = torch.as_tensor(current, dtype=v.dtype, device=v.device)
+    v_b, u_b, current_b = torch.broadcast_tensors(v, u_tensor, current_t)  # type: ignore[no-untyped-call]
+
+    h = dt / substeps
+    v_curr = v_b
+    quad = torch.zeros_like(v_b)
+    lin = torch.zeros_like(v_b)
+    rec = torch.zeros_like(v_b)
+    inp = torch.zeros_like(v_b)
+
+    for _ in range(substeps):
+        step_quad = h * (0.04 * v_curr * v_curr)
+        step_lin = h * (5.0 * v_curr + 140.0)
+        step_rec = -h * u_b
+        step_inp = h * current_b
+        quad = quad + step_quad
+        lin = lin + step_lin
+        rec = rec + step_rec
+        inp = inp + step_inp
+        v_curr = v_curr + h * (0.04 * v_curr * v_curr + 5.0 * v_curr + 140.0 - u_b + current_b)
+
+    return {
+        "quadratic": quad,
+        "linear": lin,
+        "recovery": rec,
+        "input": inp,
+    }

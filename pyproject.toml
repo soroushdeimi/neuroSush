@@ -60,7 +60,7 @@ packages = ["src/neurosush"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 addopts = "-q --strict-markers --strict-config"
 xfail_strict = true
 markers = [

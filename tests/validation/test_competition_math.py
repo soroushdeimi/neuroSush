@@ -5,6 +5,9 @@ These are the mechanisms of competitive STDP networks such as Diehl and Cook (20
 - ``Refractory(period)`` holds a neuron at ``v_reset`` for ``ceil(period / dt)`` steps after
   a spike, so under a constant drive the interspike interval is the LIF crossing time plus
   that many steps.
+- ``Refractory(period, block=B)`` also stops the neuron from firing for ``ceil(B / dt)`` steps
+  after a spike while ``v`` integrates freely once the hold ends, so the interspike interval
+  is ``max(hold + crossing, ceil(B / dt) + 1)`` steps (the timer of Diehl and Cook's code).
 - ``AdaptiveThreshold`` gives ``theta_N = increment * sum_k (1 - dt / tau)^(N - k)`` over
   the spike steps ``k``.
 - ``ConductanceIntegration`` lands every step on the exact solution of
@@ -123,6 +126,100 @@ class Forced(Behavior):
         for index in self.schedule.get(group.net.iteration, []):
             spikes[index] = True
         group.spikes = spikes
+
+
+class TestRefractoryBlock:
+    @staticmethod
+    def build(period, block, dt, current=20.0, dtype=torch.float64):
+        net = Network(dt=dt, dtype=dtype)
+        group = NeuronGroup(
+            net,
+            1,
+            [
+                ConstantCurrent(current),
+                LIF(tau=TAU, threshold=THRESHOLD, v_reset=V_RESET, v_rest=V_REST, v_init=V_RESET),
+                Refractory(period, block=block),
+                Fire(),
+            ],
+        )
+        net.initialize()
+        return net, group
+
+    @pytest.mark.parametrize(
+        ("period", "block", "dt"),
+        [
+            (5.0, 50.0, 1.0),  # the block dominates: ISI = 51
+            (5.0, 50.0, 0.5),  # ISI = 101
+            (3.0, 7.0, 1.0),  # block + 1 = 8 is below hold + crossing: no effect
+            (3.0, 12.0, 1.0),  # block + 1 = 13 against hold + crossing = 12
+            (2.5, 2.5, 0.5),
+            (1.2, 30.2, 0.5),  # ceil(30.2 / 0.5) = 61 steps
+        ],
+    )
+    def test_interspike_interval_is_the_longer_of_hold_plus_crossing_and_block_plus_one(
+        self, period, block, dt
+    ):
+        net, group = self.build(period, block, dt)
+        times = spike_steps(net, group, round(600 / dt))
+        free = crossing_steps(V_RESET, V_REST + 20.0, dt)
+        hold, blocked = math.ceil(period / dt), math.ceil(block / dt)
+        assert times[0] == free  # a fresh neuron is not blocked
+        assert {b - a for a, b in pairwise(times)} == {max(hold + free, blocked + 1)}
+
+    def test_voltage_integrates_above_threshold_during_the_block(self):
+        net, group = self.build(5.0, 50.0, 1.0)
+        trace = []
+        for _ in range(200):
+            net.step()
+            trace.append((group.v.item(), bool(group.spikes.any())))
+        assert any(v >= THRESHOLD and not spiked for v, spiked in trace)
+        # held at v_reset for the 5 step hold after a spike, free (and rising) afterwards
+        first = next(i for i, (_, spiked) in enumerate(trace) if spiked)
+        assert [v for v, _ in trace[first + 1 : first + 6]] == [V_RESET] * 5
+        assert trace[first + 6][0] > V_RESET
+        # the neuron fires on the first step the block allows
+        second = next(i for i, (_, spiked) in enumerate(trace) if spiked and i > first)
+        assert second - first == 51
+
+    def test_no_block_is_the_plain_refractory_period(self):
+        plain, a = self.build(5.0, None, 1.0)
+        blocked_short, b = self.build(5.0, 5.0, 1.0)
+        assert not hasattr(a, "fire_blocked")
+        assert spike_steps(plain, a, 100) == spike_steps(blocked_short, b, 100)
+
+    def test_reset_state_clears_the_block(self):
+        net, group = self.build(5.0, 50.0, 1.0)
+        net.run(30)
+        assert group.fire_blocked.any()
+        net.reset_state()
+        assert not group.fire_blocked.any()
+        assert group.block_left.item() == 0.0
+
+    def test_block_must_be_at_least_the_period(self):
+        with pytest.raises(ValueError, match="block must be at least period"):
+            Refractory(5.0, block=2.0)
+        with pytest.raises(ValueError, match="block must be positive"):
+            Refractory(5.0, block=0.0)
+
+    def test_blocked_neurons_do_not_spike_in_the_fire_function(self):
+        from neurosush.neurons import dynamics
+
+        v = torch.tensor([-50.0, -50.0, -60.0])
+        blocked = torch.tensor([False, True, False])
+        spikes, after = dynamics.fire(v, threshold=-55.0, v_reset=-70.0, blocked=blocked)
+        assert spikes.tolist() == [True, False, False]
+        assert after.tolist() == [-70.0, -50.0, -60.0]
+        spikes, after, u = dynamics.izhikevich_reset(
+            torch.tensor([40.0, 40.0]),
+            torch.zeros(2),
+            v_peak=30.0,
+            c=-65.0,
+            d=8.0,
+            blocked=torch.tensor([False, True]),
+        )
+        assert spikes.tolist() == [True, False]
+        assert after.tolist() == [-65.0, 40.0]
+        assert u.tolist() == [8.0, 0.0]
 
 
 class TestAdaptiveThreshold:

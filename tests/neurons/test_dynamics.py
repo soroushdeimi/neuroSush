@@ -9,6 +9,7 @@ from neurosush.neurons.dynamics import (
     exponential_boost,
     fire,
     lif_derivative,
+    lif_rate,
 )
 
 
@@ -43,6 +44,49 @@ def test_fire_does_not_modify_input():
     v = t(0.0, 2.0)
     fire(v, threshold=1.0, v_reset=-1.0)
     assert v.tolist() == [0.0, 2.0]
+
+
+def test_fire_scalar_returns_a_bool_and_float():
+    assert fire(-39.0, threshold=-40.0, v_reset=-75.0) == (True, -75.0)
+    assert fire(-41.0, threshold=-40.0, v_reset=-75.0) == (False, -41.0)
+    # the threshold is inclusive, as for a tensor v
+    assert fire(-40.0, threshold=-40.0, v_reset=-75.0) == (True, -75.0)
+
+
+def test_fire_scalar_blocked_cannot_spike():
+    assert fire(-39.0, threshold=-40.0, v_reset=-75.0, blocked=True) == (False, -39.0)
+    assert fire(-39.0, threshold=-40.0, v_reset=-75.0, blocked=False) == (True, -75.0)
+
+
+def test_fire_rejects_a_bool_mask_for_a_tensor_voltage():
+    with pytest.raises(TypeError, match="blocked must be a tensor"):
+        fire(t(-39.0), threshold=-40.0, v_reset=-75.0, blocked=True)
+
+
+def test_lif_rate_matches_the_hand_computed_closed_form():
+    # v_inf = -70 + 10 * 5 = -20; T = 3 + 20 ln((-20 + 75) / (-20 + 40)) = 23.232... ms
+    rate = lif_rate(
+        tau=20.0,
+        v_rest=-70.0,
+        v_reset=-75.0,
+        threshold=-40.0,
+        resistance=10.0,
+        current=5.0,
+        t_ref=3.0,
+    )
+    assert rate == pytest.approx(1000.0 / (3.0 + 20.0 * math.log(55.0 / 20.0)), abs=1e-9)
+    assert rate == pytest.approx(43.04404335199035, abs=1e-6)
+
+
+def test_lif_rate_is_zero_at_or_below_rheobase():
+    below = lif_rate(  # R I = 25 < threshold - v_rest = 30
+        tau=20.0, v_rest=-70.0, v_reset=-75.0, threshold=-40.0, resistance=10.0, current=2.5
+    )
+    assert below == 0.0
+    at = lif_rate(  # R I == threshold - v_rest
+        tau=20.0, v_rest=-70.0, v_reset=-75.0, threshold=-40.0, resistance=10.0, current=3.0
+    )
+    assert at == 0.0
 
 
 def test_adaptation_step_subthreshold():

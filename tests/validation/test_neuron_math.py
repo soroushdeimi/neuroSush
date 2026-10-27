@@ -14,6 +14,7 @@ import torch
 
 from neurosush.core.network import Network, NeuronGroup
 from neurosush.modulation import Dopamine, Payoff
+from neurosush.neurons.dynamics import lif_rate
 from neurosush.neurons.models import ELIF, LIF, AdaptiveELIF, Fire
 
 from .common import ConstantCurrent
@@ -75,10 +76,18 @@ class TestLIF:
         assert times[0] == n_star
 
     def test_firing_rate_approaches_the_analytic_rate(self):
-        # T = tau ln((v_inf - v_reset) / (v_inf - theta)) for the continuous model
+        # T = tau ln((v_inf - v_reset) / (v_inf - theta)) for the continuous model,
+        # the closed form of dynamics.lif_rate
         current = 20.0
-        v_inf = V_REST + current
-        period = TAU * math.log((v_inf - V_RESET) / (v_inf - THRESHOLD))
+        rate = lif_rate(
+            tau=TAU,
+            v_rest=V_REST,
+            v_reset=V_RESET,
+            threshold=THRESHOLD,
+            resistance=1.0,
+            current=current,
+        )
+        period = 1000.0 / rate
         gaps = []
         for dt in (0.1, 0.01):
             net, group = lif_group(current, dt=dt, v_init=V_RESET)

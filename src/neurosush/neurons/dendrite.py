@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import torch
 
 from neurosush.core.behavior import Behavior
@@ -23,6 +25,8 @@ class DendriteStructure(Behavior):
     """
 
     order = Order.DENDRITE_STRUCTURE
+    reads: ClassVar[tuple[str, ...]] = ()
+    writes: ClassVar[tuple[str, ...]] = ("I_proximal", "I_distal", "I_apical")
     independent_ok = True
 
     def __init__(
@@ -143,6 +147,8 @@ class DendriteIntegration(Behavior):
     """
 
     order = Order.DENDRITE_INTEGRATION
+    reads: ClassVar[tuple[str, ...]] = ("I_proximal", "I_distal", "I_apical")
+    writes: ClassVar[tuple[str, ...]] = ("I",)
     independent_ok = True
     graph_safe = True
 

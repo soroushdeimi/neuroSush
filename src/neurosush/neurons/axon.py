@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import torch
 
 from neurosush.core.behavior import Behavior
@@ -18,6 +20,8 @@ class Axon(Behavior):
     """
 
     order = Order.AXON
+    reads: ClassVar[tuple[str, ...]] = ("spikes",)
+    writes: ClassVar[tuple[str, ...]] = ("spike_history",)
     independent_ok = True
 
     def __init__(self, *, max_delay: int = 1) -> None:

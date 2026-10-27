@@ -5,6 +5,52 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+### Added
+- Atlas plate `N02`: ELIF potential-well plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
+- Atlas plate `N08`: f-I curve and bifurcation plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
+- `dynamics.lif_rate`: the closed-form LIF firing rate for a constant current, now the single source used by the validation test.
+- `dynamics.fire` accepts plain floats (returns a `(bool, float)` pair); `Recorder.get(name, last=N)` returns only the last N samples; the README states the units convention (mV, ms, MOhm, nA).
+- Atlas plate `M01`: Euler steps, convergence and instability plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
+- Atlas shell: live plates (`source="live"`) hide the timeline, an empty margin column collapses, the header carries the neuroSush mark, and the layout scales at phone width.
+- Atlas plate `H01`: sparse distributed representation plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
+- Atlas plate `M03`: Nernst equation plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
+- Atlas plate `M02`: Poisson spike rain plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
+- Atlas plate `Y01`: STDP traces and spike-pair plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
+- Atlas plate `N01`: leaky integrate-and-fire bucket plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
+- Atlas plate `N05`: Hodgkin-Huxley membrane plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
+- `neurosush.viz.export`: `render_plate`, `write_html` and `available_plates` produce a single
+  self-contained HTML plate (inline CSS, JavaScript and packed trace data, light and dark
+  themes) from the Atlas web shell in `neurosush/viz/web`; JavaScript logic is tested with
+  `node --test`.
+- `neurosush.viz.trace`: compact JSON-serializable `Trace` with base64 little-endian array
+  packing and `TraceRecorder` behavior preallocating device-side buffers.
+- `neurosush.viz.schedule`: `schedule_table` and `schedule_lanes` for inspecting simulation
+  step execution order and `Behavior.reads`/`Behavior.writes` dataflow metadata.
+- `neurosush/viz/i18n/glossary_en.json`: an English glossary of 78 core neuroscience terms
+  (`term`, `short` and `long`, the plate ids it appears on and the library `symbol`) for the
+  Atlas plate hover callouts, validated in `tests/viz/test_glossary.py`.
+- `neurosush.viz.catalog`: the machine-readable plate catalog (`PlateSpec`, `PLATES` for all
+  43 planned plates with their English titles, waves and flagship flags, `PLANNED`)
+  and the coverage introspector (`public_models`, `EXEMPT`, `uncovered`) that a test keeps
+  honest: every public model must be covered by a plate or explicitly exempted.
+- `benchmarks/profile_step.py`: per-step wall time, operator, CUDA-kernel and launch-bound
+  profiling for the dense STDP and Diehl and Cook workloads across eager, graph and compiled
+  steppers.
+- `lif_terms`, `elif_terms`, `adex_terms`, `izhikevich_terms` (`neurosush.neurons.dynamics`):
+  pure functions decomposing one membrane update step into its named terms (leak, input,
+  spike initiation, adaptation, quadratic, linear, recovery), verified to sum to the step
+  update; deterministic golden vectors in `tests/golden/equations.json`.
+- `HodgkinHuxley` (`neurosush.neurons.hodgkin_huxley`, Hodgkin and Huxley 1952):
+  squid-axon neuron model with visible ion-channel state (gates `m`, `h`, `n` and
+  `i_na`, `i_k`, `i_leak` currents), forward Euler on `v`, exact analytic gating steps, and
+  upward-crossing spike detection without reset. Runs at `Order.NEURON_DYNAMICS`.
+- `Refractory(period, *, block=None)`: with `block` a neuron also cannot fire for
+  `ceil(block / dt)` steps after a spike while its voltage integrates freely once the `period`
+  hold ends (the timer of the original Diehl and Cook code); `None` keeps the plain refractory
+  period. `dynamics.fire` and `izhikevich_reset` take an optional `blocked` mask.
+- `examples/diehl_cook_mnist.py --exc-block MS` (50 reproduces the original code's firing
+  timer; the paper's text does not mention it), recorded in the JSON as `exc_block`.
+
 ## [0.5.0] - 2026-10-03
 
 ### Added
