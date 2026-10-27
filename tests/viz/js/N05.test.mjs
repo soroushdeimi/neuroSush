@@ -50,6 +50,18 @@ test('singular points are finite and continuous', () => {
   assert.ok(Math.abs(core.alpha_n(-55 - 1e-5) - 0.1) < 1e-4);
 });
 
+test('alpha_m(-40.0000001) matches the hand-computed Taylor value', () => {
+  // u = -1e-8: 1 + u/2 + u²/12 rounds to 0.999999995.
+  const actual = core.alpha_m(-40.0000001);
+  assert.ok(Math.abs(actual - 0.999999995) < 1e-15, `alpha_m was ${actual}`);
+});
+
+test('alpha_n(-55.0000001) matches the hand-computed Taylor value', () => {
+  // u = -1e-8: 0.1 * (1 + u/2 + u²/12) rounds to 0.0999999995.
+  const actual = core.alpha_n(-55.0000001);
+  assert.ok(Math.abs(actual - 0.0999999995) < 1e-15, `alpha_n was ${actual}`);
+});
+
 test('rest stays within 0.5 mV for 100 ms with I=0', () => {
   const res = core.simulate(100, 0.025, 0, {
     V: -65,

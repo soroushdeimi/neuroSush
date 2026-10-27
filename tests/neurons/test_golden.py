@@ -17,7 +17,13 @@ from neurosush.neurons.dynamics import (
     exponential_boost,
     izhikevich_terms,
     lif_derivative,
+    lif_rate,
     lif_terms,
+)
+from neurosush.neurons.hodgkin_huxley import (
+    gate_rates,
+    gate_steady_state,
+    gate_time_constant,
 )
 
 
@@ -281,6 +287,10 @@ def test_golden_rounding_preserves_numerical_contract(monkeypatch: pytest.Monkey
     for name in rounded.keys() - {"generated_by"}:
         for case in rounded[name]:
             digits = case["tolerance"]["significant_digits"]
+            if "outputs" not in case:
+                value = case["output"]
+                assert value == float(format(value, f".{digits}g"))
+                continue
             outputs = case["outputs"]
             arrays = outputs.values() if isinstance(outputs, dict) else [outputs]
             for values in arrays:
@@ -299,3 +309,53 @@ def test_golden_relative_tolerance_boundary(argument: float) -> None:
     _assert_values_match(expected * (1.0 + tolerance["rel"] / 2), expected, tolerance, "value")
     with pytest.raises(AssertionError, match="value"):
         _assert_values_match(expected * (1.0 + 2 * tolerance["rel"]), expected, tolerance, "value")
+
+
+@pytest.mark.parametrize(
+    "group", ["gate_rates", "gate_steady_state", "gate_time_constant", "lif_rate"]
+)
+def test_golden_new_groups_match_library(group: str) -> None:
+    for case in _committed_golden()[group]:
+        inp = case["inputs"]
+        tolerance = case["tolerance"]
+        if group == "lif_rate":
+            _assert_values_match(lif_rate(**inp), case["output"], tolerance, group)
+        else:
+            voltage = t(inp["v"])
+            if group == "gate_rates":
+                rates = gate_rates(voltage)
+                outputs = {
+                    f"{kind}_{gate}": getattr(getattr(rates, gate), kind).tolist()
+                    for gate in ("m", "h", "n")
+                    for kind in ("alpha", "beta")
+                }
+            elif group == "gate_steady_state":
+                steady = gate_steady_state(voltage)
+                outputs = {
+                    f"{gate}_inf": getattr(steady, gate).tolist() for gate in ("m", "h", "n")
+                }
+            else:
+                constants = gate_time_constant(voltage)
+                outputs = {
+                    f"tau_{gate}": getattr(constants, gate).tolist() for gate in ("m", "h", "n")
+                }
+            _assert_values_match(outputs, case["outputs"], tolerance, group)
+
+
+@pytest.mark.parametrize(
+    "group", ["gate_rates", "gate_steady_state", "gate_time_constant", "lif_rate"]
+)
+def test_golden_rejects_stale_new_groups(
+    group: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+) -> None:
+    stale = _committed_golden()
+    if group == "lif_rate":
+        stale[group][0]["output"] += 1.0
+    else:
+        outputs = stale[group][0]["outputs"]
+        outputs[next(iter(outputs))][0] *= 1.0 + 1e-6
+    path = tmp_path / "equations.json"
+    path.write_text(json.dumps(stale), encoding="utf-8")
+    monkeypatch.setitem(test_golden_file_is_up_to_date.__globals__, "OUTPUT_PATH", path)
+    with pytest.raises(AssertionError, match=r"equations\.json is stale"):
+        test_golden_file_is_up_to_date()
