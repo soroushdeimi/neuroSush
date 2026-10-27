@@ -264,6 +264,8 @@ class TraceRecorder(Behavior):
     def __init__(self, *attributes: str, interval: int = 1, max_steps: int) -> None:
         if not attributes:
             raise ValueError("give at least one attribute to record")
+        if len(set(attributes)) != len(attributes):
+            raise ValueError(f"attributes must be unique, got {list(attributes)}")
         if isinstance(interval, bool) or not isinstance(interval, int) or interval < 1:
             raise ValueError(f"interval must be positive, got {interval}")
         if isinstance(max_steps, bool) or not isinstance(max_steps, int) or max_steps < 1:
@@ -333,6 +335,11 @@ class TraceRecorder(Behavior):
         Args:
             **meta: Metadata to include in the returned Trace.
         """
+        if not self._buffers:
+            raise RuntimeError(
+                "TraceRecorder has no data: attach it to a group and run the network before "
+                "calling trace()"
+            )
         series = {
             name: self._buffers[name][: self._count].detach().to("cpu", copy=True)
             for name in self.attributes

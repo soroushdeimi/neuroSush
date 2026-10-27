@@ -43,7 +43,7 @@ def _escape_script_json(obj: Any) -> str:
 
 def render_plate(
     plate_id: str,
-    trace_dict: dict[str, Any],
+    trace_dict: dict[str, Any] | None = None,
     *,
     title: str | None = None,
     source: str = "replay",
@@ -54,7 +54,8 @@ def render_plate(
 
     Args:
         plate_id: Identifier of the plate (must match a file in web/plates/<id>.js).
-        trace_dict: Trace data dictionary containing steps, series, and meta.
+        trace_dict: Trace data dictionary containing steps, series, and meta. Optional for
+            ``source='live'``, where the plate simulates its own data.
         title: Optional page title (2-4 words). Defaults to "neuroSush · <PlateId>".
         source: Data provenance mode ('live', 'replay', or 'sweep').
         notes: Optional dictionary of margin notes or metadata.
@@ -65,7 +66,8 @@ def render_plate(
 
     Raises:
         FileNotFoundError: If plate_id is not in available_plates().
-        ValueError: If source or theme is outside its documented set.
+        ValueError: If source or theme is outside its documented set, or a replay or sweep
+            is requested without a trace_dict.
     """
     valid_themes = ("auto", "light", "dark")
     if theme not in valid_themes:
@@ -74,6 +76,14 @@ def render_plate(
     valid_sources = ("live", "replay", "sweep")
     if source not in valid_sources:
         raise ValueError(f"source must be one of {valid_sources}, got {source!r}")
+
+    if trace_dict is None:
+        if source != "live":
+            raise ValueError(
+                f"source={source!r} needs a trace_dict (use TraceRecorder.trace().to_dict()); "
+                "pass source='live' to render a plate without recorded data"
+            )
+        trace_dict = {}
 
     known_plates = available_plates()
     if plate_id not in known_plates:

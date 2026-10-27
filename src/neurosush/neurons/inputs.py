@@ -107,6 +107,11 @@ class PoissonInput(Behavior):
             group.rates.copy_(self.rates.expand(group.state_shape))
         else:
             group.rates.fill_(self.rates)
+        peak = float(group.rates.max()) * group.net.dt
+        if peak > 1.0:
+            raise ValueError(
+                f"rates * dt must be at most 1 (rates are spikes per time unit of dt), got {peak:g}"
+            )
         group.spikes = group.state(False, dtype=torch.bool)
 
     def reset_state(self, group: NeuronGroup) -> None:
