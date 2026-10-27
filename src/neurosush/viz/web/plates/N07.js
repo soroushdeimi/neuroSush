@@ -844,6 +844,51 @@
       ctx2d.restore();
     }
 
+    // Draw stick figure at rest (faint idle crowd waiting, not pulling)
+    function drawIdleFigure(ctx2d, x, ropeY, groundY, dir, color) {
+      ctx2d.save();
+      ctx2d.globalAlpha = 0.30;
+      ctx2d.strokeStyle = color;
+      ctx2d.fillStyle = color;
+      ctx2d.lineWidth = 1.8;
+
+      const hipX = x;
+      const hipY = groundY - 14;
+      const headX = hipX;
+      const headY = hipY - 16;
+
+      // Head
+      ctx2d.beginPath();
+      ctx2d.arc(headX, headY, 4.5, 0, Math.PI * 2);
+      ctx2d.fill();
+
+      // Spine / Torso (standing upright at rest)
+      ctx2d.beginPath();
+      ctx2d.moveTo(hipX, hipY);
+      ctx2d.lineTo(headX, headY + 4.5);
+      ctx2d.stroke();
+
+      // Legs standing at rest
+      ctx2d.beginPath();
+      ctx2d.moveTo(hipX, hipY);
+      ctx2d.lineTo(hipX - 3.5, groundY);
+      ctx2d.moveTo(hipX, hipY);
+      ctx2d.lineTo(hipX + 3.5, groundY);
+      ctx2d.stroke();
+
+      // Arms hanging relaxed at sides (not gripping rope)
+      ctx2d.beginPath();
+      ctx2d.moveTo(headX, headY + 7);
+      ctx2d.lineTo(headX - dir * 4, hipY - 1);
+      ctx2d.lineTo(headX - dir * 3, groundY - 4);
+      ctx2d.moveTo(headX, headY + 7);
+      ctx2d.lineTo(headX + dir * 4, hipY - 1);
+      ctx2d.lineTo(headX + dir * 3, groundY - 4);
+      ctx2d.stroke();
+
+      ctx2d.restore();
+    }
+
     // Draw knot: realistic cord wrap with voltage badge
     function drawKnot(ctx2d, kx, ky, v, col, isGhost = false, label = '') {
       ctx2d.save();
@@ -1051,48 +1096,54 @@
       // 5. Excitatory Team (pulling right toward Ee = 0 mV)
       const numExc = Math.max(0, Math.round(p.ge * 7));
       const excLean = Math.min(1.0, Math.max(0.1, currentValues.exc / 35.0));
-      if (numExc > 0) {
-        const spanStart = Math.max(knotX + 24, w * 0.62);
-        const spanEnd = Math.min(w - pad - 12, w * 0.94);
-        const stepX = (spanEnd - spanStart) / Math.max(1, numExc);
-        for (let i = 0; i < numExc; i++) {
-          const figX = spanStart + i * stepX + 8;
+      const totalExc = Math.max(3, numExc);
+      const spanStartExc = Math.max(knotX + (isNarrow ? 52 : 44), w * (isNarrow ? 0.65 : 0.60));
+      const spanEndExc = Math.min(w - pad - 12, w * 0.94);
+      const stepXExc = (spanEndExc - spanStartExc) / Math.max(1, totalExc);
+      for (let i = 0; i < totalExc; i++) {
+        const figX = spanStartExc + i * stepXExc + 8;
+        if (i < numExc) {
           drawPullingFigure(c, figX, ropeY, groundY, 1, excLean, col.exc);
+        } else {
+          drawIdleFigure(c, figX, ropeY, groundY, 1, col.exc);
         }
       }
 
       // 6. Inhibitory Team (pulling left toward Ei)
       const numInh = Math.max(0, Math.round(p.gi * 7));
       const inhLean = Math.min(1.0, Math.max(0.1, Math.abs(currentValues.inh) / 35.0));
-      if (numInh > 0) {
-        const spanStart = Math.max(pad + 12, w * 0.08);
-        const spanEnd = Math.min(knotX - 24, w * 0.38);
-        const stepX = (spanEnd - spanStart) / Math.max(1, numInh);
-        for (let i = 0; i < numInh; i++) {
-          const figX = spanStart + i * stepX + 8;
+      const totalInh = Math.max(3, numInh);
+      const spanStartInh = Math.max(pad + 12, w * 0.08);
+      const spanEndInh = Math.min(knotX - (isNarrow ? 52 : 44), w * (isNarrow ? 0.35 : 0.40));
+      const stepXInh = (spanEndInh - spanStartInh) / Math.max(1, totalInh);
+      for (let i = 0; i < totalInh; i++) {
+        const figX = spanStartInh + i * stepXInh + 8;
+        if (i < numInh) {
           drawPullingFigure(c, figX, ropeY, groundY, -1, inhLean, col.inh);
+        } else {
+          drawIdleFigure(c, figX, ropeY, groundY, -1, col.inh);
         }
       }
 
-      // 7. Force Magnitude Arrows at the Knot (safely offset to prevent collision with knot badge!)
-      if (p.ge > 0.001) {
-        const arrowLen = Math.min(80, Math.max(12, currentValues.exc * 2.0));
-        drawArrow(c, knotX + 16, ropeY - 6, knotX + 16 + arrowLen, ropeY - 6, col.exc, 2.2);
-        c.font = '700 12px ui-monospace';
+      // 7. Force Magnitude Arrows at the Knot (placed below rope to never collide with badges)
+      if (p.ge > 0.001 && currentValues.exc >= 0.5) {
+        const arrowLen = Math.min(isNarrow ? 32 : 55, Math.max(12, currentValues.exc * 1.5));
+        drawArrow(c, knotX + 14, ropeY + 11, knotX + 14 + arrowLen, ropeY + 11, col.exc, 1.8);
+        c.font = (isNarrow ? '700 10px' : '700 11px') + ' ui-monospace';
         c.fillStyle = col.exc;
         c.textAlign = 'left';
-        c.textBaseline = 'bottom';
-        c.fillText(`+${currentValues.exc.toFixed(1)} pA`, knotX + 38, ropeY - 8);
+        c.textBaseline = 'top';
+        c.fillText(`+${currentValues.exc.toFixed(1)} pA`, knotX + 16, ropeY + 15);
       }
 
-      if (p.gi > 0.001) {
-        const arrowLen = Math.min(80, Math.max(12, Math.abs(currentValues.inh) * 2.0));
-        drawArrow(c, knotX - 16, ropeY - 6, knotX - 16 - arrowLen, ropeY - 6, col.inh, 2.2);
-        c.font = '700 12px ui-monospace';
+      if (p.gi > 0.001 && Math.abs(currentValues.inh) >= 0.5) {
+        const arrowLen = Math.min(isNarrow ? 32 : 55, Math.max(12, Math.abs(currentValues.inh) * 1.5));
+        drawArrow(c, knotX - 14, ropeY + 11, knotX - 14 - arrowLen, ropeY + 11, col.inh, 1.8);
+        c.font = (isNarrow ? '700 10px' : '700 11px') + ' ui-monospace';
         c.fillStyle = col.inh;
         c.textAlign = 'right';
-        c.textBaseline = 'bottom';
-        c.fillText(`${currentValues.inh.toFixed(1)} pA`, knotX - 38, ropeY - 8);
+        c.textBaseline = 'top';
+        c.fillText(`${currentValues.inh.toFixed(1)} pA`, knotX - 16, ropeY + 15);
       }
 
       // 8. Theory Ghost Knot at vInfinity
@@ -1111,11 +1162,24 @@
         c.arc(currX, ropeY, 11, 0, Math.PI * 2);
         c.stroke();
 
-        c.font = '700 12px ui-monospace';
+        const isClose = Math.abs(currX - knotX) < 65;
+        const badgeY = isClose ? (ropeY - 48) : (ropeY - 20);
+        const currText = `curr: ${state.vCurrent.toFixed(1)}`;
+        c.font = '700 11px ui-monospace';
+        const ctw = c.measureText(currText).width;
+        c.fillStyle = col.paperCard || '#ffffff';
+        c.strokeStyle = col.trace;
+        c.lineWidth = 1.2;
+        c.beginPath();
+        if (c.roundRect) c.roundRect(currX - ctw / 2 - 4, badgeY - 14, ctw + 8, 16, 2);
+        else c.rect(currX - ctw / 2 - 4, badgeY - 14, ctw + 8, 16);
+        c.fill();
+        c.stroke();
+
         c.fillStyle = col.trace;
         c.textAlign = 'center';
-        c.textBaseline = 'bottom';
-        c.fillText(`curr: ${state.vCurrent.toFixed(1)}`, currX, ropeY - 14);
+        c.textBaseline = 'middle';
+        c.fillText(currText, currX, badgeY - 6);
         c.restore();
       }
 
@@ -1134,27 +1198,28 @@
         c.fillStyle = tv === core.E_E ? col.exc : (tv === core.E_L ? col.ink : col.inkMuted);
         c.textAlign = 'center';
         c.textBaseline = 'top';
-        let tLabel = `${tv} mV`;
+        let tLabel = `${tv}`;
         if (tv === core.E_E) tLabel = isNarrow ? '0 (Ee)' : '0 mV (Ee)';
-        if (tv === core.E_L) tLabel = isNarrow ? '−65 (EL)' : '−65 mV (EL)';
+        else if (tv === core.E_L) tLabel = isNarrow ? '−65 (EL)' : '−65 mV (EL)';
+        else tLabel = isNarrow ? `${tv}` : `${tv} mV`;
         c.fillText(tLabel, tx, axisY + 6);
       }
 
       // 12. Draggable Ei Handle Marker
-      // Clear 4.5:1 contrast in light and dark modes with paperCard background!
-      const eiTagY = axisY + 26;
+      const eiTagY = axisY + 24;
       c.save();
       const tagText = isNarrow ? `◀ Ei: ${state.Ei.toFixed(0)} ▶` : `◀ Drag Ei (${state.Ei.toFixed(0)} mV) ▶`;
-      c.font = '700 12px ui-monospace';
+      c.font = (isNarrow ? '700 11px' : '700 12px') + ' ui-monospace';
       const eiTextW = c.measureText(tagText).width;
-      const tagW = eiTextW + 16;
-      const tagH = 22;
+      const tagW = eiTextW + 14;
+      const tagH = isNarrow ? 20 : 22;
 
       c.fillStyle = col.paperCard || '#ffffff';
       c.strokeStyle = col.inh;
-      c.lineWidth = 2.0;
+      c.lineWidth = 1.8;
       c.beginPath();
-      c.roundRect(eiX - tagW / 2, eiTagY, tagW, tagH, 3);
+      if (c.roundRect) c.roundRect(eiX - tagW / 2, eiTagY, tagW, tagH, 3);
+      else c.rect(eiX - tagW / 2, eiTagY, tagW, tagH);
       c.fill();
       c.stroke();
 
@@ -1175,7 +1240,7 @@
 
       // 13. Oscilloscope / Membrane Voltage Trace Plot
       const plotX = pad;
-      const plotY = axisY + 56;
+      const plotY = axisY + (isNarrow ? 52 : 56);
       const plotW = axisW;
       const plotH = Math.max(90, h - plotY - 22);
 
@@ -1185,7 +1250,8 @@
       c.strokeStyle = col.border;
       c.lineWidth = 1;
       c.beginPath();
-      c.roundRect(plotX, plotY, plotW, plotH, 3);
+      if (c.roundRect) c.roundRect(plotX, plotY, plotW, plotH, 3);
+      else c.rect(plotX, plotY, plotW, plotH);
       c.fill();
       c.stroke();
 
@@ -1196,14 +1262,14 @@
       c.textBaseline = 'top';
       c.fillText(isNarrow ? 'Oscilloscope v(t)' : S.traceTitle, plotX + 8, plotY + 6);
 
-      c.font = '12px ui-monospace';
+      c.font = (isNarrow ? '10px' : '12px') + ' ui-monospace';
       c.textAlign = 'right';
       let legendStr = '— v(t)';
-      if (state.theory) legendStr += ' · ' + S.ghostLegend;
-      if (state.chapter === 4) legendStr += ' · ' + S.unshuntedLegend;
-      if (state.mode === 'current') legendStr += ' · ' + S.ghostCurrLegend;
+      if (state.theory) legendStr += isNarrow ? ' · -- v∞' : ' · ' + S.ghostLegend;
+      if (state.chapter === 4) legendStr += isNarrow ? ' · ·· unshunted' : ' · ' + S.unshuntedLegend;
+      if (state.mode === 'current') legendStr += isNarrow ? ' · -- curr' : ' · ' + S.ghostCurrLegend;
       c.fillStyle = col.inkMuted;
-      c.fillText(legendStr, plotX + plotW - 8, plotY + 6);
+      c.fillText(legendStr, plotX + plotW - 8, plotY + (isNarrow ? 7 : 6));
 
       // Y-axis gridlines (-80, -65, -50, 0 mV)
       const vToPlotY = (v) => plotY + plotH - 12 - ((v - (-90)) / 100) * (plotH - 24);
@@ -1218,7 +1284,12 @@
         c.fillText(`${gv}`, plotX + 24, gy);
       }
 
-      // Draw Voltage Traces
+      // Draw Voltage Traces strictly clipped to oscilloscope screen
+      c.save();
+      c.beginPath();
+      c.rect(plotX + 1, plotY + 1, plotW - 2, plotH - 2);
+      c.clip();
+
       const toPlotX = (idx, len) => plotX + 30 + (idx / Math.max(1, len - 1)) * (plotW - 38);
 
       // In Chapter 4: draw overlaid unshunted response comparison trace!
@@ -1285,6 +1356,8 @@
       }
       c.stroke();
       c.restore();
+
+      c.restore(); // End clipping
 
       // Axis units label
       c.font = '12px ui-monospace';

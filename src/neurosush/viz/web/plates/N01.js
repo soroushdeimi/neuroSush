@@ -375,9 +375,12 @@
     const figureContainer = ctx.figure || rootEl;
     const marginContainer = ctx.margin || document.getElementById('atlas-margin');
 
+    const targetHeight = (typeof window !== 'undefined' && window.innerWidth < 560) ? '480px' : '520px';
     if (figureContainer && figureContainer.style) {
-      figureContainer.style.aspectRatio = 'auto';
-      figureContainer.style.height = (typeof window !== 'undefined' && window.innerWidth < 560) ? '480px' : '520px';
+      figureContainer.style.setProperty('aspect-ratio', 'auto', 'important');
+      figureContainer.style.setProperty('height', targetHeight, 'important');
+      figureContainer.style.setProperty('min-height', targetHeight, 'important');
+      figureContainer.style.setProperty('flex-shrink', '0', 'important');
     }
 
     // Simulation state
@@ -412,14 +415,6 @@
       for (let s = 0; s < steps; s++) {
         const out = step(simState, 0.1);
         traceHistory.push({ t: out.t, v: out.v, spiked: out.spiked });
-        if (out.spiked) {
-          tipAngle = 0.22;
-          spikePulse = { progress: 0 };
-          splashRipple = 1.0;
-          refractoryLidAnim = 1.0;
-          droplets.addSplash(310, 140, 14, 1);
-          droplets.addSplash(200, 330, 8, 0);
-        }
       }
       while (traceHistory.length > 0 && traceHistory[traceHistory.length - 1].t - traceHistory[0].t > MAX_TRACE_MS) {
         traceHistory.shift();
@@ -490,13 +485,13 @@
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-              <button class="atlas-btn" id="n01-btn-noise" style="font-size: 11px;">${S.btn_noise_off}</button>
-              <button class="atlas-btn" id="n01-btn-theory" style="font-size: 11px;">${S.btn_theory_off}</button>
+              <button class="atlas-btn" id="n01-btn-noise" style="font-size: 11px; min-height: 32px;">${S.btn_noise_off}</button>
+              <button class="atlas-btn" id="n01-btn-theory" style="font-size: 11px; min-height: 32px;">${S.btn_theory_off}</button>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-              <button class="atlas-btn" id="n01-btn-kick" style="font-size: 11px;">${S.btn_kick}</button>
-              <button class="atlas-btn" id="n01-btn-reset" style="font-size: 11px;">${S.btn_reset}</button>
+              <button class="atlas-btn" id="n01-btn-kick" style="font-size: 11px; min-height: 32px;">${S.btn_kick}</button>
+              <button class="atlas-btn" id="n01-btn-reset" style="font-size: 11px; min-height: 32px;">${S.btn_reset}</button>
             </div>
           </div>
         </div>
@@ -565,7 +560,11 @@
       const triggerKick = () => {
         simState.v = Math.min(simParams.threshold + 2.0, simState.v + 10.0);
         splashRipple = 1.0;
-        droplets.addSplash(200, 250, 10, 0);
+        const rect = canvas ? canvas.getBoundingClientRect() : null;
+        const cssW = (rect && rect.width) ? rect.width : (typeof window !== 'undefined' && window.innerWidth < 560 ? 400 : 860);
+        const cssH = (rect && rect.height) ? rect.height : 500;
+        const L = getLayout(cssW, cssH);
+        droplets.addSplash(L.bucketCenterX, L.bucketBottomY - 10, 10, 0);
       };
 
       const btnKick = document.getElementById('n01-btn-kick');
@@ -592,15 +591,15 @@
       <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
         <div style="font-family: var(--font-serif); font-weight: 600; font-size: 14px;" id="n01-ch-title">${S.ch1_title}</div>
         <div style="display: flex; align-items: center; gap: 6px;">
-          <div style="display: flex; gap: 4px;" id="n01-ch-dots">
-            <span class="n01-dot" style="cursor: pointer; font-size: 13px;">●</span>
-            <span class="n01-dot" style="cursor: pointer; font-size: 13px; opacity: 0.4;">○</span>
-            <span class="n01-dot" style="cursor: pointer; font-size: 13px; opacity: 0.4;">○</span>
-            <span class="n01-dot" style="cursor: pointer; font-size: 13px; opacity: 0.4;">○</span>
-            <span class="n01-dot" style="cursor: pointer; font-size: 13px; opacity: 0.4;">○</span>
+          <div style="display: flex; gap: 2px;" id="n01-ch-dots">
+            <span class="n01-dot" style="cursor: pointer; font-size: 13px; padding: 4px 5px; display: inline-flex; align-items: center; justify-content: center; min-width: 22px; min-height: 22px;">●</span>
+            <span class="n01-dot" style="cursor: pointer; font-size: 13px; opacity: 0.4; padding: 4px 5px; display: inline-flex; align-items: center; justify-content: center; min-width: 22px; min-height: 22px;">○</span>
+            <span class="n01-dot" style="cursor: pointer; font-size: 13px; opacity: 0.4; padding: 4px 5px; display: inline-flex; align-items: center; justify-content: center; min-width: 22px; min-height: 22px;">○</span>
+            <span class="n01-dot" style="cursor: pointer; font-size: 13px; opacity: 0.4; padding: 4px 5px; display: inline-flex; align-items: center; justify-content: center; min-width: 22px; min-height: 22px;">○</span>
+            <span class="n01-dot" style="cursor: pointer; font-size: 13px; opacity: 0.4; padding: 4px 5px; display: inline-flex; align-items: center; justify-content: center; min-width: 22px; min-height: 22px;">○</span>
           </div>
-          <button class="atlas-btn" id="n01-ch-prev" style="padding: 2px 8px; font-size: 11px;">${S.ch_prev}</button>
-          <button class="atlas-btn" id="n01-ch-next" style="padding: 2px 8px; font-size: 11px;">${S.ch_next}</button>
+          <button class="atlas-btn" id="n01-ch-prev" style="padding: 4px 10px; font-size: 11px; min-height: 28px;">${S.ch_prev}</button>
+          <button class="atlas-btn" id="n01-ch-next" style="padding: 4px 10px; font-size: 11px; min-height: 28px;">${S.ch_next}</button>
         </div>
       </div>
       <div style="font-size: 12px; color: var(--ink-muted); line-height: 1.35;" id="n01-ch-desc">
@@ -609,9 +608,9 @@
       <div id="n01-predict-box" style="display: none; background: var(--paper-inset); border: 1px solid var(--border); border-radius: 3px; padding: 6px 8px; margin-top: 4px;">
         <div style="font-weight: 600; font-size: 11px; color: var(--volt); margin-bottom: 4px;">${S.predict_title}: ${S.predict_q}</div>
         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-          <button class="atlas-btn n01-pred-btn" data-choice="1" style="font-size: 11px;">${S.predict_opt1}</button>
-          <button class="atlas-btn n01-pred-btn" data-choice="2" style="font-size: 11px;">${S.predict_opt2}</button>
-          <button class="atlas-btn n01-pred-btn" data-choice="3" style="font-size: 11px;">${S.predict_opt3}</button>
+          <button class="atlas-btn n01-pred-btn" data-choice="1" style="font-size: 11px; padding: 6px 10px; min-height: 32px;">${S.predict_opt1}</button>
+          <button class="atlas-btn n01-pred-btn" data-choice="2" style="font-size: 11px; padding: 6px 10px; min-height: 32px;">${S.predict_opt2}</button>
+          <button class="atlas-btn n01-pred-btn" data-choice="3" style="font-size: 11px; padding: 6px 10px; min-height: 32px;">${S.predict_opt3}</button>
         </div>
         <div id="n01-predict-reveal" style="display: none; margin-top: 6px; font-size: 11px; line-height: 1.35;"></div>
       </div>
@@ -637,6 +636,7 @@
 
       const sliderCurrent = document.getElementById('n01-slider-current');
       const valCurrent = document.getElementById('n01-val-current');
+      droplets.reset();
 
       if (currentChapter === 1) {
         titleEl.textContent = S.ch1_title;
@@ -654,7 +654,6 @@
         // Scripted perturbation: kick +10 mV at t = 60 ms so leak is active immediately
         simState.v = simParams.v_rest + 10.0;
         splashRipple = 1.0;
-        droplets.addSplash(200, 220, 10, 0);
         // Decay for 80 ms
         for (let s = 0; s < 800; s++) {
           const out = step(simState, 0.1);
@@ -705,6 +704,11 @@
         sliderCurrent.value = String(simParams.current);
         valCurrent.textContent = `${simParams.current.toFixed(1)} nA`;
       }
+
+      const prevBtn = document.getElementById('n01-ch-prev');
+      const nextBtn = document.getElementById('n01-ch-next');
+      if (prevBtn) prevBtn.disabled = currentChapter === 1;
+      if (nextBtn) nextBtn.disabled = currentChapter === 5;
     }
 
     document.getElementById('n01-ch-prev').addEventListener('click', () => setChapter(currentChapter - 1));
@@ -763,15 +767,15 @@
           btn.classList.toggle('active', theoryActive);
         }
       } else if (e.key === 'k' || e.key === 'K') {
-        simState.v = Math.min(simParams.threshold + 2.0, simState.v + 10.0);
-        splashRipple = 1.0;
-        droplets.addSplash(200, 250, 10, 0);
+        triggerKick();
       } else if (e.key === 's' || e.key === 'S') {
         simState.v = simParams.threshold + 1.0;
         tipAngle = 0.38;
         spikePulse = { progress: 0 };
         splashRipple = 1.0;
-        droplets.addSplash(310, 150, 18, 1);
+        const rect = canvas.getBoundingClientRect();
+        const L = getLayout(rect.width || 860, rect.height || 500);
+        droplets.addSplash(L.bucketRight + 4, L.bucketTopY + 14, 18, 1);
       } else if (e.key >= '1' && e.key <= '5') {
         setChapter(parseInt(e.key, 10));
       }
@@ -830,20 +834,20 @@
         const bucketW = Math.min(230, cssW - 70);
         const bucketLeft = bucketCenterX - bucketW / 2;
         const bucketRight = bucketCenterX + bucketW / 2;
-        const bucketTopY = 22;
-        const bucketBottomY = 82;
+        const bucketTopY = 54;
+        const bucketBottomY = 146;
         const bucketH = bucketBottomY - bucketTopY;
         const faucetX = bucketCenterX;
-        const faucetY = 12;
+        const faucetY = 36;
         const dividerX = -999;
-        const traceLeft = 32;
+        const traceLeft = 36;
         const traceRight = cssW - 16;
-        const traceTop = 128;
-        const traceBottom = cssH - 14;
-        const fiLeft = 32;
+        const traceTop = 196;
+        const traceBottom = cssH - 28;
+        const fiLeft = 36;
         const fiRight = cssW - 16;
-        const fiTop = 128;
-        const fiBottom = cssH - 14;
+        const fiTop = 196;
+        const fiBottom = cssH - 30;
         return {
           isMobile,
           leftColW: cssW,
@@ -894,7 +898,8 @@
       const L = getLayout(cssW, cssH);
 
       // 1. Faucet handle
-      if (Math.hypot(pos.x - L.faucetX, pos.y - (L.faucetY - 22)) < 26) {
+      const faucetHitR = L.isMobile ? 32 : 26;
+      if (Math.hypot(pos.x - L.faucetX, pos.y - (L.faucetY - 22)) < faucetHitR) {
         draggingHandle = 'faucet';
         canvas.setPointerCapture(e.pointerId);
         return;
@@ -903,7 +908,9 @@
       // 2. Threshold chevron handle at bucket right edge
       const thFrac = (simParams.threshold - -80.0) / 45.0;
       const thY = L.bucketBottomY - thFrac * L.bucketH;
-      if (Math.abs(pos.x - (L.bucketRight + 8)) < 24 && Math.abs(pos.y - thY) < 18) {
+      const thHitX = L.isMobile ? 32 : 24;
+      const thHitY = L.isMobile ? 22 : 18;
+      if (Math.abs(pos.x - (L.bucketRight + 8)) < thHitX && Math.abs(pos.y - thY) < thHitY) {
         draggingHandle = 'threshold';
         canvas.setPointerCapture(e.pointerId);
         return;
@@ -912,15 +919,16 @@
       // 3. Calipers on oscilloscope trace (only when spiking is active)
       const tThDown = theoryISI(simParams.current, simParams);
       const showCalipersDown = Number.isFinite(tThDown) && tThDown > 0;
+      const caliperHit = L.isMobile ? 22 : 14;
       if (showCalipersDown && (!L.isMobile || currentChapter !== 5) && pos.x >= L.traceLeft && pos.x <= L.traceRight && pos.y >= L.traceTop - 12 && pos.y <= L.traceBottom + 12) {
         const c1X = L.traceLeft + (caliper1Time / MAX_TRACE_MS) * L.traceW;
         const c2X = L.traceLeft + (caliper2Time / MAX_TRACE_MS) * L.traceW;
-        if (Math.abs(pos.x - c1X) < 14) {
+        if (Math.abs(pos.x - c1X) < caliperHit) {
           draggingHandle = 'caliper1';
           canvas.setPointerCapture(e.pointerId);
           return;
         }
-        if (Math.abs(pos.x - c2X) < 14) {
+        if (Math.abs(pos.x - c2X) < caliperHit) {
           draggingHandle = 'caliper2';
           canvas.setPointerCapture(e.pointerId);
           return;
@@ -963,11 +971,15 @@
       const showCalipersMove = Number.isFinite(tThMove) && tThMove > 0;
 
       if (!draggingHandle) {
-        if (Math.hypot(pos.x - L.faucetX, pos.y - (L.faucetY - 22)) < 26) {
+        const faucetHitR = L.isMobile ? 32 : 26;
+        const thHitX = L.isMobile ? 32 : 24;
+        const thHitY = L.isMobile ? 22 : 18;
+        const caliperHit = L.isMobile ? 22 : 14;
+        if (Math.hypot(pos.x - L.faucetX, pos.y - (L.faucetY - 22)) < faucetHitR) {
           canvas.style.cursor = 'grab';
-        } else if (Math.abs(pos.x - (L.bucketRight + 8)) < 24 && Math.abs(pos.y - thY) < 18) {
+        } else if (Math.abs(pos.x - (L.bucketRight + 8)) < thHitX && Math.abs(pos.y - thY) < thHitY) {
           canvas.style.cursor = 'ns-resize';
-        } else if (showCalipersMove && (!L.isMobile || currentChapter !== 5) && (Math.abs(pos.x - c1X) < 14 || Math.abs(pos.x - c2X) < 14)) {
+        } else if (showCalipersMove && (!L.isMobile || currentChapter !== 5) && (Math.abs(pos.x - c1X) < caliperHit || Math.abs(pos.x - c2X) < caliperHit)) {
           canvas.style.cursor = 'ew-resize';
         } else if ((!L.isMobile || currentChapter === 5) && pos.x >= L.fiLeft && pos.x <= L.fiRight && pos.y >= L.fiTop && pos.y <= L.fiBottom) {
           canvas.style.cursor = 'pointer';
@@ -1214,7 +1226,7 @@
       c2d.fillStyle = colors.exc;
       c2d.textAlign = 'center';
       const inflowVolt = (simParams.resistance * simParams.current).toFixed(1);
-      c2d.fillText(`Faucet: I = ${simParams.current.toFixed(1)} nA (R·I = ${inflowVolt} mV)`, faucetX, faucetY - 30);
+      c2d.fillText(`Faucet: I = ${simParams.current.toFixed(1)} nA (R·I = ${inflowVolt} mV)`, faucetX, faucetY - (L.isMobile ? 24 : 30));
 
       // Water stream from faucet nozzle into bucket
       const streamW = simParams.current > 0.05 ? 1.2 + flowRateFrac * 5.5 : 0;
@@ -1242,7 +1254,7 @@
 
       // Update droplets simulation
       const leakHoleX = bucketRight - 28;
-      const basinY = bucketBottomY + 36;
+      const basinY = bucketBottomY + (L.isMobile ? 12 : 36);
       droplets.update(
         dtReal,
         simParams.current,
@@ -1334,7 +1346,7 @@
       c2d.font = '500 10px var(--font-mono)';
       c2d.textAlign = 'right';
       c2d.textBaseline = 'middle';
-      const graduationTicks = [-75, -70, -65, -60, -55, -50, -45, -40, -35];
+      const graduationTicks = L.isMobile ? [-70, -55, -40] : [-75, -70, -65, -60, -55, -50, -45, -40, -35];
       for (const tVal of graduationTicks) {
         const ty = bucketBottomY - ((tVal - -80.0) / 45.0) * bucketH;
         c2d.strokeStyle = colors.inkMuted;
@@ -1358,7 +1370,7 @@
       c2d.setLineDash([]);
       c2d.fillStyle = colors.inkMuted;
       c2d.textAlign = 'left';
-      c2d.fillText(S.rest_mark, bucketRight + 6, restY + 9);
+      c2d.fillText(S.rest_mark, bucketRight + 6, restY + (L.isMobile ? -2 : 9));
 
       // Reset potential reference line (-75 mV)
       const resetY = bucketBottomY - ((-75.0 - -80.0) / 45.0) * bucketH;
@@ -1371,7 +1383,7 @@
       c2d.setLineDash([]);
       c2d.fillStyle = colors.inkMuted;
       c2d.textAlign = 'left';
-      c2d.fillText(S.reset_mark, bucketRight + 6, resetY + 9);
+      c2d.fillText(S.reset_mark, bucketRight + 6, resetY + (L.isMobile ? 12 : 9));
 
       // Threshold line and draggable chevron handle (-40 mV)
       const thFracLive = (simParams.threshold - -80.0) / 45.0;
@@ -1409,7 +1421,7 @@
       const leakStreamW = leakDelta > 0.05 ? 1.0 + (leakDelta / 30.0) * 4.2 : 0;
       if (leakStreamW > 0) {
         c2d.fillStyle = colors.inh;
-        c2d.fillRect(leakHoleX - leakStreamW / 2, bucketBottomY, leakStreamW, 26);
+        c2d.fillRect(leakHoleX - leakStreamW / 2, bucketBottomY, leakStreamW, L.isMobile ? 12 : 26);
       }
 
       // Draw Leak Droplets
@@ -1430,8 +1442,8 @@
 
       c2d.restore(); // End bucket tipping transform
 
-      const basinOffset = L.isMobile ? 7 : 24;
-      const leakTextOffset = L.isMobile ? 18 : 52;
+      const basinOffset = L.isMobile ? 8 : 24;
+      const leakTextOffset = L.isMobile ? 22 : 52;
       const hintOffset = L.isMobile ? 36 : 68;
 
       // Catch Basin below bucket for passive leak
@@ -1458,7 +1470,7 @@
         const pulseStartX = bucketRight;
         const pulseEndX = (!L.isMobile ? L.dividerX + 30 : bucketRight + 40);
         const px = pulseStartX + spikePulse.progress * (pulseEndX - pulseStartX);
-        const py = thY - spikePulse.progress * 15;
+        const py = thY - spikePulse.progress * (L.isMobile ? 8 : 15);
         c2d.fillStyle = colors.volt;
         c2d.beginPath();
         c2d.arc(px, py, 7 * (1 - spikePulse.progress * 0.3), 0, Math.PI * 2);
