@@ -6,6 +6,7 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Fixed
+- Atlas plates `N01`, `N02`, `N05`, `N08`, `M01` and `Y02`: label overlaps and clipping fixed (channel and thermometer labels, caliper marker, legend and ramp readout, tilt control and phone layout, margin styling, weight axis labels).
 - Atlas replay decodes recorded step-index lists, preserves indices and uses sample positions
   for playback and spike events; the demo reads neuron zero with the recorded neuron stride.
 - Atlas shell displays `meta.library` without a fallback version; HTML export rejects

@@ -132,9 +132,10 @@
 
     // Rate equations with removable singularities
     alpha_m(V) {
-      const u = (V + 40) / 10;
-      if (Math.abs(u) < 1e-6) return 1 + 0.5 * u + (u ** 2) / 12;
-      return -u / Math.expm1(-u);
+      const num = 0.1 * (V + 40);
+      const den = 1 - Math.exp(-(V + 40) / 10);
+      if (Math.abs(den) < 1e-7) return 1.0;
+      return num / den;
     },
     beta_m(V) {
       return 4 * Math.exp(-(V + 65) / 18);
@@ -146,9 +147,10 @@
       return 1 / (1 + Math.exp(-(V + 35) / 10));
     },
     alpha_n(V) {
-      const u = (V + 55) / 10;
-      if (Math.abs(u) < 1e-6) return 0.1 * (1 + 0.5 * u + (u ** 2) / 12);
-      return 0.1 * (-u / Math.expm1(-u));
+      const num = 0.01 * (V + 55);
+      const den = 1 - Math.exp(-(V + 55) / 10);
+      if (Math.abs(den) < 1e-7) return 0.1;
+      return num / den;
     },
     beta_n(V) {
       return 0.125 * Math.exp(-(V + 65) / 80);
@@ -440,10 +442,11 @@
       ctx.clock.stepsPerSecond = 60;
     }
 
-    // Set canvas container height to fit in 800px window
-    if (figureContainer) {
-      figureContainer.style.height = '400px';
-      figureContainer.style.maxHeight = '400px';
+    // Set canvas container height to fit in window
+    if (figureContainer && figureContainer.style) {
+      figureContainer.style.aspectRatio = 'auto';
+      figureContainer.style.height = (typeof window !== 'undefined' && window.innerWidth < 560) ? '460px' : '420px';
+      figureContainer.style.maxHeight = '520px';
     }
 
     // 1. Build Marginalia (Equation, Live Terms, Glossary)
@@ -1134,7 +1137,7 @@
       ctx2d.save();
 
       const isMobile = W < 520;
-      const thermW = isMobile ? 55 : 80;
+      const thermW = isMobile ? 74 : 118;
       const patchW = W - thermW - 14;
       const midY = H * 0.50;
       const bilayerThickness = 30;
@@ -1155,12 +1158,6 @@
         ctx2d.fillStyle = colors.paper;
       }
       ctx2d.fillRect(8, btmLeafletY, patchW, H - btmLeafletY - 6);
-
-      // Fluid labels with clean backgrounds so ions don't occlude text
-      ctx2d.font = isMobile ? '10px ui-serif, Georgia, serif' : '11px ui-serif, Georgia, serif';
-      ctx2d.fillStyle = colors.inkMuted;
-      ctx2d.fillText(isMobile ? 'OUTSIDE (high Na⁺)' : S.outside, 16, 18);
-      ctx2d.fillText(isMobile ? 'INSIDE (high K⁺)' : S.inside, 16, H - 12);
 
       // Hydrophobic core between leaflets
       ctx2d.fillStyle = colors.paperCard;
@@ -1455,6 +1452,46 @@
         ctx2d.restore();
       }
 
+      // Fluid labels with clean badge backgrounds drawn after channels & ions so nothing occludes them
+      ctx2d.save();
+      const outText = isMobile ? 'OUTSIDE (high Na⁺)' : S.outside;
+      const inText = isMobile ? 'INSIDE (high K⁺)' : S.inside;
+      ctx2d.font = isMobile ? '10px ui-serif, Georgia, serif' : '11px ui-serif, Georgia, serif';
+      ctx2d.textBaseline = 'middle';
+      ctx2d.textAlign = 'left';
+
+      // Badge for OUTSIDE
+      const outW = ctx2d.measureText(outText).width;
+      const outX = isMobile ? 12 : 16;
+      const outY = isMobile ? 6 : 8;
+      const badgeH = 18;
+      ctx2d.fillStyle = colors.paperCard;
+      ctx2d.strokeStyle = colors.border;
+      ctx2d.lineWidth = 1;
+      ctx2d.beginPath();
+      if (ctx2d.roundRect) ctx2d.roundRect(outX - 6, outY, outW + 12, badgeH, 3);
+      else ctx2d.rect(outX - 6, outY, outW + 12, badgeH);
+      ctx2d.fill();
+      ctx2d.stroke();
+      ctx2d.fillStyle = colors.ink;
+      ctx2d.fillText(outText, outX, outY + badgeH / 2);
+
+      // Badge for INSIDE
+      const inW = ctx2d.measureText(inText).width;
+      const inX = isMobile ? 12 : 16;
+      const inY = H - (isMobile ? 24 : 26);
+      ctx2d.fillStyle = colors.paperCard;
+      ctx2d.strokeStyle = colors.border;
+      ctx2d.lineWidth = 1;
+      ctx2d.beginPath();
+      if (ctx2d.roundRect) ctx2d.roundRect(inX - 6, inY, inW + 12, badgeH, 3);
+      else ctx2d.rect(inX - 6, inY, inW + 12, badgeH);
+      ctx2d.fill();
+      ctx2d.stroke();
+      ctx2d.fillStyle = colors.ink;
+      ctx2d.fillText(inText, inX, inY + badgeH / 2);
+      ctx2d.restore();
+
       // B. Glass Thermometer Voltmeter with Nernst Lines & Amber Glow Needle
       renderThermometer(ctx2d, W - thermW + 2, 8, thermW - 8, H - 16, s, colors);
 
@@ -1465,9 +1502,9 @@
     function renderThermometer(ctx2d, tx, ty, tw, th, s, colors) {
       ctx2d.save();
 
-      const isMobile = tw < 65;
-      const tubeW = isMobile ? 12 : 16;
-      const tubeX = tx + (isMobile ? 12 : 18);
+      const isMobile = tw < 80;
+      const tubeW = isMobile ? 12 : 15;
+      const tubeX = tx + (isMobile ? 22 : 36);
       const bulbRadius = isMobile ? 10 : 13;
       const bulbCy = ty + th - bulbRadius - 4;
       const tubeTopY = ty + 14;
@@ -1521,7 +1558,8 @@
 
         ctx2d.font = '9px ui-monospace, monospace';
         ctx2d.fillStyle = color;
-        ctx2d.fillText(label, tubeX + tubeW + 6, ly + 3);
+        ctx2d.textAlign = 'left';
+        ctx2d.fillText(label, tubeX + tubeW + 5, ly + 3);
       };
 
       drawNernstLine(core.E_NA, isMobile ? '+50' : '+50 ENa', colors.exc);
@@ -1544,21 +1582,22 @@
 
       // Pointer needle
       ctx2d.beginPath();
-      ctx2d.moveTo(tubeX - 8, needleY);
-      ctx2d.lineTo(tubeX + tubeW + 8, needleY);
+      ctx2d.moveTo(tubeX - 6, needleY);
+      ctx2d.lineTo(tubeX + tubeW + 6, needleY);
       ctx2d.stroke();
 
       // Indicator triangle pointing into tube
       ctx2d.beginPath();
-      ctx2d.moveTo(tubeX - 8, needleY);
-      ctx2d.lineTo(tubeX - 13, needleY - 4);
-      ctx2d.lineTo(tubeX - 13, needleY + 4);
+      ctx2d.moveTo(tubeX - 6, needleY);
+      ctx2d.lineTo(tubeX - (isMobile ? 11 : 13), needleY - 4);
+      ctx2d.lineTo(tubeX - (isMobile ? 11 : 13), needleY + 4);
       ctx2d.closePath();
       ctx2d.fill();
 
-      // Live reading text
-      ctx2d.font = '10px ui-monospace, monospace';
-      ctx2d.fillText(`${s.sim.V.toFixed(0)}`, tubeX - (isMobile ? 24 : 34), needleY + 3);
+      // Live reading text (right-aligned before pointer)
+      ctx2d.font = (isMobile ? '9px' : '10px') + ' ui-monospace, monospace';
+      ctx2d.textAlign = 'right';
+      ctx2d.fillText(`${s.sim.V.toFixed(0)}`, tubeX - (isMobile ? 14 : 16), needleY + 3);
 
       ctx2d.restore();
     }

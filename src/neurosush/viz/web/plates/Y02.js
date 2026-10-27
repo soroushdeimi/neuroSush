@@ -548,6 +548,8 @@
       plot2: { x: 410, y: 340, w: 370, h: 100 }
     };
 
+    const padYAxis = 34;
+
     function getCoords(e) {
       const rect = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
@@ -587,10 +589,12 @@
 
       // Check click/drag on Frequency Sweep plot marker
       const plot2 = layout.plot2;
-      if (p.x >= plot2.x && p.x <= plot2.x + plot2.w && p.y >= plot2.y && p.y <= plot2.y + plot2.h + 20) {
+      const ax2 = plot2.x + padYAxis;
+      const pw2 = plot2.w - padYAxis;
+      if (p.x >= ax2 - 5 && p.x <= ax2 + pw2 + 5 && p.y >= plot2.y && p.y <= plot2.y + plot2.h + 20) {
         isDraggingSweepMarker = true;
         canvas.setPointerCapture(e.pointerId);
-        const f = 1 + clamp((p.x - plot2.x) / plot2.w, 0.0, 1.0) * 49;
+        const f = 1 + clamp((p.x - ax2) / pw2, 0.0, 1.0) * 49;
         setFrequency(f);
         return;
       }
@@ -605,14 +609,18 @@
         setFrequency(f);
       } else if (isDraggingSweepMarker) {
         const plot2 = layout.plot2;
-        const f = 1 + clamp((p.x - plot2.x) / plot2.w, 0.0, 1.0) * 49;
+        const ax2 = plot2.x + padYAxis;
+        const pw2 = plot2.w - padYAxis;
+        const f = 1 + clamp((p.x - ax2) / pw2, 0.0, 1.0) * 49;
         setFrequency(f);
       } else {
         const distPre = Math.hypot(p.x - layout.preX, p.y - layout.somaY);
         const distPost = Math.hypot(p.x - layout.postX, p.y - layout.somaY);
         const overDial = p.x >= layout.trackX - 10 && p.x <= layout.trackX + layout.trackW + 10 &&
                          p.y >= layout.dial.y - 10 && p.y <= layout.dial.y + layout.dial.h + 10;
-        const overPlot2 = p.x >= layout.plot2.x && p.x <= layout.plot2.x + layout.plot2.w &&
+        const ax2 = layout.plot2.x + padYAxis;
+        const pw2 = layout.plot2.w - padYAxis;
+        const overPlot2 = p.x >= ax2 - 5 && p.x <= ax2 + pw2 + 5 &&
                           p.y >= layout.plot2.y && p.y <= layout.plot2.y + layout.plot2.h + 15;
 
         if (distPre <= layout.somaR + 10 || distPost <= layout.somaR + 10) {
@@ -1122,8 +1130,10 @@
       // =========================================================================
 
       // --- Plot 1: Pairing Train - Weight over Time ---
-      line(plot1.x, plot1.y, plot1.x, plot1.y + plot1.h, c.border, 1);
-      line(plot1.x, plot1.y + plot1.h, plot1.x + plot1.w, plot1.y + plot1.h, c.border, 1);
+      const ax1 = plot1.x + padYAxis;
+      const pw1 = plot1.w - padYAxis;
+      line(ax1, plot1.y, ax1, plot1.y + plot1.h, c.border, 1);
+      line(ax1, plot1.y + plot1.h, ax1 + pw1, plot1.y + plot1.h, c.border, 1);
 
       // Top title on Row 1 (plot1.y - 18)
       text(S.plot1Title, plot1.x, plot1.y - 18, c.ink, 12, 'left', true);
@@ -1140,14 +1150,14 @@
         text(S.legendGhost, plot1.x + 233, plot1.y - 5, c.theory, 12);
       }
 
-      // Numeric Y-axis ticks
-      text('0.50', plot1.x + 4, plot1.y + plot1.h - 4, c.inkMuted, 12);
-      text('0.60', plot1.x + 4, plot1.y + 14, c.inkMuted, 12);
+      // Numeric Y-axis ticks - cleanly placed to the left of the axis
+      text('0.50', ax1 - 5, plot1.y + plot1.h - 2, c.inkMuted, 11, 'right');
+      text('0.60', ax1 - 5, plot1.y + 12, c.inkMuted, 11, 'right');
 
       // X-axis label & ticks
-      text(S.axisPairings, plot1.x + plot1.w / 2, plot1.y + plot1.h + 16, c.inkMuted, 12, 'center');
-      text('1', plot1.x + 2, plot1.y + plot1.h + 16, c.inkMuted, 12);
-      text('24', plot1.x + plot1.w - 2, plot1.y + plot1.h + 16, c.inkMuted, 12, 'right');
+      text(S.axisPairings, ax1 + pw1 / 2, plot1.y + plot1.h + 16, c.inkMuted, 12, 'center');
+      text('1', ax1 + 2, plot1.y + plot1.h + 16, c.inkMuted, 12);
+      text('24', ax1 + pw1 - 2, plot1.y + plot1.h + 16, c.inkMuted, 12, 'right');
 
       // Prefilled curves: draw full 24-pairing weight trajectory
       const maxW = Math.max(0.60, experiment.state.w, pairExperiment.state.w) + 0.01;
@@ -1160,7 +1170,7 @@
       g.setLineDash([4, 3]);
       g.beginPath();
       pairExperiment.history.forEach((h, i) => {
-        const x = plot1.x + (i / (pairExperiment.history.length - 1)) * plot1.w;
+        const x = ax1 + (i / (pairExperiment.history.length - 1)) * pw1;
         const y = plot1.y + plot1.h - ((h.w - minW) / (maxW - minW)) * plot1.h;
         if (i === 0) g.moveTo(x, y);
         else g.lineTo(x, y);
@@ -1174,7 +1184,7 @@
       g.lineWidth = 2.2;
       g.beginPath();
       experiment.history.forEach((h, i) => {
-        const x = plot1.x + (i / (experiment.history.length - 1)) * plot1.w;
+        const x = ax1 + (i / (experiment.history.length - 1)) * pw1;
         const y = plot1.y + plot1.h - ((h.w - minW) / (maxW - minW)) * plot1.h;
         if (i === 0) g.moveTo(x, y);
         else g.lineTo(x, y);
@@ -1185,11 +1195,11 @@
       // Theory Ghost for Pair STDP (dashed horizontal line at final pair theoretical weight)
       if (showTheory) {
         const pairTheoryY = plot1.y + plot1.h - ((pairExperiment.state.w - minW) / (maxW - minW)) * plot1.h;
-        line(plot1.x, pairTheoryY, plot1.x + plot1.w, pairTheoryY, c.theory, 1.5, [5, 4]);
+        line(ax1, pairTheoryY, ax1 + pw1, pairTheoryY, c.theory, 1.5, [5, 4]);
       }
 
       // Animated live cursor tracking current step
-      const cursorX = plot1.x + (elapsed / Math.max(1, experiment.history.length - 1)) * plot1.w;
+      const cursorX = ax1 + (elapsed / Math.max(1, experiment.history.length - 1)) * pw1;
       const cursorY = plot1.y + plot1.h - ((lastState.w - minW) / (maxW - minW)) * plot1.h;
       g.save();
       g.fillStyle = c.volt;
@@ -1199,8 +1209,10 @@
       g.restore();
 
       // --- Plot 2: Frequency Sweep ---
-      line(plot2.x, plot2.y, plot2.x, plot2.y + plot2.h, c.border, 1);
-      line(plot2.x, plot2.y + plot2.h, plot2.x + plot2.w, plot2.y + plot2.h, c.border, 1);
+      const ax2 = plot2.x + padYAxis;
+      const pw2 = plot2.w - padYAxis;
+      line(ax2, plot2.y, ax2, plot2.y + plot2.h, c.border, 1);
+      line(ax2, plot2.y + plot2.h, ax2 + pw2, plot2.y + plot2.h, c.border, 1);
 
       // Top title on Row 1 (plot2.y - 18)
       text(S.plot2Title, plot2.x, plot2.y - 18, c.ink, 12, 'left', true);
@@ -1218,25 +1230,25 @@
         text(S.legendGhost, plot2.x + 138, plot2.y - 5, c.theory, 12);
       }
 
-      // Numeric Y-axis ticks
+      // Numeric Y-axis ticks - cleanly placed to the left of the axis
       const maxDelta = 0.60;
-      text('0.00', plot2.x + 4, plot2.y + plot2.h - 4, c.inkMuted, 12);
-      text('0.55', plot2.x + 4, plot2.y + 14, c.inkMuted, 12);
+      text('0.00', ax2 - 5, plot2.y + plot2.h - 2, c.inkMuted, 11, 'right');
+      text('0.55', ax2 - 5, plot2.y + 12, c.inkMuted, 11, 'right');
 
       // X-axis label & ticks
-      text(S.axisFreq, plot2.x + plot2.w / 2, plot2.y + plot2.h + 16, c.inkMuted, 12, 'center');
-      text('1 Hz', plot2.x + 2, plot2.y + plot2.h + 16, c.inkMuted, 12);
-      text('50 Hz', plot2.x + plot2.w - 2, plot2.y + plot2.h + 16, c.inkMuted, 12, 'right');
+      text(S.axisFreq, ax2 + pw2 / 2, plot2.y + plot2.h + 16, c.inkMuted, 12, 'center');
+      text('1 Hz', ax2 + 2, plot2.y + plot2.h + 16, c.inkMuted, 12);
+      text('50 Hz', ax2 + pw2 - 2, plot2.y + plot2.h + 16, c.inkMuted, 12, 'right');
 
       // Pre-plot Pair Line (Frequency-independent theory reference, dashed line across 1 to 50 Hz)
       const pairTheoryDelta = core.pairDelta() * 24;
       const pairLineY = plot2.y + plot2.h - (pairTheoryDelta / maxDelta) * plot2.h;
       if (showTheory) {
-        line(plot2.x, pairLineY, plot2.x + plot2.w, pairLineY, c.theory, 1.5, [5, 4]);
+        line(ax2, pairLineY, ax2 + pw2, pairLineY, c.theory, 1.5, [5, 4]);
       }
 
       // Current dial frequency marker on sweep plot
-      const dialMarkerX = plot2.x + ((frequency - 1) / 49) * plot2.w;
+      const dialMarkerX = ax2 + ((frequency - 1) / 49) * pw2;
       line(dialMarkerX, plot2.y, dialMarkerX, plot2.y + plot2.h, c.volt, 1.2, [3, 3]);
 
       // Plot Triplet Sweep points and connecting curve
@@ -1247,7 +1259,7 @@
         g.lineWidth = 1.8;
         g.beginPath();
         revealedPoints.forEach((p, idx) => {
-          const px = plot2.x + ((p.frequency - 1) / 49) * plot2.w;
+          const px = ax2 + ((p.frequency - 1) / 49) * pw2;
           const py = plot2.y + plot2.h - (p.delta / maxDelta) * plot2.h;
           if (idx === 0) g.moveTo(px, py);
           else g.lineTo(px, py);
@@ -1255,7 +1267,7 @@
         g.stroke();
 
         revealedPoints.forEach((p) => {
-          const px = plot2.x + ((p.frequency - 1) / 49) * plot2.w;
+          const px = ax2 + ((p.frequency - 1) / 49) * pw2;
           const py = plot2.y + plot2.h - (p.delta / maxDelta) * plot2.h;
           g.fillStyle = c.exc;
           g.beginPath();
@@ -1275,7 +1287,7 @@
       g.fill();
       g.restore();
 
-      if (dialMarkerX > plot2.x + plot2.w * 0.75) {
+      if (dialMarkerX > ax2 + pw2 * 0.75) {
         text(`${frequency} Hz`, dialMarkerX - 8, markerCurveY - 6, c.volt, 12, 'right', true);
       } else {
         text(`${frequency} Hz`, dialMarkerX + 8, markerCurveY - 6, c.volt, 12, 'left', true);

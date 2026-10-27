@@ -39,6 +39,7 @@
     roT: 'interspike interval T',
     roF: 'firing rate f',
     roFsim: 'simulated rate',
+    roNotYet: 'not yet',
     roGain: 'gain  S = df/dI',
     roDiff: 'theory − sim  difference',
     roNoise: 'current noise σ_I',
@@ -535,6 +536,10 @@
     `;
 
     // ---------- 3. Canvas ----------
+    if (figureContainer && figureContainer.style) {
+      figureContainer.style.aspectRatio = 'auto';
+      figureContainer.style.height = (typeof window !== 'undefined' && window.innerWidth < 560) ? '520px' : '440px';
+    }
     const canvas = figureContainer.querySelector('canvas') || ctx.canvas();
     const g = canvas.getContext('2d');
 
@@ -1028,12 +1033,12 @@
     }
 
     function measuredRate() {
-      const recent = state.spikes.filter((s) => s > state.simT - 420);
-      if (recent.length < 2) return 0;
+      const recent = state.spikes.filter((s) => s > state.simT - 1200);
+      if (recent.length < 2) return null;
       const k = Math.min(4, recent.length - 1);
       let sum = 0;
       for (let i = recent.length - k; i < recent.length; i++) sum += recent[i] - recent[i - 1];
-      return sum > 0 ? 1000 / (sum / k) : 0;
+      return sum > 0 ? 1000 / (sum / k) : null;
     }
 
     // ---------- readout DOM ----------
@@ -1050,13 +1055,23 @@
       set('n08-val-I', I.toFixed(2) + ' ' + S.unitsNa);
       set('n08-val-T', Number.isFinite(isi) && isi > 0 ? isi.toFixed(1) + ' ' + S.unitsMs : '—');
       set('n08-val-f', thr.toFixed(1) + ' ' + S.unitsHz);
-      set('n08-val-fsim', sim.toFixed(1) + ' ' + S.unitsHz);
+
+      if (I <= Irh && (state.noiseI <= 0 || sim === null)) {
+        set('n08-val-fsim', '0.0 ' + S.unitsHz);
+        set('n08-val-diff', '0.0 ' + S.unitsHz);
+      } else if (sim !== null && sim > 0) {
+        set('n08-val-fsim', sim.toFixed(1) + ' ' + S.unitsHz);
+        set('n08-val-diff', (thr - sim).toFixed(1) + ' ' + S.unitsHz);
+      } else {
+        set('n08-val-fsim', S.roNotYet || 'not yet');
+        set('n08-val-diff', '—');
+      }
+
       // local gain df/dI by central difference
       const dI = 0.01;
       const fa = I - dI > Irh ? core.theoryRate(state.model, I - dI) : 0;
       const fb = core.theoryRate(state.model, I + dI);
       set('n08-val-gain', ((fb - fa) / (2 * dI)).toFixed(1) + ' ' + S.unitsHzPerNa);
-      set('n08-val-diff', (thr - sim).toFixed(1) + ' ' + S.unitsHz);
     }
 
     // ---------- drawing helpers ----------
@@ -1293,7 +1308,7 @@
       g.fillText('↔', xCur, r.y1);
       // measured dot at current marker
       const simNow = measuredRate();
-      if (simNow > 0) {
+      if (simNow !== null && simNow > 0) {
         const yM = mapF(simNow);
         if (yM > r.y0 - 1 && yM < r.y1 + 1) {
           g.fillStyle = colors.mod;
@@ -1361,13 +1376,15 @@
       renderStrip(g, colors, sr, W, H);
 
       // ---- log-log inset: in the quiet upper-left of f-I space, never on the voltage trace ----
-      const insetW = small ? Math.min(156, Math.round((r.x1 - r.x0) * 0.57)) : Math.round((r.x1 - r.x0) * 0.29);
-      const insetH = small ? 104 : 122;
+      const insetW = small ? Math.min(136, Math.round((r.x1 - r.x0) * 0.44)) : Math.round((r.x1 - r.x0) * 0.29);
+      const insetY0 = r.y0 + (small ? 6 : 44);
+      const insetMaxH = r.y1 - insetY0 - (small ? 6 : 14);
+      const insetH = small ? Math.min(68, insetMaxH) : 122;
       const inset = {
         x0: r.x0 + 8,
         x1: r.x0 + 8 + insetW,
-        y0: r.y0 + (small ? 52 : 44),
-        y1: r.y0 + (small ? 52 : 44) + insetH
+        y0: insetY0,
+        y1: insetY0 + insetH
       };
       renderInset(g, colors, inset, small);
 
@@ -1375,21 +1392,28 @@
     }
 
     function drawLegend(c, colors, r, model, mcol) {
+      const compact = r.x1 - r.x0 < 380;
       const items = [
-        { color: colors.theory, dash: true, label: S.legendTheory },
-        { color: colors.trace, dot: true, label: S.legendMeas },
-        { color: colors.mod, line: true, label: S.legendNow }
+        { color: colors.theory, dash: true, label: compact ? 'theory' : S.legendTheory },
+        { color: colors.trace, dot: true, label: compact ? 'trail' : S.legendMeas },
+        { color: colors.mod, line: true, label: compact ? 'marker' : S.legendNow }
       ];
-      if (state.noiseI > 0) items.push({ color: colors.inh, dashdot: true, label: S.legendNoise });
+      if (state.noiseI > 0) items.push({ color: colors.inh, dashdot: true, label: compact ? 'noise' : S.legendNoise });
+
       c.save();
-      c.font = '10px ui-sans-serif, sans-serif';
+      c.font = (compact ? '9px' : '10px') + ' ui-sans-serif, sans-serif';
       c.textBaseline = 'middle';
       c.textAlign = 'left';
-      const compact = r.x1 - r.x0 < 380;
-      const widths = items.map((it) => 23 + c.measureText(it.label).width + (compact ? 7 : 14));
+
+      const pad = compact ? 8 : 12;
+      const markW = 16;
+      const widths = items.map((it) => markW + 5 + c.measureText(it.label).width + pad);
       const total = widths.reduce((a, b) => a + b, 0);
-      let x = compact ? r.x1 - 86 : Math.max(r.x0 + 190, r.x1 - total - 8);
-      let y = r.y0 + 13;
+
+      // Position above the plot border (y0 - 13), so it NEVER overlaps the curves
+      let x = Math.max(r.x0 + 6, r.x1 - total - 2);
+      let y = r.y0 - 13;
+
       for (const it of items) {
         if (it.dash) {
           c.strokeStyle = it.color;
@@ -1397,7 +1421,7 @@
           c.setLineDash([5, 3]);
           c.beginPath();
           c.moveTo(x, y);
-          c.lineTo(x + 18, y);
+          c.lineTo(x + markW, y);
           c.stroke();
           c.setLineDash([]);
         } else if (it.dashdot) {
@@ -1406,30 +1430,25 @@
           c.setLineDash([6, 2, 1.5, 2]);
           c.beginPath();
           c.moveTo(x, y);
-          c.lineTo(x + 18, y);
+          c.lineTo(x + markW, y);
           c.stroke();
           c.setLineDash([]);
         } else if (it.dot) {
           c.fillStyle = it.color;
           c.beginPath();
-          c.arc(x + 8, y, 2.4, 0, Math.PI * 2);
+          c.arc(x + markW / 2, y, 2.4, 0, Math.PI * 2);
           c.fill();
         } else {
           c.strokeStyle = it.color;
           c.lineWidth = 1.8;
           c.beginPath();
-          c.moveTo(x + 6, y - 4);
-          c.lineTo(x + 6, y + 4);
+          c.moveTo(x + markW / 2, y - 4);
+          c.lineTo(x + markW / 2, y + 4);
           c.stroke();
         }
         c.fillStyle = colors.inkMuted;
-        c.fillText(it.label, x + 23, y);
-        if (compact) {
-          x = r.x1 - 86;
-          y += 13;
-        } else {
-          x += 23 + c.measureText(it.label).width + 14;
-        }
+        c.fillText(it.label, x + markW + 5, y);
+        x += markW + 5 + c.measureText(it.label).width + pad;
       }
       c.restore();
     }
@@ -1556,10 +1575,10 @@
       c.stroke();
       c.clip();
 
-      const padL = 30 + (small ? 0 : 6);
-      const padR = 8;
-      const padT = 20;
-      const padB = 22;
+      const padL = small ? 18 : 36;
+      const padR = 6;
+      const padT = small ? 14 : 20;
+      const padB = small ? 10 : 22;
       const px0 = x0 + padL;
       const px1 = x1 - padR;
       const py0 = y0 + padT;
@@ -1647,7 +1666,7 @@
       if (!small) c.fillText(S.insetTitle + '  ·  ' + S.insetX, x0 + 8, y0 + 5);
       else c.fillText(S.insetTitle, x0 + 6, y0 + 4);
       c.textAlign = 'center';
-      c.fillText(S.insetX, (px0 + px1) / 2, y1 - 14);
+      if (!small) c.fillText(S.insetX, (px0 + px1) / 2, y1 - 14);
       c.save();
       c.translate(x0 + 8, (py0 + py1) / 2);
       c.rotate(-Math.PI / 2);
