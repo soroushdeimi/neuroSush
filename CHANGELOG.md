@@ -8,6 +8,7 @@ All notable changes to neuroSush are documented here, following the
 ### Added
 - Atlas plate `N02`: ELIF potential-well plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
 - Atlas plate `N08`: f-I curve and bifurcation plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
+- README example: a standalone float-only LIF simulation reports its measured five-second firing rate next to `dynamics.lif_rate`.
 - `dynamics.lif_rate`: the closed-form LIF firing rate for a constant current, now the single source used by the validation test.
 - `dynamics.fire` accepts plain floats (returns a `(bool, float)` pair); `Recorder.get(name, last=N)` returns only the last N samples; the README states the units convention (mV, ms, MOhm, nA).
 - Atlas plate `M01`: Euler steps, convergence and instability plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.

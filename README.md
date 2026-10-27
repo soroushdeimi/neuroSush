@@ -112,6 +112,24 @@ print(f"output spikes: {spikes}, mean weight: {synapse.weights.mean():.3f}")
 [`examples/two_patterns.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/two_patterns.py) goes further: two output neurons with
 k-winners-take-all and homeostasis learn to respond to one input pattern each.
 
+## Single neuron without a network
+
+The dynamics equations also run directly on plain floats, without allocating a network.
+Here, 50,000 steps of 0.1 ms give a five-second window for counting spikes per second.
+
+```python
+from neurosush.neurons import dynamics as eq
+
+p = dict(tau=20.0, v_rest=-70.0, v_reset=-75.0, threshold=-40.0, resistance=10.0, current=5.0)
+v, spikes, dt = p["v_rest"], 0, 0.1
+for _ in range(50_000):
+    drive = eq.lif_derivative(v, p["current"], v_rest=p["v_rest"], resistance=p["resistance"])
+    v = eq.euler_step(v, drive, tau=p["tau"], dt=dt)
+    spiked, v = eq.fire(v, threshold=p["threshold"], v_reset=p["v_reset"])
+    spikes += spiked
+print(f"{spikes / (50_000 * dt / 1000):.1f} {eq.lif_rate(**p):.1f}")  # Prints: 49.4 49.4
+```
+
 ## Concepts
 
 - A **`Network`** owns neuron groups, synapse groups, the time step `dt`, the dtype, the
@@ -291,6 +309,7 @@ with 16 independent members in one batch, 11,395 against 1,525 and 838.
 |---|---|
 | `neurosush.core` | `Network`, `NeuronGroup`, `SynapseGroup`, `Behavior`, `Order`, delay buffers |
 | `neurosush.neurons.models` | `LIF`, `ELIF`, `AdaptiveELIF`, `Izhikevich`, `Refractory`, `Fire` (equations in `dynamics`) |
+| `neurosush.neurons.dynamics` | `lif_derivative`, `euler_step`, `fire`, `lif_rate`, `exponential_boost`, `lif_terms`, `elif_terms`, `adex_terms`, `izhikevich_terms`, `izhikevich_step`; pure equations on floats or tensors, no network needed |
 | `neurosush.neurons.hodgkin_huxley` | `HodgkinHuxley` (Hodgkin and Huxley 1952 squid axon with visible `m`, `h`, `n` gates and `i_na`, `i_k`, `i_leak` currents) |
 | `neurosush.neurons.adaptation` | `SpikeTriggeredCurrent` (after-spike current, spike-frequency adaptation) |
 | `neurosush.neurons.params` | helpers that check a parameter given as a number or one value per neuron |
