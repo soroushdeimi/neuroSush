@@ -34,6 +34,13 @@ REPEATS = 5
 TOP_OPS = 15
 
 
+def _device_time_us(event: Any) -> float:
+    # torch before 2.4 names it self_cuda_time_total
+    if hasattr(event, "self_device_time_total"):
+        return float(event.self_device_time_total)
+    return float(event.self_cuda_time_total)
+
+
 def _positive(name: str) -> Callable[[str], int]:
     def parse(value: str) -> int:
         parsed = int(value)
@@ -99,13 +106,13 @@ def _operator_profile(stepper: Any, steps: int, device: str) -> dict[str, Any]:
         if str(event.device_type).endswith("CUDA")
         and not event.name.casefold().startswith(("memcpy", "memset"))
     ]
-    kernel_total_us = sum(event.self_device_time_total for event in cuda_events)
+    kernel_total_us = sum(_device_time_us(event) for event in cuda_events)
     averages = list(recorded.key_averages())
     aten = [event for event in averages if event.key.startswith("aten::")]
     total_cpu_us = sum(event.self_cpu_time_total for event in averages)
-    total_cuda_us = sum(event.self_device_time_total for event in averages)
+    total_cuda_us = sum(_device_time_us(event) for event in averages)
     key = (
-        (lambda event: event.self_device_time_total)
+        (lambda event: _device_time_us(event))
         if device == "cuda"
         else (lambda event: event.self_cpu_time_total)
     )
@@ -119,9 +126,9 @@ def _operator_profile(stepper: Any, steps: int, device: str) -> dict[str, Any]:
                 "self_cpu_percent": (
                     100.0 * event.self_cpu_time_total / total_cpu_us if total_cpu_us else 0.0
                 ),
-                "self_cuda_us": event.self_device_time_total if device == "cuda" else 0.0,
+                "self_cuda_us": _device_time_us(event) if device == "cuda" else 0.0,
                 "self_cuda_percent": (
-                    100.0 * event.self_device_time_total / total_cuda_us
+                    100.0 * _device_time_us(event) / total_cuda_us
                     if device == "cuda" and total_cuda_us
                     else 0.0
                 ),
