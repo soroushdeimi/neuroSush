@@ -6,6 +6,7 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Fixed
+- Atlas plate `N02`: missing spaces after commas in the predict-then-reveal text.
 - Clearer input errors: `render_plate` takes an optional trace for live plates and explains what a replay needs, `TraceRecorder.trace()` before a run and duplicate recorded attributes raise explicit errors, `Network.run` rejects non-integer steps, `WeightInit` points to `weights=` for tensors, and `PoissonInput` rejects `rates * dt > 1` instead of firing every step.
 - Atlas plates `N01`, `N02`, `N05`, `N08`, `M01` and `Y02`: label overlaps and clipping fixed (channel and thermometer labels, caliper marker, legend and ramp readout, tilt control and phone layout, margin styling, weight axis labels).
 - Atlas replay decodes recorded step-index lists, preserves indices and uses sample positions
