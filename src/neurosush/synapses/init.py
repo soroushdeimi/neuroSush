@@ -117,7 +117,10 @@ class WeightInit(Behavior):
             (isinstance(mode, str) and mode not in ("uniform", "normal", "zeros", "ones"))
             or not isinstance(mode, (str, Number))
         ):
-            raise ValueError(f"mode must be uniform, normal, zeros, ones or a number, got {mode!r}")
+            raise ValueError(
+                "mode must be uniform, normal, zeros, ones or a number "
+                f"(pass explicit tensors with weights=), got {mode!r}"
+            )
         if weights is not None and (scale != 1.0 or offset != 0.0 or fn is not None):
             raise ValueError(
                 "explicit weights cannot be combined with scale, offset or fn, "

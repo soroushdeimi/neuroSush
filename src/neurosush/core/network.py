@@ -192,6 +192,8 @@ class Network:
 
     def run(self, steps: int) -> None:
         """Advance the network by the requested number of steps."""
+        if isinstance(steps, bool) or not isinstance(steps, int):
+            raise TypeError(f"steps must be an integer number of time steps, got {steps!r}")
         if steps < 0:
             raise ValueError(f"steps must be non-negative, got {steps}")
         for _ in range(steps):
