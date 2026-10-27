@@ -132,10 +132,9 @@
 
     // Rate equations with removable singularities
     alpha_m(V) {
-      const num = 0.1 * (V + 40);
-      const den = 1 - Math.exp(-(V + 40) / 10);
-      if (Math.abs(den) < 1e-7) return 1.0;
-      return num / den;
+      const u = (V + 40) / 10;
+      if (Math.abs(u) < 1e-6) return 1 + 0.5 * u + (u ** 2) / 12;
+      return -u / Math.expm1(-u);
     },
     beta_m(V) {
       return 4 * Math.exp(-(V + 65) / 18);
@@ -147,10 +146,9 @@
       return 1 / (1 + Math.exp(-(V + 35) / 10));
     },
     alpha_n(V) {
-      const num = 0.01 * (V + 55);
-      const den = 1 - Math.exp(-(V + 55) / 10);
-      if (Math.abs(den) < 1e-7) return 0.1;
-      return num / den;
+      const u = (V + 55) / 10;
+      if (Math.abs(u) < 1e-6) return 0.1 * (1 + 0.5 * u + (u ** 2) / 12);
+      return 0.1 * (-u / Math.expm1(-u));
     },
     beta_n(V) {
       return 0.125 * Math.exp(-(V + 65) / 80);
