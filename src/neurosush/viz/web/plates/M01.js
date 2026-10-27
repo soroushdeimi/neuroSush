@@ -226,7 +226,7 @@
       styleEl.id = 'm01-css';
       styleEl.textContent = `
         .m01-wrap { display: grid; grid-template-columns: 238px minmax(0,1fr); gap: 10px; width: 100%; height: 100%; min-height: 0; }
-        .m01-margin { font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-muted, #57534e);
+        .m01-margin { display: flex; flex-direction: column; gap: 12px; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-muted, #57534e);
            border-inline-end: 1px solid var(--border, #d6cfbf); padding-inline-end: 8px; overflow-y: auto; min-height: 0; }
         .m01-margin.m01-margin--host { border-inline-end: none; padding-inline-end: 0; }
         .m01-margin::-webkit-scrollbar { width: 6px; }
@@ -265,7 +265,7 @@
           .m01-stage { order: 1; flex: none; }
           .m01-wrap .m01-canvasbox { aspect-ratio: 620 / 380; min-height: 150px; height: auto; }
           .m01-margin { order: 2; flex: none; border-inline-end: none; border-top: 1px solid var(--border, #d6cfbf);
-            padding: 6px 0 0; max-height: 150px; overflow-y: auto; }
+            padding: 12px 0 0; }
           .m01-btn { font-size: 11.5px; padding: 3px 7px; }
           .m01-chapname { font-size: 12.5px; }
           .m01-cap { font-size: 12px; }
@@ -327,46 +327,68 @@
 
     // margin: equations with hoverable terms, live values, glossary, honest footer
     marginEl.innerHTML = `
-      <div class="m01-sec">
-        <div class="m01-lab">${S.eqTitle}</div>
-        <div class="m01-eq">dy/dt = <span class="m01-term" data-term="tau">&minus;y/&tau;</span></div>
-        <div class="m01-eq"><span class="m01-f">${S.eqEuler}</span> y<sub>k+1</sub> =
-          (<span class="m01-term" data-term="dt">dt</span>/&tau;) &middot;
-          <span class="m01-term" data-term="factor">(1 &minus; dt/&tau;)</span> &middot; y<sub>k</sub> =
-          <span class="m01-v" id="m01-vf">?</span> &middot; y<sub>k</sub></div>
-        <div class="m01-eq"><span class="m01-f">${S.eqExact}</span> y<sub>k+1</sub> =
-          <span class="m01-term" data-term="fix">e<sup>&minus;dt/&tau;</sup></span> &middot; y<sub>k</sub> =
-          <span class="m01-v" id="m01-vfe">?</span> &middot; y<sub>k</sub></div>
-        <div class="m01-eq"><span class="m01-term" data-term="staircase">staircase</span>:
-          y<sub>k</sub> = (1 &minus; dt/&tau;)<sup class="m01-term" data-term="k">k</sup> =
-          <span class="m01-v" id="m01-vpow">?</span></div>
-        <div class="m01-eq" id="m01-stair-exp" style="display:none"><span class="m01-f">e-fold</span>:
-          y<sub>k</sub> = e<sup>&minus;k&middot;dt/&tau;</sup> =
-          <span class="m01-v" id="m01-vexq">?</span></div>
-      </div>
-      <div class="m01-sec">
-        <div class="m01-lab">${S.liveTitle}</div>
-        <div class="m01-eq">
-          ${S.valDt}: <span class="m01-v" id="m01-vdt">?</span> ms<br>
-          ${S.valTau}: <span class="m01-v">${TA} ms</span><br>
-          ${S.valK}: <span class="m01-v" id="m01-vk">?</span><br>
-          ${S.valY}: <span class="m01-v" id="m01-vy">?</span><br>
-          ${S.valDiff}: <span class="m01-v" id="m01-vdiff">?</span><br>
-          ${S.valStable}: <span class="m01-v" id="m01-vstab">?</span>
+      <div class="atlas-margin-section">
+        <div class="atlas-margin-label">${S.eqTitle.toUpperCase()}</div>
+        <div class="atlas-equation-box atlas-mono">
+          <div style="margin-bottom:4px;">dy/dt = <span class="m01-term" data-term="tau" style="cursor:pointer; color:var(--volt);">&minus;y/&tau;</span></div>
+          <div style="margin-bottom:4px;"><span style="color:var(--ink-muted); font-family:var(--font-serif);">${S.eqEuler}</span> y<sub>k+1</sub> =
+            (<span class="m01-term" data-term="dt" style="cursor:pointer; color:var(--exc);">dt</span>/&tau;) &middot;
+            <span class="m01-term" data-term="factor" style="cursor:pointer; color:var(--volt);">(1 &minus; dt/&tau;)</span> &middot; y<sub>k</sub> =
+            <span class="atlas-margin-value" id="m01-vf" style="font-size:12px;">?</span> &middot; y<sub>k</sub></div>
+          <div style="margin-bottom:4px;"><span style="color:var(--ink-muted); font-family:var(--font-serif);">${S.eqExact}</span> y<sub>k+1</sub> =
+            <span class="m01-term" data-term="fix" style="cursor:pointer; color:var(--mod);">e<sup>&minus;dt/&tau;</sup></span> &middot; y<sub>k</sub> =
+            <span class="atlas-margin-value" id="m01-vfe" style="font-size:12px;">?</span> &middot; y<sub>k</sub></div>
+          <div><span class="m01-term" data-term="staircase" style="cursor:pointer; color:var(--volt);">staircase</span>:
+            y<sub>k</sub> = (1 &minus; dt/&tau;)<sup class="m01-term" data-term="k" style="cursor:pointer; color:var(--exc);">k</sup> =
+            <span class="atlas-margin-value" id="m01-vpow" style="font-size:12px;">?</span></div>
+          <div id="m01-stair-exp" style="display:none; margin-top:4px;"><span style="color:var(--ink-muted); font-family:var(--font-serif);">e-fold</span>:
+            y<sub>k</sub> = e<sup>&minus;k&middot;dt/&tau;</sup> =
+            <span class="atlas-margin-value" id="m01-vexq" style="font-size:12px;">?</span></div>
         </div>
       </div>
-      <div class="m01-sec">
-        <div class="m01-lab">${S.glossTitle}</div>
-        <div class="m01-glos">
-          <div class="m01-g"></div><div>${S.glosTau}</div>
-          <div class="m01-g"></div><div>${S.glosEuler}</div>
-          <div class="m01-g"></div><div>${S.glosGhost}</div>
-          <div class="m01-g"></div><div>${S.glosOrder}</div>
-          <div class="m01-g"></div><div>${S.glosStability}</div>
-          <div class="m01-g"></div><div>${S.glosExact}</div>
+      <div class="atlas-margin-section">
+        <div class="atlas-margin-label">${S.liveTitle.toUpperCase()}</div>
+        <div style="display:flex; flex-direction:column; gap:4px; font-family:var(--font-mono); font-size:11px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <span style="color:var(--ink-muted);">${S.valDt}:</span>
+            <span><b class="atlas-margin-value" id="m01-vdt" style="font-size:12px;">?</b> ms</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <span style="color:var(--ink-muted);">${S.valTau}:</span>
+            <span class="atlas-margin-value" style="font-size:12px;">${TA} ms</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <span style="color:var(--ink-muted);">${S.valK}:</span>
+            <span class="atlas-margin-value" id="m01-vk" style="font-size:12px;">?</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <span style="color:var(--ink-muted);">${S.valY}:</span>
+            <span class="atlas-margin-value" id="m01-vy" style="font-size:12px;">?</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <span style="color:var(--ink-muted);">${S.valDiff}:</span>
+            <span class="atlas-margin-value" id="m01-vdiff" style="font-size:12px;">?</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <span style="color:var(--ink-muted);">${S.valStable}:</span>
+            <span class="atlas-margin-value" id="m01-vstab" style="font-size:12px; font-weight:600;">?</span>
+          </div>
         </div>
       </div>
-      <div class="m01-sec"><div class="m01-hint">${S.footer}</div></div>
+      <div class="atlas-margin-section">
+        <div class="atlas-margin-label">${S.glossTitle.toUpperCase()}</div>
+        <div style="display:flex; flex-direction:column; gap:6px; font-size:11.5px; line-height:1.4;">
+          <div>${S.glosTau}</div>
+          <div>${S.glosEuler}</div>
+          <div>${S.glosGhost}</div>
+          <div>${S.glosOrder}</div>
+          <div>${S.glosStability}</div>
+          <div>${S.glosExact}</div>
+        </div>
+      </div>
+      <div class="atlas-margin-section">
+        <div class="m01-hint">${S.footer}</div>
+      </div>
     `;
 
     const vEls = {};

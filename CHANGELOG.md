@@ -6,6 +6,7 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Fixed
+- Atlas plates `N01`, `N02`, `N05`, `N08`, `M01` and `Y02`: label overlaps and clipping fixed (channel and thermometer labels, caliper marker, legend and ramp readout, tilt control and phone layout, margin styling, weight axis labels).
 - Atlas replay decodes recorded step-index lists, preserves indices and uses sample positions
   for playback and spike events; the demo reads neuron zero with the recorded neuron stride.
 - Atlas shell displays `meta.library` without a fallback version; HTML export rejects
@@ -13,7 +14,11 @@ All notable changes to neuroSush are documented here, following the
 - Schedule inspection reports Izhikevich voltage/recovery dependencies and the attributes
   selected by each TraceRecorder. README includes an executable visualization example.
 
+### Fixed
+- Atlas plate `N05` rate functions now use the library's Taylor expansion near the removable singularities instead of a constant.
+
 ### Added
+- Golden vectors now cover the Hodgkin-Huxley gate rates, steady states, time constants and `lif_rate`, and `tests/viz/js/golden.test.mjs` checks the plate cores against them with the same per-case tolerances.
 - Atlas plate `N03`: AdEx adaptation in the phase plane, a live figure with nullclines, spike-triggered adaptation and an inter-spike-interval ladder.
 - Atlas plate `N07`: conductance synapse tug of war, a live rope-and-teams figure with conductance-dependent forces and the effective time constant.
 - Atlas plate `Y02`: triplet STDP and frequency dependence, a live figure with fast and slow traces, pair versus triplet weight curves and the frequency sweep.

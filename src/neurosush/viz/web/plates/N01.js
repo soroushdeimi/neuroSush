@@ -375,6 +375,11 @@
     const figureContainer = ctx.figure || rootEl;
     const marginContainer = ctx.margin || document.getElementById('atlas-margin');
 
+    if (figureContainer && figureContainer.style) {
+      figureContainer.style.aspectRatio = 'auto';
+      figureContainer.style.height = (typeof window !== 'undefined' && window.innerWidth < 560) ? '480px' : '520px';
+    }
+
     // Simulation state
     const simParams = { ...DEFAULTS };
     const simState = createState(simParams);
@@ -655,16 +660,12 @@
           const out = step(simState, 0.1);
           traceHistory.push({ t: out.t, v: out.v, spiked: out.spiked });
         }
-        caliper1Time = 30.0;
-        caliper2Time = 70.0;
       } else if (currentChapter === 2) {
         titleEl.textContent = S.ch2_title;
         descEl.textContent = S.ch2_desc;
         predictBox.style.display = 'none';
         simParams.current = 2.0;
         fastForwardTrace(150);
-        caliper1Time = 30.0;
-        caliper2Time = 70.0;
       } else if (currentChapter === 3) {
         titleEl.textContent = S.ch3_title;
         descEl.textContent = S.ch3_desc;
@@ -829,20 +830,20 @@
         const bucketW = Math.min(230, cssW - 70);
         const bucketLeft = bucketCenterX - bucketW / 2;
         const bucketRight = bucketCenterX + bucketW / 2;
-        const bucketTopY = 36;
-        const bucketBottomY = 132;
+        const bucketTopY = 22;
+        const bucketBottomY = 82;
         const bucketH = bucketBottomY - bucketTopY;
         const faucetX = bucketCenterX;
-        const faucetY = 18;
+        const faucetY = 12;
         const dividerX = -999;
         const traceLeft = 32;
         const traceRight = cssW - 16;
-        const traceTop = 192;
-        const traceBottom = cssH - 18;
+        const traceTop = 128;
+        const traceBottom = cssH - 14;
         const fiLeft = 32;
         const fiRight = cssW - 16;
-        const fiTop = 192;
-        const fiBottom = cssH - 18;
+        const fiTop = 128;
+        const fiBottom = cssH - 14;
         return {
           isMobile,
           leftColW: cssW,
@@ -908,8 +909,10 @@
         return;
       }
 
-      // 3. Calipers on oscilloscope trace
-      if ((!L.isMobile || currentChapter !== 5) && pos.x >= L.traceLeft && pos.x <= L.traceRight && pos.y >= L.traceTop - 12 && pos.y <= L.traceBottom + 12) {
+      // 3. Calipers on oscilloscope trace (only when spiking is active)
+      const tThDown = theoryISI(simParams.current, simParams);
+      const showCalipersDown = Number.isFinite(tThDown) && tThDown > 0;
+      if (showCalipersDown && (!L.isMobile || currentChapter !== 5) && pos.x >= L.traceLeft && pos.x <= L.traceRight && pos.y >= L.traceTop - 12 && pos.y <= L.traceBottom + 12) {
         const c1X = L.traceLeft + (caliper1Time / MAX_TRACE_MS) * L.traceW;
         const c2X = L.traceLeft + (caliper2Time / MAX_TRACE_MS) * L.traceW;
         if (Math.abs(pos.x - c1X) < 14) {
@@ -956,13 +959,15 @@
       const thY = L.bucketBottomY - thFrac * L.bucketH;
       const c1X = L.traceLeft + (caliper1Time / MAX_TRACE_MS) * L.traceW;
       const c2X = L.traceLeft + (caliper2Time / MAX_TRACE_MS) * L.traceW;
+      const tThMove = theoryISI(simParams.current, simParams);
+      const showCalipersMove = Number.isFinite(tThMove) && tThMove > 0;
 
       if (!draggingHandle) {
         if (Math.hypot(pos.x - L.faucetX, pos.y - (L.faucetY - 22)) < 26) {
           canvas.style.cursor = 'grab';
         } else if (Math.abs(pos.x - (L.bucketRight + 8)) < 24 && Math.abs(pos.y - thY) < 18) {
           canvas.style.cursor = 'ns-resize';
-        } else if ((!L.isMobile || currentChapter !== 5) && (Math.abs(pos.x - c1X) < 14 || Math.abs(pos.x - c2X) < 14)) {
+        } else if (showCalipersMove && (!L.isMobile || currentChapter !== 5) && (Math.abs(pos.x - c1X) < 14 || Math.abs(pos.x - c2X) < 14)) {
           canvas.style.cursor = 'ew-resize';
         } else if ((!L.isMobile || currentChapter === 5) && pos.x >= L.fiLeft && pos.x <= L.fiRight && pos.y >= L.fiTop && pos.y <= L.fiBottom) {
           canvas.style.cursor = 'pointer';
@@ -1029,15 +1034,21 @@
     canvas.addEventListener('pointercancel', stopDragging);
 
     // ---- 60 FPS Simulation & Draw Loop ----
-    let lastTimestamp = performance.now();
+    let lastTimestamp = 0;
     let simSubstepAccumulator = 0;
     let wavePhase = 0;
 
     function renderFrame(now) {
       if (!now) now = performance.now();
-      const dtReal = Math.min(64, now - lastTimestamp);
+      const dtReal = lastTimestamp === 0 ? 16 : Math.min(64, now - lastTimestamp);
       if (dtReal < 2) return;
       lastTimestamp = now;
+
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const cssW = Math.round(rect.width || 860);
+      const cssH = Math.round(rect.height || 520);
+      const L = getLayout(cssW, cssH);
 
       // Advance simulation
       simSubstepAccumulator += dtReal;
@@ -1058,8 +1069,8 @@
           spikePulse = { progress: 0 };
           splashRipple = 1.0;
           refractoryLidAnim = 1.0;
-          droplets.addSplash(bucketRight + 4, bucketTopY + 14, 16, 1); // Water spill cascade from rim
-          droplets.addSplash(bucketCenterX, bucketBottomY - 10, 10, 0); // Reset splash inside bucket
+          droplets.addSplash(L.bucketRight + 4, L.bucketTopY + 14, 16, 1); // Water spill cascade from rim
+          droplets.addSplash(L.bucketCenterX, L.bucketBottomY - 10, 10, 0); // Reset splash inside bucket
         }
       }
 
@@ -1124,10 +1135,6 @@
       }
 
       // ---- Drawing onto Canvas ----
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const cssW = Math.round(rect.width || 860);
-      const cssH = Math.round(rect.height || 520);
       if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
         canvas.width = Math.round(cssW * dpr);
         canvas.height = Math.round(cssH * dpr);
@@ -1137,12 +1144,6 @@
 
       const colors = ctx.colors();
       c2d.clearRect(0, 0, cssW, cssH);
-
-      // Background paper card
-      c2d.fillStyle = colors.paper;
-      c2d.fillRect(0, 0, cssW, cssH);
-
-      const L = getLayout(cssW, cssH);
 
       // Background paper card
       c2d.fillStyle = colors.paper;
@@ -1429,8 +1430,8 @@
 
       c2d.restore(); // End bucket tipping transform
 
-      const basinOffset = L.isMobile ? 8 : 24;
-      const leakTextOffset = L.isMobile ? 24 : 52;
+      const basinOffset = L.isMobile ? 7 : 24;
+      const leakTextOffset = L.isMobile ? 18 : 52;
       const hintOffset = L.isMobile ? 36 : 68;
 
       // Catch Basin below bucket for passive leak
@@ -1493,7 +1494,7 @@
         c2d.fillText(`v = ${simState.v.toFixed(1)} mV`, traceRight, traceTop - 10);
 
         // Horizontal Voltage Reference Grids
-        const gridVs = [-75, -70, -40, 0, 20];
+        const gridVs = L.isMobile ? [-70, -40, 20] : [-75, -70, -40, 0, 20];
         for (const gv of gridVs) {
           const gy = vToY(gv);
           c2d.strokeStyle = colors.border;
@@ -1599,43 +1600,45 @@
           c2d.restore();
         }
 
-        // Draggable ISI Calipers on Trace
-        const c1X = traceLeft + (caliper1Time / MAX_TRACE_MS) * traceW;
-        const c2X = traceLeft + (caliper2Time / MAX_TRACE_MS) * traceW;
-        const minCX = Math.min(c1X, c2X);
-        const maxCX = Math.max(c1X, c2X);
-        const dtCaliper = Math.abs(caliper2Time - caliper1Time);
-        const fCaliper = dtCaliper > 0 ? (1000.0 / dtCaliper).toFixed(1) : '0';
+        // Draggable ISI Calipers on Trace (only shown when neuron is actively spiking)
+        if (Number.isFinite(tTheory) && tTheory > 0) {
+          const c1X = traceLeft + (caliper1Time / MAX_TRACE_MS) * traceW;
+          const c2X = traceLeft + (caliper2Time / MAX_TRACE_MS) * traceW;
+          const minCX = Math.min(c1X, c2X);
+          const maxCX = Math.max(c1X, c2X);
+          const dtCaliper = Math.abs(caliper2Time - caliper1Time);
+          const fCaliper = dtCaliper > 0 ? (1000.0 / dtCaliper).toFixed(1) : '0';
 
-        // Caliper vertical needle lines
-        c2d.strokeStyle = colors.trace;
-        c2d.lineWidth = 1.5;
-        c2d.setLineDash([3, 2]);
-        c2d.beginPath();
-        c2d.moveTo(c1X, traceTop);
-        c2d.lineTo(c1X, traceBottom);
-        c2d.moveTo(c2X, traceTop);
-        c2d.lineTo(c2X, traceBottom);
-        c2d.stroke();
-        c2d.setLineDash([]);
+          // Caliper vertical needle lines
+          c2d.strokeStyle = colors.trace;
+          c2d.lineWidth = 1.5;
+          c2d.setLineDash([3, 2]);
+          c2d.beginPath();
+          c2d.moveTo(c1X, traceTop);
+          c2d.lineTo(c1X, traceBottom);
+          c2d.moveTo(c2X, traceTop);
+          c2d.lineTo(c2X, traceBottom);
+          c2d.stroke();
+          c2d.setLineDash([]);
 
-        // Caliper horizontal dimension bar & handles
-        const rulerY = traceTop + 14;
-        c2d.strokeStyle = colors.trace;
-        c2d.lineWidth = 1.4;
-        c2d.beginPath();
-        c2d.moveTo(minCX, rulerY);
-        c2d.lineTo(maxCX, rulerY);
-        c2d.moveTo(minCX, rulerY - 5);
-        c2d.lineTo(minCX, rulerY + 5);
-        c2d.moveTo(maxCX, rulerY - 5);
-        c2d.lineTo(maxCX, rulerY + 5);
-        c2d.stroke();
+          // Caliper horizontal dimension bar & handles
+          const rulerY = traceTop + 14;
+          c2d.strokeStyle = colors.trace;
+          c2d.lineWidth = 1.4;
+          c2d.beginPath();
+          c2d.moveTo(minCX, rulerY);
+          c2d.lineTo(maxCX, rulerY);
+          c2d.moveTo(minCX, rulerY - 5);
+          c2d.lineTo(minCX, rulerY + 5);
+          c2d.moveTo(maxCX, rulerY - 5);
+          c2d.lineTo(maxCX, rulerY + 5);
+          c2d.stroke();
 
-        c2d.font = '600 10px var(--font-mono)';
-        c2d.fillStyle = colors.trace;
-        c2d.textAlign = 'center';
-        c2d.fillText(`Δt = ${dtCaliper.toFixed(1)} ms (${fCaliper} Hz)`, (minCX + maxCX) / 2, rulerY - 6);
+          c2d.font = '600 10px var(--font-mono)';
+          c2d.fillStyle = colors.trace;
+          c2d.textAlign = 'center';
+          c2d.fillText(`Δt = ${dtCaliper.toFixed(1)} ms (${fCaliper} Hz)`, (minCX + maxCX) / 2, rulerY - 6);
+        }
       }
 
       // =======================================================
@@ -1781,14 +1784,12 @@
 
     }
 
-    function animLoop() {
-      renderFrame(performance.now());
-    }
+    ctx.onFrame(() => renderFrame(performance.now()));
     requestAnimationFrame(function raf(now) {
       renderFrame(now);
       requestAnimationFrame(raf);
     });
-    setInterval(animLoop, 16);
+    renderFrame(performance.now());
   }
 
   if (typeof module !== 'undefined' && module.exports) {

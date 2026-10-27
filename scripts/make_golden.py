@@ -26,7 +26,13 @@ from neurosush.neurons.dynamics import (  # noqa: E402
     exponential_boost,
     izhikevich_terms,
     lif_derivative,
+    lif_rate,
     lif_terms,
+)
+from neurosush.neurons.hodgkin_huxley import (  # noqa: E402
+    gate_rates,
+    gate_steady_state,
+    gate_time_constant,
 )
 
 OUTPUT_PATH = REPO_ROOT / "tests" / "golden" / "equations.json"
@@ -318,14 +324,58 @@ def generate_golden() -> dict[str, Any]:
         factors = [(1.0 - p["dt"] / p["tau"]) ** k for k in range(11)]
         trace_decay_cases.append({"inputs": dict(p), "output": factors, "outputs": factors})
 
+    hh_voltages = sorted(
+        {
+            *V_GRID_STANDARD,
+            -100.0,
+            -55.0000001,
+            -54.9999999,
+            -40.0000001,
+            -39.9999999,
+            0.0,
+            40.0,
+        }
+    )
+    hh_v = _t(hh_voltages)
+    rates = gate_rates(hh_v)
+    hh_rates = {
+        f"{kind}_{gate}": getattr(getattr(rates, gate), kind).tolist()
+        for gate in ("m", "h", "n")
+        for kind in ("alpha", "beta")
+    }
+    steady = gate_steady_state(hh_v)
+    constants = gate_time_constant(hh_v)
+    hh_steady = {f"{gate}_inf": getattr(steady, gate).tolist() for gate in ("m", "h", "n")}
+    hh_constants = {f"tau_{gate}": getattr(constants, gate).tolist() for gate in ("m", "h", "n")}
+    rate_cases = []
+    for v_rest, v_reset, threshold, t_ref in [
+        (-70.0, -75.0, -40.0, 2.0),
+        (-65.0, -65.0, -50.0, 0.0),
+    ]:
+        for current in (0.0, (threshold - v_rest) / 10.0, 3.5, 7.0):
+            rate_inputs = {
+                "tau": 20.0,
+                "v_rest": v_rest,
+                "v_reset": v_reset,
+                "threshold": threshold,
+                "resistance": 10.0,
+                "current": current,
+                "t_ref": t_ref,
+            }
+            rate_cases.append({"inputs": rate_inputs, "output": lif_rate(**rate_inputs)})
+
     data: dict[str, Any] = {
         "adex_terms": adex_cases,
         "elif_terms": elif_cases,
         "euler_step": euler_cases,
         "exponential_boost": boost_cases,
         "generated_by": "scripts/make_golden.py",
+        "gate_rates": [{"inputs": {"v": hh_voltages}, "outputs": hh_rates}],
+        "gate_steady_state": [{"inputs": {"v": hh_voltages}, "outputs": hh_steady}],
+        "gate_time_constant": [{"inputs": {"v": hh_voltages}, "outputs": hh_constants}],
         "izhikevich_terms": izh_cases,
         "lif_derivative": deriv_cases,
+        "lif_rate": rate_cases,
         "lif_terms": lif_cases,
         "trace_decay": trace_decay_cases,
     }

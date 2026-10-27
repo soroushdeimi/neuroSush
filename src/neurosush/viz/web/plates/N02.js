@@ -352,9 +352,12 @@ S.reset}
 480);
  const c = canvas.getContext('2d');
 
-    figure.style.minHeight = '420px';
- canvas.style.width = '100%';
- canvas.style.height = '420px';
+    figure.style.setProperty('aspect-ratio', 'auto', 'important');
+    figure.style.setProperty('height', '420px', 'important');
+    figure.style.setProperty('min-height', '420px', 'important');
+    figure.style.setProperty('max-height', 'none', 'important');
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
  canvas.setAttribute('aria-label',
 'Interactive potential well and phase line. Drag the amber tilt handle or click the landscape to poke the ball.');
 
@@ -379,51 +382,47 @@ ch[1]}
 `;
  el('n02-prev').disabled = state.chapter === 1;
  el('n02-next').disabled = state.chapter === 5;
- if (state.chapter === 5) state.lif = true;
- resetBall();
- }
+      if (state.chapter === 5) state.lif = true;
+      resetBall();
+      draw();
+    }
 
     function resetBall() {
- const roots = fixedPoints(state.current,
-state.p);
- state.v = roots[0] ? roots[0].v - 1.5 : state.p.theta_rh - 4;
- state.history = [];
- }
+      const roots = fixedPoints(state.current, state.p);
+      state.v = roots[0] ? roots[0].v - 1.5 : state.p.theta_rh - 4;
+      state.history = [];
+    }
 
     function setCurrent(frac) {
- state.current = Math.max(0,
-Math.min(1.25,
-frac)) * rheobase(state.p);
- el('n02-current').value = Math.max(0,
-Math.min(1.25,
-frac));
- resetBall();
- }
+      state.current = Math.max(0, Math.min(1.25, frac)) * rheobase(state.p);
+      el('n02-current').value = Math.max(0, Math.min(1.25, frac));
+      resetBall();
+      draw();
+    }
 
     el('n02-current').oninput = (e) => setCurrent(Number(e.target.value));
- el('n02-play').onclick = () => {
- state.running = !state.running;
- el('n02-play').textContent = state.running ? S.pause : S.play;
- }
-;
+    el('n02-play').onclick = () => {
+      state.running = !state.running;
+      el('n02-play').textContent = state.running ? S.pause : S.play;
+      draw();
+    };
 
     el('n02-kick').onclick = () => {
- state.v += 1.8;
- state.flash = 18;
- }
-;
- el('n02-reset').onclick = resetBall;
- el('n02-theory').onclick = () => {
- state.theory = !state.theory;
- el('n02-theory').classList.toggle('active',
-state.theory);
- }
-;
- el('n02-lif').onclick = () => {
- state.lif = !state.lif;
- el('n02-lif').classList.toggle('active',
-state.lif);
- }
+      state.v += 1.8;
+      state.flash = 18;
+      draw();
+    };
+    el('n02-reset').onclick = () => { resetBall(); draw(); };
+    el('n02-theory').onclick = () => {
+      state.theory = !state.theory;
+      el('n02-theory').classList.toggle('active', state.theory);
+      draw();
+    };
+    el('n02-lif').onclick = () => {
+      state.lif = !state.lif;
+      el('n02-lif').classList.toggle('active', state.lif);
+      draw();
+    };
 ;
 
     el('n02-prev').onclick = () => setChapter(state.chapter - 1);
@@ -453,226 +452,313 @@ figure);
  }
 ));
  el('n02-commit').onclick = () => {
- state.revealed = true;
- el('n02-reveal').style.display = 'inline';
- el('n02-reveal').textContent = (state.answer === 'stay' ? ' ✓ ' : ' — ') + S.reveal;
- state.theory = true;
- }
-;
+      state.revealed = true;
+      el('n02-reveal').style.display = 'inline';
+      el('n02-reveal').textContent = (state.answer === 'stay' ? ' ✓ ' : ' — ') + S.reveal;
+      state.theory = true;
+      draw();
+    };
 
     function pointer(e) {
- const r = canvas.getBoundingClientRect();
- return {
- x: (e.clientX - r.left) * canvas.width / r.width,
-y: (e.clientY - r.top) * canvas.height / r.height }
-;
- }
+      const r = canvas.getBoundingClientRect();
+      const dpr = devicePixelRatio || 1;
+      return {
+        x: (e.clientX - r.left) * (canvas.width / dpr) / r.width,
+        y: (e.clientY - r.top) * (canvas.height / dpr) / r.height
+      };
+    }
 
-    canvas.addEventListener('pointerdown',
-(e) => {
- const p = pointer(e);
- if (p.x > canvas.width * .72) {
- state.drag = true;
- canvas.setPointerCapture(e.pointerId);
- }
- else {
- state.v = xToV(p.x,
-canvas.width);
- state.flash = 12;
- }
- }
-);
- canvas.addEventListener('pointermove',
-(e) => {
- if (state.drag) setCurrent(1.25 * (1 - pointer(e).y / canvas.height));
- }
-);
- canvas.addEventListener('pointerup',
-() => {
- state.drag = false;
- }
-);
+    let currentLayout = {
+      isMobile: false,
+      landX0: 18,
+      landW: 400,
+      splitY: 265,
+      sliderTrackX: 800,
+      sliderTop: 60,
+      sliderBottom: 370,
+      sliderH: 310
+    };
 
-    window.addEventListener('keydown',
-(e) => {
- if (e.target.tagName === 'INPUT') return;
- if (e.key === ' ') {
- e.preventDefault();
- el('n02-play').click();
- }
- if (e.key.toLowerCase() === 't') el('n02-theory').click();
- if (e.key === 'ArrowRight') setChapter(state.chapter + 1);
- if (e.key === 'ArrowLeft') setChapter(state.chapter - 1);
- }
-);
+    function updateSlider(y) {
+      const lay = currentLayout;
+      const frac = Math.max(0, Math.min(1, (lay.sliderBottom - y) / lay.sliderH));
+      setCurrent(frac * 1.25);
+    }
 
-    function vToX(v,
-w) {
- return (v + 92) / 52 * w * .68 + w * .05;
- }
- function xToV(x,
-w) {
- return ((x - w * .05) / (w * .68)) * 52 - 92;
- }
+    canvas.addEventListener('pointerdown', (e) => {
+      const p = pointer(e);
+      const lay = currentLayout;
+      if (p.x >= lay.sliderTrackX - 35) {
+        state.drag = true;
+        canvas.setPointerCapture(e.pointerId);
+        updateSlider(p.y);
+      } else if (!lay.isMobile || p.y < lay.splitY) {
+        if (p.x >= lay.landX0 && p.x <= lay.landX0 + lay.landW) {
+          state.v = ((p.x - lay.landX0 - 4) / (lay.landW - 8)) * 52 - 92;
+          state.flash = 12;
+        }
+      }
+    });
 
-    function line(x1,y1,x2,y2,style,dash) {
- c.save();
- c.strokeStyle=style;
- c.lineWidth=1.25;
- c.setLineDash(dash||[]);
- c.beginPath();
-c.moveTo(x1,y1);
-c.lineTo(x2,y2);
-c.stroke();
-c.restore();
- }
+    canvas.addEventListener('pointermove', (e) => {
+      if (state.drag) updateSlider(pointer(e).y);
+    });
 
-    function text(t,x,y,style,align) {
- c.fillStyle=style;
- c.font='12px ui-monospace,monospace';
- c.textAlign=align||'left';
- c.fillText(t,x,y);
- }
+    canvas.addEventListener('pointerup', () => {
+      state.drag = false;
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      if (e.key === ' ') {
+        e.preventDefault();
+        el('n02-play').click();
+      }
+      if (e.key.toLowerCase() === 't') el('n02-theory').click();
+      if (e.key === 'ArrowRight') setChapter(state.chapter + 1);
+      if (e.key === 'ArrowLeft') setChapter(state.chapter - 1);
+    });
+
+    function line(x1, y1, x2, y2, style, dash) {
+      c.save();
+      c.strokeStyle = style;
+      c.lineWidth = 1.25;
+      c.setLineDash(dash || []);
+      c.beginPath();
+      c.moveTo(x1, y1);
+      c.lineTo(x2, y2);
+      c.stroke();
+      c.restore();
+    }
+
+    function text(t, x, y, style, align) {
+      c.fillStyle = style;
+      c.font = '12px ui-monospace,monospace';
+      c.textAlign = align || 'left';
+      c.fillText(t, x, y);
+    }
 
     function draw() {
-
       const dpr = devicePixelRatio || 1,
-rect = canvas.getBoundingClientRect(),
-w = Math.max(300,
-Math.round(rect.width*dpr)),
-h = Math.round(rect.height*dpr);
- if (canvas.width !== w || canvas.height !== h) {
- canvas.width=w;
- canvas.height=h;
- }
- c.setTransform(dpr,0,0,dpr,0,0);
- const W=w/dpr,H=h/dpr,
-co=colors();
- c.fillStyle=co.paper;
-c.fillRect(0,0,W,H);
+        rect = canvas.getBoundingClientRect(),
+        W = Math.max(300, Math.round(rect.width)),
+        isMobile = W < 620,
+        targetH = 420;
 
-      const leftW=W*.70,
-top=32,
-bottom=H-58,
-current=state.current,
-rh=rheobase(state.p),
-roots=fixedPoints(current,state.p);
+      if (figure && figure.style) {
+        figure.style.setProperty('aspect-ratio', 'auto', 'important');
+        figure.style.setProperty('height', `${targetH}px`, 'important');
+        figure.style.setProperty('min-height', `${targetH}px`, 'important');
+        figure.style.setProperty('max-height', 'none', 'important');
+      }
+      canvas.style.height = `${targetH}px`;
 
-      const samples=[];
- let lo=Infinity,hi=-Infinity;
- for(let v=-92;
-v<=-40;
-v+=.25){
- const u=potential(v,current,state.p);
- samples.push([v,u]);
-lo=Math.min(lo,u);
-hi=Math.max(hi,u);
- }
- const yU=(u)=> bottom-(u-lo)/(hi-lo||1)*(bottom-top);
+      const w = Math.round(W * dpr),
+        h = Math.round(targetH * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const H = targetH,
+        co = colors(),
+        muted = co.muted || co.inkMuted || '#57534e',
+        border = co.border || '#d6cfbf',
+        paperCard = co.paperCard || (co.paper === '#15171a' ? '#1c2024' : '#eeeae0');
 
-      c.fillStyle=co.muted;
-text(S.landscape,18,18,co.muted);
- line(18,bottom,leftW,bottom,co.border);
- samples.forEach((a,i)=>{
-if(!i)c.beginPath();
-const x=vToX(a[0],W),y=yU(a[1]);
-if(!i)c.moveTo(x,y);
-else c.lineTo(x,y);
-}
-);
-c.strokeStyle=co.ink;
-c.lineWidth=2;
-c.stroke();
+      c.fillStyle = co.paper;
+      c.fillRect(0, 0, W, H);
 
-      roots.forEach((r)=>{
-const x=vToX(r.v,W),
-y=yU(potential(r.v,current,state.p));
- c.beginPath();
-c.arc(x,y,6,0,Math.PI*2);
-c.fillStyle=r.stable?co.exc:co.paper;
-c.fill();
-c.strokeStyle=co.ink;
-c.stroke();
-text(r.stable?S.stable:S.unstable,x,y-13,co.ink,'center');
- if(state.theory){
-c.save();
-c.setLineDash([4,4]);
-c.strokeStyle=co.theory;
-c.beginPath();
-c.arc(x,y,11,0,Math.PI*2);
-c.stroke();
-c.restore();
-}
-}
-);
+      const current = state.current,
+        rh = rheobase(state.p),
+        roots = fixedPoints(current, state.p);
 
-      const ballX=vToX(state.v,W),
-ballY=yU(potential(Math.max(-92,Math.min(-40,state.v)),current,state.p));
- c.beginPath();
-c.arc(ballX,ballY,10+(state.flash?2:0),0,Math.PI*2);
-c.fillStyle=co.volt;
-c.fill();
-c.strokeStyle=co.ink;
-c.stroke();
- text('V = '+state.v.toFixed(2)+' mV',ballX,ballY+28,co.ink,'center');
+      let landX0, landW, landTop, landBottom;
+      let hx, hy, pw, ph;
+      let sliderTrackX, sliderTop, sliderBottom, sliderH, handleY;
+      const splitY = 220;
 
-      const hx=leftW+36,
-hy=52,
-pw=W-leftW-50,
-ph=H-125;
- text(S.phase,hx,18,co.muted);
- line(hx,hy+ph/2,hx+pw,hy+ph/2,co.border);
- line(hx+pw*.2,hy,hx+pw*.2,hy+ph,co.border);
- for(let v=-90;
-v<=-40;
-v+=.5){
-const x=hx+(v+92)/52*pw;
-const y=hy+ph/2-derivative(v,current,state.p)*18;
- if(v===-90)c.beginPath(),c.moveTo(x,y);
-else c.lineTo(x,y);
-}
- c.strokeStyle=co.trace;
-c.lineWidth=1.5;
-c.stroke();
- roots.forEach(r=>{
-const x=hx+(r.v+92)/52*pw,
-y=hy+ph/2;
-c.beginPath();
-c.arc(x,y,5,0,Math.PI*2);
-c.fillStyle=r.stable?co.exc:co.paper;
-c.fill();
-c.strokeStyle=co.ink;
-c.stroke();
-}
-);
- text('dv/dt',hx+2,hy+12,co.trace);
- text('v (mV)',hx+pw,hy+ph+18,co.muted,'right');
+      if (isMobile) {
+        landX0 = 18;
+        landW = W - 36;
+        landTop = 28;
+        landBottom = 195;
+        line(18, splitY - 5, W - 18, splitY - 5, border);
 
-      const handleY=H-45-(current/(rh*1.25))*(H-110);
- line(W-24,H-45,W-24,65,co.border);
- c.fillStyle=co.volt;
-c.fillRect(W-32,handleY-5,16,10);
-text('drag tilt',W-12,handleY-8,co.volt,'right');
- text('I = '+current.toFixed(3)+' nA',W-12,H-22,co.volt,'right');
+        sliderTrackX = W - 48;
+        sliderTop = splitY + 28;
+        sliderBottom = H - 42;
+        sliderH = sliderBottom - sliderTop;
+        handleY = sliderBottom - (current / (rh * 1.25)) * sliderH;
 
-      if(state.lif){
-c.save();
-c.setLineDash([5,4]);
-c.strokeStyle=co.theory;
-c.beginPath();
-for(let v=-92;
-v<=-40;
-v+=.4){
-let x=vToX(v,W),
-y=bottom-(.5*(v-state.p.v_rest)**2-state.p.resistance*current*v-lo)/(hi-lo||1)*(bottom-top);
-if(v===-92)c.moveTo(x,y);
-else c.lineTo(x,y);
-}
-c.stroke();
-c.restore();
-text(S.lif,20,H-16,co.theory);
-}
- if(state.v>-43) text(S.spike,ballX,top+12,co.inh,'center');
+        hx = 18;
+        hy = splitY + 30;
+        pw = Math.max(160, sliderTrackX - 100 - hx);
+        ph = H - splitY - 80;
+      } else {
+        sliderTrackX = W - 52;
+        sliderTop = 60;
+        sliderBottom = H - 50;
+        sliderH = sliderBottom - sliderTop;
+        handleY = sliderBottom - (current / (rh * 1.25)) * sliderH;
+
+        pw = Math.min(235, Math.max(170, Math.round(W * 0.27)));
+        hx = sliderTrackX - 98 - pw;
+        hy = 52;
+        ph = H - 125;
+
+        landX0 = 18;
+        landW = hx - 42;
+        landTop = 32;
+        landBottom = H - 58;
+      }
+
+      currentLayout = {
+        isMobile,
+        landX0,
+        landW,
+        splitY: isMobile ? splitY : H,
+        sliderTrackX,
+        sliderTop,
+        sliderBottom,
+        sliderH
+      };
+
+      function vToX(v) {
+        return landX0 + 4 + ((v + 92) / 52) * (landW - 8);
+      }
+
+      const samples = [];
+      let lo = Infinity, hi = -Infinity;
+      for (let v = -92; v <= -40; v += 0.25) {
+        const u = potential(v, current, state.p);
+        samples.push([v, u]);
+        lo = Math.min(lo, u);
+        hi = Math.max(hi, u);
+      }
+      const yU = (u) => landBottom - ((u - lo) / (hi - lo || 1)) * (landBottom - landTop);
+
+      text(S.landscape, landX0, 18, muted);
+      line(landX0, landBottom, landX0 + landW, landBottom, border);
+
+      samples.forEach((a, i) => {
+        if (!i) c.beginPath();
+        const x = vToX(a[0]), y = yU(a[1]);
+        if (!i) c.moveTo(x, y);
+        else c.lineTo(x, y);
+      });
+      c.strokeStyle = co.ink;
+      c.lineWidth = 2;
+      c.stroke();
+
+      const closeRoots = roots.length === 2 && (vToX(roots[1].v) - vToX(roots[0].v) < 65);
+      roots.forEach((r, idx) => {
+        const x = vToX(r.v);
+        const y = yU(potential(r.v, current, state.p));
+        c.beginPath();
+        c.arc(x, y, 6, 0, Math.PI * 2);
+        c.fillStyle = r.stable ? co.exc : co.paper;
+        c.fill();
+        c.strokeStyle = co.ink;
+        c.lineWidth = 1.25;
+        c.stroke();
+        const labelY = (closeRoots && idx === 1) ? y - 25 : y - 13;
+        text(r.merged ? 'saddle-node' : (r.stable ? S.stable : S.unstable), x, labelY, co.ink, 'center');
+        if (state.theory) {
+          c.save();
+          c.setLineDash([4, 4]);
+          c.strokeStyle = co.theory;
+          c.beginPath();
+          c.arc(x, y, 11, 0, Math.PI * 2);
+          c.stroke();
+          c.restore();
+        }
+      });
+
+      const ballClampedV = Math.max(-92, Math.min(-40, state.v));
+      const ballX = vToX(ballClampedV);
+      const ballY = yU(potential(ballClampedV, current, state.p));
+      c.beginPath();
+      c.arc(ballX, ballY, 10 + (state.flash ? 2 : 0), 0, Math.PI * 2);
+      c.fillStyle = co.volt;
+      c.fill();
+      c.strokeStyle = co.ink;
+      c.lineWidth = 1.5;
+      c.stroke();
+      text('V = ' + state.v.toFixed(2) + ' mV', ballX, ballY + 26, co.ink, 'center');
+
+      // Phase line inset card box
+      c.save();
+      c.fillStyle = paperCard;
+      c.strokeStyle = border;
+      c.lineWidth = 1;
+      c.beginPath();
+      if (typeof c.roundRect === 'function') {
+        c.roundRect(hx - 8, hy - 18, pw + 16, ph + 38, 4);
+      } else {
+        c.rect(hx - 8, hy - 18, pw + 16, ph + 38);
+      }
+      c.fill();
+      c.stroke();
+      c.restore();
+
+      text(S.phase, hx, hy - 4, muted);
+      line(hx, hy + ph / 2, hx + pw, hy + ph / 2, border);
+      line(hx + pw * 0.2, hy, hx + pw * 0.2, hy + ph, border);
+
+      c.save();
+      c.beginPath();
+      c.rect(hx - 1, hy - 1, pw + 2, ph + 2);
+      c.clip();
+      for (let v = -90; v <= -40; v += 0.5) {
+        const x = hx + ((v + 92) / 52) * pw;
+        const y = hy + ph / 2 - derivative(v, current, state.p) * 18;
+        if (v === -90) { c.beginPath(); c.moveTo(x, y); }
+        else c.lineTo(x, y);
+      }
+      c.strokeStyle = co.trace;
+      c.lineWidth = 1.5;
+      c.stroke();
+
+      roots.forEach((r) => {
+        const x = hx + ((r.v + 92) / 52) * pw;
+        const y = hy + ph / 2;
+        c.beginPath();
+        c.arc(x, y, 5, 0, Math.PI * 2);
+        c.fillStyle = r.stable ? co.exc : co.paper;
+        c.fill();
+        c.strokeStyle = co.ink;
+        c.lineWidth = 1.25;
+        c.stroke();
+      });
+      c.restore();
+
+      text('dv/dt', hx + 4, hy + 12, co.trace);
+      text('v (mV)', hx + pw - 2, hy + ph + 14, muted, 'right');
+
+      // Tilt slider
+      line(sliderTrackX, sliderTop, sliderTrackX, sliderBottom, border);
+      c.fillStyle = co.volt;
+      c.fillRect(sliderTrackX - 8, handleY - 5, 16, 10);
+      text('drag tilt', sliderTrackX - 12, handleY + 4, co.volt, 'right');
+      text('I = ' + current.toFixed(3) + ' nA', sliderTrackX, sliderBottom + 20, co.volt, 'center');
+
+      if (state.lif) {
+        c.save();
+        c.setLineDash([5, 4]);
+        c.strokeStyle = co.theory;
+        c.beginPath();
+        for (let v = -92; v <= -40; v += 0.4) {
+          const x = vToX(v);
+          const y = landBottom - ((0.5 * (v - state.p.v_rest) ** 2 - state.p.resistance * current * v - lo) / (hi - lo || 1)) * (landBottom - landTop);
+          if (v === -92) c.moveTo(x, y);
+          else c.lineTo(x, y);
+        }
+        c.stroke();
+        c.restore();
+        text(S.lif, landX0 + 4, landBottom - 8, co.theory);
+      }
+      if (state.v > -43) text(S.spike, ballX, landTop + 12, co.inh, 'center');
 
       const n=numerator(state.v,current,state.p),
 nearest=roots.length?Math.min(...roots.map(r=>Math.abs(r.v-state.v))):Infinity;
@@ -696,26 +782,38 @@ nearest.toFixed(4)}
 
     }
 
-    ctx.onFrame(() => {
- const now=performance.now(),
-elapsed=Math.min(35,now-state.last);
-state.last=now;
- if(state.running){
- const steps=Math.max(1,Math.round(elapsed/3));
- for(let i=0;
-i<steps;
-i++){
-const dv=state.lif?((state.p.v_rest-state.v)+state.p.resistance*state.current)/state.p.tau:derivative(state.v,state.current,state.p);
-state.v=Math.min(32,state.v+state.p.dt*dv);
-if(state.v>30)state.v=-40;
-}
- }
- state.flash=Math.max(0,state.flash-1);
-draw();
- }
-);
+    function loop() {
+      const now = performance.now(),
+        elapsed = Math.min(35, now - state.last);
+      state.last = now;
+      if (state.running) {
+        const steps = Math.max(1, Math.round(elapsed / 3));
+        for (let i = 0; i < steps; i++) {
+          const dv = state.lif
+            ? ((state.p.v_rest - state.v) + state.p.resistance * state.current) / state.p.tau
+            : derivative(state.v, state.current, state.p);
+          state.v = Math.min(32, state.v + state.p.dt * dv);
+          if (state.v > 30) state.v = -40;
+        }
+      }
+      state.flash = Math.max(0, state.flash - 1);
+      draw();
+    }
+
+    if (typeof requestAnimationFrame === 'function') {
+      function raf() {
+        loop();
+        requestAnimationFrame(raf);
+      }
+      requestAnimationFrame(raf);
+    }
+    setInterval(loop, 16);
+    if (typeof ctx.onFrame === 'function') {
+      ctx.onFrame(loop);
+    }
 
     setChapter(1);
+    loop();
 
   }
 
