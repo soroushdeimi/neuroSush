@@ -1,7 +1,8 @@
-"""Generate deterministic golden vectors for neuroSush Atlas equations.
+"""Generate numerical golden vectors for neuroSush Atlas equations.
 
-Outputs tests/golden/equations.json with sorted keys and no timestamps, so regeneration
-is byte-identical.
+Outputs have 14 significant digits (13 for explosive exponential cases), sorted
+keys and no timestamps. Cross-platform agreement is numerical, not byte-for-byte:
+rounding cannot guarantee identical text at a decimal rounding boundary.
 """
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import torch
 
@@ -41,14 +42,14 @@ def _t(values: list[float]) -> torch.Tensor:
 def generate_golden() -> dict[str, Any]:
     """Generate golden test cases for all neuron dynamics equations and primitives.
 
-    All computations are performed in float64 for exact precision.
+    Computations use float64; output rounding and tolerances are defined by case_tolerance.
 
     Returns:
         Dictionary of golden equation cases with a 'generated_by' note.
     """
     # 1. lif_terms
     lif_cases = []
-    lif_params = [
+    lif_params: list[dict[str, Any]] = [
         {
             "v": V_GRID_STANDARD,
             "current": 0.0,
@@ -84,13 +85,13 @@ def generate_golden() -> dict[str, Any]:
             tau=p["tau"],
             dt=p["dt"],
         )
-        total = sum(terms.values()).tolist()
+        total = cast(torch.Tensor, sum(terms.values())).tolist()
         outputs = {k: v.tolist() for k, v in terms.items()}
         lif_cases.append({"inputs": dict(p), "outputs": outputs, "total": total})
 
     # 2. elif_terms
     elif_cases = []
-    elif_params = [
+    elif_params: list[dict[str, Any]] = [
         {
             "v": V_GRID_STANDARD,
             "current": 0.0,
@@ -154,13 +155,13 @@ def generate_golden() -> dict[str, Any]:
             tau=p["tau"],
             dt=p["dt"],
         )
-        total = sum(terms.values()).tolist()
+        total = cast(torch.Tensor, sum(terms.values())).tolist()
         outputs = {k: v.tolist() for k, v in terms.items()}
         elif_cases.append({"inputs": dict(p), "outputs": outputs, "total": total})
 
     # 3. adex_terms
     adex_cases = []
-    adex_params = [
+    adex_params: list[dict[str, Any]] = [
         {
             "v": V_GRID_STANDARD,
             "current": 0.0,
@@ -230,13 +231,13 @@ def generate_golden() -> dict[str, Any]:
             tau=p["tau"],
             dt=p["dt"],
         )
-        total = sum(terms.values()).tolist()
+        total = cast(torch.Tensor, sum(terms.values())).tolist()
         outputs = {k: v.tolist() for k, v in terms.items()}
         adex_cases.append({"inputs": dict(p), "outputs": outputs, "total": total})
 
     # 4. izhikevich_terms
     izh_cases = []
-    izh_params = [
+    izh_params: list[dict[str, Any]] = [
         {"v": V_GRID_STANDARD, "u": -13.0, "current": 0.0, "dt": 1.0, "substeps": 2},
         {"v": V_GRID_STANDARD, "u": -13.0, "current": 10.0, "dt": 1.0, "substeps": 2},
         {"v": V_GRID_STANDARD, "u": -10.0, "current": 5.0, "dt": 0.5, "substeps": 2},
@@ -252,13 +253,13 @@ def generate_golden() -> dict[str, Any]:
             dt=p["dt"],
             substeps=p["substeps"],
         )
-        total = sum(terms.values()).tolist()
+        total = cast(torch.Tensor, sum(terms.values())).tolist()
         outputs = {k: v.tolist() for k, v in terms.items()}
         izh_cases.append({"inputs": dict(p), "outputs": outputs, "total": total})
 
     # 5. lif_derivative
     deriv_cases = []
-    deriv_params = [
+    deriv_params: list[dict[str, Any]] = [
         {"v": V_GRID_STANDARD, "current": 0.0, "v_rest": -65.0, "resistance": 1.0},
         {"v": V_GRID_STANDARD, "current": 2.0, "v_rest": -65.0, "resistance": 1.0},
         {"v": V_GRID_STANDARD, "current": 10.0, "v_rest": -70.0, "resistance": 2.0},
@@ -271,7 +272,7 @@ def generate_golden() -> dict[str, Any]:
 
     # 6. exponential_boost
     boost_cases = []
-    boost_params = [
+    boost_params: list[dict[str, Any]] = [
         {"v": V_GRID_STANDARD, "delta": 2.0, "theta_rh": -50.0},
         {"v": V_GRID_THRESHOLD, "delta": 2.0, "theta_rh": -50.0},
         {"v": V_GRID_STANDARD, "delta": 1.0, "theta_rh": -55.0},
@@ -284,7 +285,7 @@ def generate_golden() -> dict[str, Any]:
 
     # 7. euler_step
     euler_cases = []
-    euler_params = [
+    euler_params: list[dict[str, Any]] = [
         {
             "v": V_GRID_STANDARD,
             "tau_dv_dt": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
@@ -307,7 +308,7 @@ def generate_golden() -> dict[str, Any]:
 
     # 8. trace_decay
     trace_decay_cases = []
-    decay_params = [
+    decay_params: list[dict[str, Any]] = [
         {"dt": 1.0, "tau": 20.0},
         {"dt": 0.5, "tau": 10.0},
         {"dt": 2.0, "tau": 100.0},
@@ -317,7 +318,7 @@ def generate_golden() -> dict[str, Any]:
         factors = [(1.0 - p["dt"] / p["tau"]) ** k for k in range(11)]
         trace_decay_cases.append({"inputs": dict(p), "output": factors, "outputs": factors})
 
-    return {
+    data: dict[str, Any] = {
         "adex_terms": adex_cases,
         "elif_terms": elif_cases,
         "euler_step": euler_cases,
@@ -328,12 +329,62 @@ def generate_golden() -> dict[str, Any]:
         "lif_terms": lif_cases,
         "trace_decay": trace_decay_cases,
     }
+    for name, cases in data.items():
+        if name == "generated_by":
+            continue
+        for case in cases:
+            tolerance = case_tolerance(case["inputs"])
+            case["tolerance"] = tolerance
+            for key in case.keys() - {"inputs", "tolerance"}:
+                case[key] = _round_output(case[key], tolerance["significant_digits"])
+    return data
+
+
+def case_tolerance(inputs: dict[str, Any]) -> dict[str, Any]:
+    """Choose the numerical contract from the exponential argument of a case.
+
+    Stable cases allow 1e-12 relative error, about 4500 float64 epsilons, for
+    kernel differences and 14-digit rounding (at most 5e-14 relative error).
+    Arguments >= 20 produce exp(20)..exp(25) in this grid, reaching billions
+    before reset. They get a tenfold guard, 1e-11, and 13 digits (at most 5e-13
+    relative rounding error). A one-ULP difference there is about 1e-6 absolute,
+    but still about 2e-16 relative. Neither budget admits 1e-6 relative drift.
+    The 1e-14 absolute floor covers cancellation near zero, not large values.
+
+    Args:
+        inputs: Unrounded equation inputs, including optional exponential parameters.
+
+    Returns:
+        Relative/absolute tolerances and output precision to store beside the case.
+    """
+    explosive = (
+        "delta" in inputs
+        and max((v - inputs["theta_rh"]) / inputs["delta"] for v in inputs["v"]) >= 20.0
+    )
+    return {
+        "rel": 1e-11 if explosive else 1e-12,
+        "abs": 1e-14,
+        "significant_digits": 13 if explosive else 14,
+    }
+
+
+def _round_output(value: Any, digits: int) -> Any:
+    if isinstance(value, dict):
+        return {key: _round_output(item, digits) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_round_output(item, digits) for item in value]
+    return float(format(value, f".{digits}g"))
 
 
 build_golden = generate_golden
 
 
 def main() -> None:
+    """Write the rounded numerical contract to OUTPUT_PATH.
+
+    Returns:
+        None.
+    """
     data = generate_golden()
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     serialized = json.dumps(data, indent=2, sort_keys=True) + "\n"
