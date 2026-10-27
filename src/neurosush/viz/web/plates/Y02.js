@@ -353,48 +353,53 @@
     // Story Chapter Banner
     const banner = document.createElement('section');
     banner.className = 'y02-banner';
-    banner.style.cssText = 'border:1px solid var(--border); background:var(--paper-card); padding:8px 12px; border-radius:3px; font-size:13px; display:grid; gap:4px;';
+    banner.style.cssText = 'border:1px solid var(--border); background:var(--paper-card); padding:8px 12px; border-radius:3px; font-size:13px; display:flex; flex-direction:column; gap:5px; margin-bottom:6px;';
     banner.innerHTML = `
       <div style="display:flex; justify-content:space-between; gap:8px; align-items:center; flex-wrap:wrap;">
-        <span class="atlas-mono" id="y02-index" style="font-weight:600; color:var(--volt);">${S.chapter} 1 ${S.of} 5</span>
-        <b id="y02-ct" style="font-family:var(--font-serif); font-size:14px;">${S.ch1t}</b>
-        <span>
-          <button class="atlas-btn" id="y02-prev">${S.prev}</button>
-          <button class="atlas-btn" id="y02-next">${S.next}</button>
-        </span>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span class="atlas-mono" id="y02-index" style="font-weight:600; font-size:11px; color:var(--volt);">${S.chapter} 1 ${S.of} 5</span>
+          <b id="y02-ct" style="font-family:var(--font-serif); font-size:13px;">${S.ch1t}</b>
+          <div id="y02-dots" style="display:flex; gap:2px;"></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+          <button class="atlas-btn" id="y02-prev" disabled style="padding:4px 9px; font-size:11px; min-height:28px;">${S.prev}</button>
+          <button class="atlas-btn" id="y02-next" style="padding:4px 9px; font-size:11px; min-height:28px;">${S.next}</button>
+          <button class="atlas-btn" id="y02-btn-predict" style="padding:4px 9px; font-size:11px; min-height:28px;">Predict</button>
+        </div>
       </div>
-      <span id="y02-cb" style="color:var(--ink-muted); line-height:1.4;">${S.ch1b}</span>
+      <span id="y02-cb" style="color:var(--ink-muted); font-size:12px; line-height:1.4;">${S.ch1b}</span>
     `;
 
     // Predict-then-reveal Card
     const predictCard = document.createElement('section');
     predictCard.className = 'y02-predict';
-    predictCard.style.cssText = 'border:1px solid var(--border); background:var(--paper-inset); padding:8px 12px; border-radius:3px; font-size:12px; display:grid; gap:6px;';
+    predictCard.id = 'y02-predict-box';
+    predictCard.style.cssText = 'border:1px solid var(--border); background:var(--paper-inset); padding:8px 12px; border-radius:3px; font-size:12px; display:none; flex-direction:column; gap:6px; margin-bottom:6px;';
     predictCard.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
         <strong style="font-family:var(--font-serif); color:var(--ink);">${S.predictTitle}</strong>
-        <span style="color:var(--ink-muted);">${S.predictQuestion}</span>
+        <span style="color:var(--ink-muted); font-size:11px;">${S.predictQuestion}</span>
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-        <button class="atlas-btn" id="y02-more" style="border-color:var(--exc); color:var(--exc);">${S.btnMore}</button>
-        <button class="atlas-btn" id="y02-less" style="border-color:var(--inh); color:var(--inh);">${S.btnLess}</button>
-        <span id="y02-answer" style="margin-left:8px; font-weight:500;"></span>
+        <button class="atlas-btn" id="y02-more" style="border-color:var(--exc); color:var(--exc); padding:5px 10px; font-size:11px; min-height:28px;">${S.btnMore}</button>
+        <button class="atlas-btn" id="y02-less" style="border-color:var(--inh); color:var(--inh); padding:5px 10px; font-size:11px; min-height:28px;">${S.btnLess}</button>
+        <span id="y02-answer" style="margin-left:8px; font-weight:500; font-size:11px;"></span>
       </div>
     `;
 
     // Controls Bar
     const controls = document.createElement('section');
     controls.className = 'y02-controls';
-    controls.style.cssText = 'border:1px solid var(--border); background:var(--paper-card); padding:8px 12px; border-radius:3px; font-size:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:space-between;';
+    controls.style.cssText = 'border:1px solid var(--border); background:var(--paper-card); padding:6px 12px; border-radius:3px; font-size:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:space-between; margin-bottom:6px;';
     controls.innerHTML = `
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-        <button class="atlas-btn" id="y02-run" style="font-weight:600;">${S.run}</button>
-        <button class="atlas-btn" id="y02-reset">${S.reset}</button>
+        <button class="atlas-btn" id="y02-run" style="font-weight:600; padding:4px 10px; font-size:11px; min-height:28px;">${S.run}</button>
+        <button class="atlas-btn" id="y02-reset" style="padding:4px 10px; font-size:11px; min-height:28px;">${S.reset}</button>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
-        <label for="y02-slider" style="color:var(--ink-muted);">${S.dial}</label>
-        <input id="y02-slider" type="range" min="1" max="50" value="5" style="width:110px; cursor:pointer;">
-        <b class="atlas-mono" id="y02-freq" style="min-width:44px; color:var(--exc);">5 Hz</b>
+        <label for="y02-slider" style="color:var(--ink-muted); font-size:11px;">${S.dial}</label>
+        <input id="y02-slider" type="range" min="1" max="50" value="5" style="width:100px; cursor:pointer;">
+        <b class="atlas-mono" id="y02-freq" style="min-width:44px; color:var(--exc); font-size:11px;">5 Hz</b>
       </div>
     `;
 
@@ -405,19 +410,15 @@
     const section = host.parentElement || figure;
 
     host.style.setProperty('aspect-ratio', 'auto', 'important');
-    host.style.setProperty('height', '550px', 'important');
-    host.style.setProperty('min-height', '550px', 'important');
+    host.style.setProperty('height', '520px', 'important');
+    host.style.setProperty('min-height', '520px', 'important');
+    host.style.setProperty('flex-shrink', '0', 'important');
     host.style.setProperty('max-height', 'none', 'important');
     host.innerHTML = '';
 
     section.insertBefore(banner, host);
-    if (host.nextSibling) {
-      section.insertBefore(predictCard, host.nextSibling);
-      section.insertBefore(controls, predictCard.nextSibling);
-    } else {
-      section.appendChild(predictCard);
-      section.appendChild(controls);
-    }
+    section.insertBefore(predictCard, host);
+    section.insertBefore(controls, host);
 
     const canvas = document.createElement('canvas');
     canvas.className = 'atlas-canvas';
@@ -447,6 +448,20 @@
       resetSimulation();
     }
 
+    function renderDots() {
+      const dotsEl = $('y02-dots');
+      if (!dotsEl) return;
+      let html = '';
+      for (let i = 0; i < chapters.length; i++) {
+        const on = i + 1 === chapter;
+        html += `<span class="y02-dot" data-ch="${i + 1}" style="cursor:pointer; font-size:12px; padding:3px 5px; display:inline-flex; align-items:center; justify-content:center; min-width:20px; min-height:20px; color:${on ? 'var(--volt)' : 'var(--ink-muted)'}; opacity:${on ? '1' : '0.45'};">●</span>`;
+      }
+      dotsEl.innerHTML = html;
+      dotsEl.querySelectorAll('.y02-dot').forEach((d) => {
+        d.addEventListener('click', () => setChapter(parseInt(d.getAttribute('data-ch'), 10)));
+      });
+    }
+
     function setChapter(n) {
       chapter = clamp(n, 1, 5);
       const c = chapters[chapter - 1];
@@ -454,6 +469,16 @@
       $('y02-ct').textContent = c[0];
       $('y02-cb').textContent = c[1];
       setFrequency(c[2]);
+
+      const pred = $('y02-predict-box');
+      if (pred) {
+        pred.style.display = chapter === 4 ? 'flex' : 'none';
+      }
+      const prevBtn = $('y02-prev');
+      const nextBtn = $('y02-next');
+      if (prevBtn) prevBtn.disabled = chapter === 1;
+      if (nextBtn) nextBtn.disabled = chapter === 5;
+      renderDots();
 
       if (chapter === 5) {
         startSweepAnimation();
@@ -481,6 +506,13 @@
 
     $('y02-prev').onclick = () => setChapter(chapter - 1);
     $('y02-next').onclick = () => setChapter(chapter + 1);
+    $('y02-btn-predict').onclick = () => {
+      const pred = $('y02-predict-box');
+      if (pred) {
+        pred.style.display = pred.style.display !== 'none' ? 'none' : 'flex';
+      }
+    };
+    renderDots();
 
     $('y02-run').onclick = () => {
       startSweepAnimation();
@@ -527,6 +559,11 @@
         setChapter(chapter - 1);
       } else if (e.key === 't' || e.key === 'T') {
         showTheory = !showTheory;
+      } else if (e.key >= '1' && e.key <= '5') {
+        setChapter(parseInt(e.key, 10));
+      } else if (e.key === 'p' || e.key === 'P') {
+        const pred = $('y02-predict-box');
+        if (pred) pred.style.display = pred.style.display !== 'none' ? 'none' : 'flex';
       }
     });
 
@@ -553,8 +590,10 @@
     function getCoords(e) {
       const rect = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
-      const x = (e.clientX - rect.left) * (canvas.width / (rect.width * dpr));
-      const y = (e.clientY - rect.top) * (canvas.height / (rect.height * dpr));
+      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+      const x = (clientX - rect.left) * (canvas.width / ((rect.width || 1) * dpr));
+      const y = (clientY - rect.top) * (canvas.height / ((rect.height || 1) * dpr));
       return { x, y, width: rect.width, height: rect.height };
     }
 
@@ -684,11 +723,12 @@
       g.clearRect(0, 0, W, H);
 
       const isMobile = W < 600;
-      const targetHeight = isMobile ? '660px' : '550px';
+      const targetHeight = isMobile ? '580px' : '520px';
       if (host.style.height !== targetHeight) {
         host.style.setProperty('aspect-ratio', 'auto', 'important');
         host.style.setProperty('height', targetHeight, 'important');
         host.style.setProperty('min-height', targetHeight, 'important');
+        host.style.setProperty('flex-shrink', '0', 'important');
         host.style.setProperty('max-height', 'none', 'important');
       }
 
@@ -736,11 +776,11 @@
       // =========================================================================
       // DYNAMIC GEOMETRIC LAYOUT
       // =========================================================================
-      const heroH = isMobile ? 140 : Math.round(H * 0.35); // ~190px on desktop
-      const hero = { x: 12, y: 8, w: W - 24, h: heroH };
+      const heroH = isMobile ? 125 : Math.round(H * 0.35); // ~180px on desktop
+      const hero = { x: 12, y: 6, w: W - 24, h: heroH };
 
       const scopeH = 110; // Exactly meets >= 110px requirement
-      const scopeY = hero.y + hero.h + 8;
+      const scopeY = hero.y + hero.h + (isMobile ? 6 : 8);
       const scope = { x: 12, y: scopeY, w: W - 24, h: scopeH };
 
       let plot1, plot2, dial;
@@ -748,14 +788,14 @@
 
       if (isMobile) {
         // Vertical stacked layout for phone
-        const p1Y = scope.y + scope.h + 28;
-        const pH = 95;
+        const p1Y = scope.y + scope.h + 26;
+        const pH = 85;
         plot1 = { x: 12, y: p1Y, w: W - 24, h: pH };
 
-        const p2Y = plot1.y + plot1.h + 52;
+        const p2Y = plot1.y + plot1.h + 46;
         plot2 = { x: 12, y: p2Y, w: W - 24, h: pH };
 
-        dial = { x: 12, y: plot2.y + plot2.h + 46, w: W - 24, h: 28 };
+        dial = { x: 12, y: plot2.y + plot2.h + 38, w: W - 24, h: 26 };
         trackX = dial.x + 10;
         trackW = dial.w - 20;
       } else {
@@ -780,8 +820,8 @@
       // Cache layout for pointer hits
       const preX = hero.x + Math.max(isMobile ? 55 : 75, hero.w * (isMobile ? 0.18 : 0.17));
       const postX = hero.x + hero.w - Math.max(isMobile ? 55 : 75, hero.w * (isMobile ? 0.18 : 0.17));
-      const somaY = hero.y + Math.round(hero.h * 0.44);
-      const somaR = isMobile ? 22 : Math.min(27, Math.max(20, Math.round(hero.w * 0.038)));
+      const somaY = hero.y + Math.round(hero.h * (isMobile ? 0.40 : 0.44));
+      const somaR = isMobile ? 20 : Math.min(27, Math.max(20, Math.round(hero.w * 0.038)));
       const boutonX = (preX + postX) / 2;
 
       layout = {
@@ -1041,13 +1081,13 @@
 
         g.restore();
 
-        text(label, sx, somaY - baseR - 8, c.ink, 12, 'center', true);
+        text(label, sx, somaY - baseR - (isMobile ? 5 : 8), c.ink, 11, 'center', true);
       });
 
       // Hero Text Readouts
-      text(isMobile ? 'PRE (click)' : S.clickPreHint, preX, hero.y + hero.h - 8, c.inkMuted, 12, 'center');
-      text(isMobile ? 'POST (click)' : S.clickPostHint, postX, hero.y + hero.h - 8, c.inkMuted, 12, 'center');
-      text(`${S.weightLabel} ${lastState.w.toFixed(4)}`, boutonX, somaY + baseR + 24, c.exc, 13, 'center', true);
+      text(isMobile ? 'PRE (click)' : S.clickPreHint, preX, hero.y + hero.h - 5, c.inkMuted, 11, 'center');
+      text(isMobile ? 'POST (click)' : S.clickPostHint, postX, hero.y + hero.h - 5, c.inkMuted, 11, 'center');
+      text(`${S.weightLabel} ${lastState.w.toFixed(4)}`, boutonX, somaY + baseR + (isMobile ? 18 : 24), c.exc, isMobile ? 12 : 13, 'center', true);
 
       // =========================================================================
       // 2. OSCILLOSCOPE BAND (>= 110 px tall): 4 TRACE MEMORIES WITH GUTTER
@@ -1114,14 +1154,18 @@
       const recentEvents = experiment.events.filter(
         (e) => e.t <= elapsed && e.t >= elapsed - windowSteps
       );
+      let lastPreTickX = -999;
+      let lastPostTickX = -999;
       recentEvents.forEach((ev) => {
-        const tickX = waveX + waveW * (ev.t - (elapsed - windowSteps)) / windowSteps;
+        const tickX = waveX + (waveW * (ev.t - (elapsed - windowSteps))) / windowSteps;
         line(tickX, waveY, tickX, waveY + waveH, c.volt, 1, [2, 3]);
-        if (ev.pre) {
-          text('▲ pre', tickX, waveY + 9, c.trace, 12, 'center');
+        if (ev.pre && tickX - lastPreTickX >= 36) {
+          text('▲ pre', tickX, waveY + 9, c.trace, 11, 'center');
+          lastPreTickX = tickX;
         }
-        if (ev.post) {
-          text('▼ post', tickX, waveY + waveH - 4, c.mod, 12, 'center');
+        if (ev.post && tickX - lastPostTickX >= 36) {
+          text('▼ post', tickX, waveY + waveH - 4, c.mod, 11, 'center');
+          lastPostTickX = tickX;
         }
       });
 

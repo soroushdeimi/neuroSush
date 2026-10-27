@@ -493,9 +493,9 @@
           <div id="n08-ch-dots" style="display:flex;gap:4px;"></div>
         </div>
         <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
-          <button class="atlas-btn" id="n08-btn-prev" disabled style="padding:2px 7px;font-size:11px;">${S.btnPrev}</button>
-          <button class="atlas-btn" id="n08-btn-next" style="padding:2px 7px;font-size:11px;">${S.btnNext}</button>
-          <button class="atlas-btn" id="n08-btn-predict" aria-pressed="false" style="padding:2px 7px;font-size:11px;">${S.btnPredict}</button>
+          <button class="atlas-btn" id="n08-btn-prev" disabled style="padding:4px 9px;font-size:11px;min-height:28px;">${S.btnPrev}</button>
+          <button class="atlas-btn" id="n08-btn-next" style="padding:4px 9px;font-size:11px;min-height:28px;">${S.btnNext}</button>
+          <button class="atlas-btn" id="n08-btn-predict" aria-pressed="false" style="padding:4px 9px;font-size:11px;min-height:28px;">${S.btnPredict}</button>
         </div>
       </div>
       <div class="atlas-serif" id="n08-ch-body" style="font-size:12px;color:var(--ink);line-height:1.4;">${S.ch1Body}</div>
@@ -508,8 +508,8 @@
           <label style="cursor:pointer;display:flex;gap:6px;font-size:12px;"><input type="radio" name="n08-predict" value="C"><span>${S.predictC}</span></label>
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
-          <button class="atlas-btn" id="n08-btn-commit" disabled style="padding:2px 8px;font-size:11px;">${S.predictSubmit}</button>
-          <button class="atlas-btn" id="n08-btn-runit" style="padding:2px 8px;font-size:11px;display:none;">${S.predictRun}</button>
+          <button class="atlas-btn" id="n08-btn-commit" disabled style="padding:4px 10px;font-size:11px;min-height:28px;">${S.predictSubmit}</button>
+          <button class="atlas-btn" id="n08-btn-runit" style="padding:4px 10px;font-size:11px;min-height:28px;display:none;">${S.predictRun}</button>
           <span id="n08-predict-feedback" class="atlas-serif" style="display:none;font-size:11px;font-weight:600;"></span>
         </div>
       </div>
@@ -536,9 +536,12 @@
     `;
 
     // ---------- 3. Canvas ----------
+    const targetH = (typeof window !== 'undefined' && window.innerWidth < 560) ? '520px' : '440px';
     if (figureContainer && figureContainer.style) {
-      figureContainer.style.aspectRatio = 'auto';
-      figureContainer.style.height = (typeof window !== 'undefined' && window.innerWidth < 560) ? '520px' : '440px';
+      figureContainer.style.setProperty('aspect-ratio', 'auto', 'important');
+      figureContainer.style.setProperty('height', targetH, 'important');
+      figureContainer.style.setProperty('min-height', targetH, 'important');
+      figureContainer.style.setProperty('flex-shrink', '0', 'important');
     }
     const canvas = figureContainer.querySelector('canvas') || ctx.canvas();
     const g = canvas.getContext('2d');
@@ -844,7 +847,7 @@
       let html = '';
       for (let i = 0; i < chapters.length; i++) {
         const on = i + 1 === state.chapter;
-        html += `<span class="n08-dot" data-ch="${i + 1}" style="cursor:pointer;font-size:11px;color:${
+        html += `<span class="n08-dot" data-ch="${i + 1}" style="cursor:pointer;font-size:12px;padding:3px 5px;display:inline-flex;align-items:center;justify-content:center;min-width:20px;min-height:20px;color:${
           on ? 'var(--mod)' : 'var(--ink-muted)'
         };opacity:${on ? '1' : '0.45'};">●</span>`;
       }
@@ -1377,9 +1380,9 @@
 
       // ---- log-log inset: in the quiet upper-left of f-I space, never on the voltage trace ----
       const insetW = small ? Math.min(136, Math.round((r.x1 - r.x0) * 0.44)) : Math.round((r.x1 - r.x0) * 0.29);
-      const insetY0 = r.y0 + (small ? 6 : 44);
-      const insetMaxH = r.y1 - insetY0 - (small ? 6 : 14);
-      const insetH = small ? Math.min(68, insetMaxH) : 122;
+      const insetY0 = r.y0 + (small ? 42 : 44);
+      const insetMaxH = r.y1 - insetY0 - (small ? 8 : 14);
+      const insetH = small ? Math.min(72, insetMaxH) : 122;
       const inset = {
         x0: r.x0 + 8,
         x1: r.x0 + 8 + insetW,

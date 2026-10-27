@@ -387,9 +387,12 @@
     const marginContainer = ctx.margin || document.getElementById('atlas-margin');
 
     // Make figure container have an explicit height so canvas fits neatly
-    if (figureContainer) {
-      figureContainer.style.height = '480px';
-      figureContainer.style.minHeight = '480px';
+    if (figureContainer && figureContainer.style) {
+      const isNarrow = typeof window !== 'undefined' && window.innerWidth < 640;
+      figureContainer.style.setProperty('aspect-ratio', 'auto', 'important');
+      figureContainer.style.setProperty('height', isNarrow ? '540px' : '460px', 'important');
+      figureContainer.style.setProperty('min-height', isNarrow ? '500px' : '440px', 'important');
+      figureContainer.style.setProperty('max-height', '600px', 'important');
     }
 
     // Simulation parameter and dynamic state
@@ -749,15 +752,15 @@
       const pad = 10;
 
       if (mobile) {
-        const traceH = Math.round(h * 0.30);
-        const phaseH = Math.round(h * 0.42);
+        const traceH = Math.round(h * 0.26);
+        const phaseH = Math.round(h * 0.44);
         const isiH = h - traceH - phaseH - pad * 4;
 
         return {
           mobile: true,
           trace: { x: pad, y: pad, w: w - pad * 2, h: traceH },
           phase: { x: pad, y: pad * 2 + traceH, w: w - pad * 2, h: phaseH },
-          isi: { x: pad, y: pad * 3 + traceH + phaseH, w: w - pad * 2, h: Math.max(90, isiH) },
+          isi: { x: pad, y: pad * 3 + traceH + phaseH, w: w - pad * 2, h: Math.max(100, isiH) },
         };
       }
 
@@ -800,22 +803,27 @@
       g.fillText(title, r.x + 10, r.y + 8);
 
       if (subtitle) {
-        g.fillStyle = colors.inkMuted || '#7a756b';
         g.font = '10px ui-sans-serif, system-ui, sans-serif';
-        g.textAlign = 'right';
-        g.fillText(subtitle, r.x + r.w - 10, r.y + 9);
+        const titleW = g.measureText(title).width;
+        const subW = g.measureText(subtitle).width;
+        if (titleW + subW + 28 <= r.w) {
+          g.fillStyle = colors.inkMuted || '#7a756b';
+          g.textAlign = 'right';
+          g.fillText(subtitle, r.x + r.w - 10, r.y + 9);
+        }
       }
       g.restore();
     }
 
     // ---- 4. Draw Voltage Trace Panel ----
     function drawTracePanel(r) {
-      drawCardBox(r, S.panelTraceTitle, S.traceClickHint);
+      const isMobile = r.w < 560;
+      drawCardBox(r, S.panelTraceTitle, isMobile ? null : S.traceClickHint);
 
       const x0 = r.x + 36;
-      const y0 = r.y + 26;
+      const y0 = r.y + 24;
       const w = r.w - 48;
-      const h = r.h - 48;
+      const h = r.h - 44;
 
       const vMin = -80.0;
       const vMax = 25.0;
@@ -861,15 +869,32 @@
       g.textAlign = 'right';
       g.textBaseline = 'middle';
       g.fillText('+20', x0 - 4, yTh);
-      g.fillText('-50', x0 - 4, yTheta);
-      g.fillText('-65', x0 - 4, yRest);
+      if (h >= 115) {
+        g.fillText('-50', x0 - 4, yTheta);
+        g.fillText('-65', x0 - 4, yRest);
+      } else {
+        g.fillText('-50', x0 - 4, yTheta);
+      }
       g.fillText('-80', x0 - 4, y0 + h);
 
-      // Injected current indicator badge
-      g.fillStyle = colors.exc;
+      // Injected current indicator badge with background so spikes don't occlude it
+      const currentBadge = `I = ${p.current.toFixed(2)} nA`;
       g.font = '600 10px ui-monospace, monospace';
-      g.textAlign = 'right';
-      g.fillText(`I = ${p.current.toFixed(2)} nA`, x0 + w, y0 + 6);
+      const cbW = g.measureText(currentBadge).width;
+      const cbX = x0 + w - cbW - 8;
+      const cbY = y0 + 4;
+      g.fillStyle = colors.paperCard || '#fbf8f2';
+      g.strokeStyle = colors.border || '#d0c8b8';
+      g.lineWidth = 1;
+      g.beginPath();
+      if (typeof g.roundRect === 'function') g.roundRect(cbX, cbY, cbW + 8, 16, 2);
+      else g.rect(cbX, cbY, cbW + 8, 16);
+      g.fill();
+      g.stroke();
+      g.fillStyle = colors.exc;
+      g.textAlign = 'left';
+      g.textBaseline = 'middle';
+      g.fillText(currentBadge, cbX + 4, cbY + 8);
       g.restore();
 
       if (!traceHistory.length) return;
@@ -935,12 +960,13 @@
 
     // ---- 5. Draw HERO Phase Plane Panel ----
     function drawPhasePanel(r) {
-      drawCardBox(r, S.panelPhaseTitle, S.phaseClickHint);
+      const isMobile = r.w < 560;
+      drawCardBox(r, isMobile ? 'Phase Plane: V vs ω' : S.panelPhaseTitle, isMobile ? null : S.phaseClickHint);
 
-      const x0 = r.x + 40;
-      const y0 = r.y + 26;
-      const w = r.w - 52;
-      const h = r.h - 50;
+      const x0 = r.x + (isMobile ? 42 : 50);
+      const y0 = r.y + 28;
+      const w = r.w - (isMobile ? 54 : 62);
+      const h = r.h - 52;
 
       const vMin = -80.0;
       const vMax = 25.0;
@@ -956,6 +982,17 @@
       g.lineTo(x0, y0 + h);
       g.lineTo(x0 + w, y0 + h);
       g.stroke();
+
+      // Vertical Y-axis label
+      g.save();
+      g.translate(x0 - (isMobile ? 26 : 34), y0 + h / 2);
+      g.rotate(-Math.PI / 2);
+      g.textAlign = 'center';
+      g.textBaseline = 'bottom';
+      g.fillStyle = colors.inkMuted || '#888';
+      g.font = (isMobile ? '9px' : '10px') + ' ui-monospace, monospace';
+      g.fillText(isMobile ? 'ω (nA)' : 'Adaptation ω (nA)', 0, 0);
+      g.restore();
 
       // Y-axis tick labels
       g.fillStyle = colors.inkMuted || '#888';
@@ -975,18 +1012,18 @@
       g.fillText('-50', scaleLinear(-50, vMin, vMax, x0, x0 + w), y0 + h + 4);
       g.fillText('+20', scaleLinear(20, vMin, vMax, x0, x0 + w), y0 + h + 4);
 
-      // Axis names
-      g.textAlign = 'left';
-      g.textBaseline = 'bottom';
-      g.fillText('ω (nA)', x0 + 4, y0 + 10);
-      g.textAlign = 'left';
+      // X-axis label
+      g.textAlign = 'right';
       g.textBaseline = 'top';
-      g.fillText('V (mV)', scaleLinear(20, vMin, vMax, x0, x0 + w) - 34, y0 + h + 16);
+      g.fillText('V (mV) →', x0 + w, y0 + h + 15);
       g.restore();
 
-      // Theory Ghost: Nullclines
+      // Theory Ghost: Nullclines (strictly clipped to coordinate bounds)
       if (theoryActive) {
         g.save();
+        g.beginPath();
+        g.rect(x0, y0, w, h);
+        g.clip();
 
         // 1. v-nullcline (exponential U-curve)
         g.strokeStyle = colors.theory || '#222';
@@ -996,7 +1033,7 @@
         let vFirst = true;
         for (let vVal = -80.0; vVal <= 2.0; vVal += 0.5) {
           const wVal = nullclineV(vVal, p);
-          if (wVal > wMax + 1.5) continue;
+          if (wVal > wMax + 0.5) continue;
           const px = scaleLinear(vVal, vMin, vMax, x0, x0 + w);
           const py = scaleLinear(wVal, wMin, wMax, y0 + h, y0);
           if (vFirst) {
@@ -1028,14 +1065,50 @@
         g.stroke();
         g.restore();
 
-        // Nullclines legend
+        // Nullclines legend badge with protective background
         g.save();
         g.font = '9px ui-monospace, monospace';
-        g.textAlign = 'right';
-        g.fillStyle = colors.theory;
-        g.fillText('dv/dt = 0 (v-nullcline)', x0 + w - 4, y0 + 10);
-        g.fillStyle = colors.mod;
-        g.fillText('dω/dt = 0 (ω-nullcline)', x0 + w - 4, y0 + 22);
+        const legW = isMobile ? 108 : 138;
+        const legH = 30;
+        const legX = x0 + w - legW - 4;
+        const legY = y0 + 4;
+
+        g.fillStyle = colors.paperCard || '#fbf8f2';
+        g.strokeStyle = colors.border || '#d0c8b8';
+        g.lineWidth = 1;
+        g.beginPath();
+        if (typeof g.roundRect === 'function') g.roundRect(legX, legY, legW, legH, 3);
+        else g.rect(legX, legY, legW, legH);
+        g.fill();
+        g.stroke();
+
+        // v-nullcline entry
+        g.strokeStyle = colors.theory || '#222';
+        g.lineWidth = 1.5;
+        g.setLineDash([4, 3]);
+        g.beginPath();
+        g.moveTo(legX + 6, legY + 9);
+        g.lineTo(legX + 20, legY + 9);
+        g.stroke();
+
+        g.setLineDash([]);
+        g.fillStyle = colors.theory || '#222';
+        g.textAlign = 'left';
+        g.textBaseline = 'middle';
+        g.fillText(isMobile ? 'v-nullcline' : 'dv/dt = 0 (v)', legX + 24, legY + 9);
+
+        // w-nullcline entry
+        g.strokeStyle = colors.mod || '#7b42bc';
+        g.lineWidth = 1.25;
+        g.setLineDash([3, 3]);
+        g.beginPath();
+        g.moveTo(legX + 6, legY + 21);
+        g.lineTo(legX + 20, legY + 21);
+        g.stroke();
+
+        g.setLineDash([]);
+        g.fillStyle = colors.mod || '#7b42bc';
+        g.fillText(isMobile ? 'ω-nullcline' : 'dω/dt = 0 (ω)', legX + 24, legY + 21);
         g.restore();
       }
 
@@ -1126,50 +1199,41 @@
         g.closePath();
         g.fill();
 
+        // Label only the latest reset marker with a clean pill badge so it never collides with nullclines or orbits
         if (i === recentJumpArrows.length - 1) {
-          g.font = '600 10px ui-monospace, monospace';
-          g.textAlign = 'left';
           const jumpLabel = p.b > 0.01 ? `reset + b (+${p.b.toFixed(2)} nA)` : `reset (${p.v_reset.toFixed(0)} mV)`;
-          g.fillText(jumpLabel, x2 + 6, y2 - 4);
+          g.font = '600 10px ui-monospace, monospace';
+          const jw = g.measureText(jumpLabel).width;
+          const badgeX = Math.min(x0 + w - jw - 10, Math.max(x0 + 4, x2 - jw / 2));
+          const badgeY = Math.max(y0 + 4, y2 - 20);
+
+          g.fillStyle = colors.paperCard || '#fbf8f2';
+          g.strokeStyle = colors.mod;
+          g.lineWidth = 1;
+          g.beginPath();
+          if (typeof g.roundRect === 'function') g.roundRect(badgeX - 4, badgeY - 2, jw + 8, 15, 2);
+          else g.rect(badgeX - 4, badgeY - 2, jw + 8, 15);
+          g.fill();
+          g.stroke();
+
+          g.fillStyle = colors.mod;
+          g.textAlign = 'left';
+          g.textBaseline = 'top';
+          g.fillText(jumpLabel, badgeX, badgeY);
         }
-        g.restore();
-      }
-
-      // b jump handle disc on Phase Plane (only show when b > 0)
-      if (p.b > 0.01) {
-        g.save();
-        const bHandleV = p.v_reset;
-        const bHandleW = 0.5 + p.b;
-        const bx = scaleLinear(bHandleV, vMin, vMax, x0, x0 + w);
-        const by = scaleLinear(bHandleW, wMin, wMax, y0 + h, y0);
-
-        g.fillStyle = colors.mod;
-        g.strokeStyle = colors.paper || '#fff';
-        g.lineWidth = 2;
-        g.beginPath();
-        g.arc(bx, by, 5, 0, Math.PI * 2);
-        g.fill();
-        g.stroke();
-
-        g.fillStyle = colors.mod;
-        g.font = '10px ui-monospace, monospace';
-        g.textAlign = 'left';
-        g.fillText(`b handle (${p.b.toFixed(2)})`, bx + 7, by + 3);
         g.restore();
       }
     }
 
     // ---- 6. Draw Live ISI Bar Chart Panel ----
     function drawISIPanel(r) {
-      let subtitle = S.isiAdaptNote;
-      if (p.b === 0) subtitle = S.isiTonicNote;
-      else if (p.v_reset > -50.0) subtitle = S.isiBurstNote;
+      const isMobile = r.w < 560;
+      const regime = p.b === 0 ? 'Tonic' : (p.v_reset > -50.0 ? 'Bursting' : 'Adapting');
+      drawCardBox(r, isMobile ? 'Live ISIs' : `${S.panelIsiTitle}  ·  ${regime}`, null);
 
-      drawCardBox(r, S.panelIsiTitle, subtitle);
-
-      const x0 = r.x + 40;
+      const x0 = r.x + 44;
       const y0 = r.y + 24;
-      const w = r.w - 52;
+      const w = r.w - 56;
       const h = r.h - 44;
 
       const intervals = state.isis.slice(-16);
@@ -1188,29 +1252,39 @@
       g.font = '10px ui-monospace, monospace';
       g.textAlign = 'right';
       g.textBaseline = 'middle';
-      g.fillText('ISI (ms)', x0 - 4, y0 + 6);
       g.fillText('0', x0 - 4, y0 + h);
       g.restore();
 
       if (!intervals.length) {
         g.save();
         g.fillStyle = colors.inkMuted;
-        g.font = '11px ui-sans-serif, system-ui, sans-serif';
+        g.font = isMobile ? '10px ui-sans-serif, system-ui, sans-serif' : '11px ui-sans-serif, system-ui, sans-serif';
         g.textAlign = 'center';
         g.textBaseline = 'middle';
-        g.fillText(S.isiEmpty, x0 + w / 2, y0 + h / 2);
+        g.fillText(isMobile ? 'No spikes yet — increase I' : S.isiEmpty, x0 + w / 2, y0 + h / 2);
         g.restore();
         return;
       }
 
       const maxIsiVal = Math.max(90.0, Math.max(...intervals) * 1.15);
+
+      // Top Y-axis tick
+      g.save();
+      g.fillStyle = colors.inkMuted || '#888';
+      g.font = '10px ui-monospace, monospace';
+      g.textAlign = 'right';
+      g.textBaseline = 'middle';
+      g.fillText(`${Math.round(maxIsiVal)}`, x0 - 4, y0 + 6);
+      g.fillText('ms', x0 - 4, y0 + 16);
+      g.restore();
+
       const slotW = w / Math.max(8, intervals.length);
-      const barW = Math.max(8, slotW - 6);
+      const barW = Math.max(6, Math.min(28, slotW - (isMobile ? 3 : 6)));
 
       g.save();
       intervals.forEach((isiVal, idx) => {
         const barH = scaleLinear(isiVal, 0, maxIsiVal, 0, h - 16);
-        const bx = x0 + 10 + idx * slotW;
+        const bx = x0 + (slotW - barW) / 2 + idx * slotW;
         const by = y0 + h - barH;
 
         const isLatest = idx === intervals.length - 1;
@@ -1223,26 +1297,34 @@
         }
         g.fill();
 
+        // Bar value
         g.fillStyle = colors.ink;
-        g.font = '9px ui-monospace, monospace';
+        g.font = (isMobile ? '8px' : '9px') + ' ui-monospace, monospace';
         g.textAlign = 'center';
         g.textBaseline = 'bottom';
-        g.fillText(`${isiVal.toFixed(1)}`, bx + barW / 2, by - 2);
+        if (!isMobile || idx % 2 === 0 || intervals.length <= 8) {
+          g.fillText(`${isiVal.toFixed(1)}`, bx + barW / 2, by - 2);
+        }
 
+        // Spike index below axis
         g.fillStyle = colors.inkMuted;
-        g.font = '9px ui-monospace, monospace';
+        g.font = (isMobile ? '8px' : '9px') + ' ui-monospace, monospace';
         g.textAlign = 'center';
         g.textBaseline = 'top';
-        g.fillText(`#${state.isis.length - intervals.length + idx + 1}`, bx + barW / 2, y0 + h + 3);
+        if (!isMobile || idx % 2 === 0 || intervals.length <= 8) {
+          g.fillText(`#${state.isis.length - intervals.length + idx + 1}`, bx + barW / 2, y0 + h + 3);
+        }
       });
 
+      // Mean ISI badge placed in card header safely above plot area
       const meanISI = intervals.reduce((s, v) => s + v, 0) / intervals.length;
       const rateHz = 1000.0 / meanISI;
-      g.fillStyle = colors.ink;
+      const meanText = isMobile ? `Mean: ${meanISI.toFixed(1)} ms (${rateHz.toFixed(0)} Hz)` : `Mean ISI: ${meanISI.toFixed(1)} ms (${rateHz.toFixed(1)} Hz)`;
       g.font = '600 10px ui-monospace, monospace';
+      g.fillStyle = colors.ink;
       g.textAlign = 'right';
       g.textBaseline = 'top';
-      g.fillText(`Mean ISI: ${meanISI.toFixed(1)} ms (${rateHz.toFixed(1)} Hz)`, x0 + w, y0 + 4);
+      g.fillText(meanText, r.x + r.w - 10, r.y + 8);
       g.restore();
     }
 
