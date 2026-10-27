@@ -149,4 +149,3 @@ test('droplets simulation is deterministic and rate matches physical drive', () 
     assert.strictEqual(d1.inflow[i].vy, d2.inflow[i].vy);
   }
 });
-

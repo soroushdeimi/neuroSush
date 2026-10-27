@@ -734,4 +734,3 @@ mount }
 
 }
 )(typeof globalThis !== 'undefined' ? globalThis : this);
-
