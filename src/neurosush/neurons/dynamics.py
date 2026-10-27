@@ -7,6 +7,7 @@ of voltage changes per term for one Euler step.
 
 from __future__ import annotations
 
+import math
 from typing import overload
 
 import torch
@@ -35,6 +36,40 @@ def lif_derivative(v: Scalar, current: Scalar, *, v_rest: float, resistance: flo
     return (v_rest - v) + resistance * current
 
 
+def lif_rate(
+    *,
+    tau: float,
+    v_rest: float,
+    v_reset: float,
+    threshold: float,
+    resistance: float,
+    current: float,
+    t_ref: float = 0.0,
+) -> float:
+    """Closed-form firing rate of a LIF neuron under constant current, in Hz.
+
+    ``1000 / (t_ref + tau * ln((v_inf - v_reset) / (v_inf - threshold)))`` with
+    ``v_inf = v_rest + R I``; zero when ``R I <= threshold - v_rest``. ``tau`` and
+    ``t_ref`` are in milliseconds (the unit of ``dt``), hence the 1000.
+
+    Args:
+        tau: Membrane time constant.
+        v_rest: Resting membrane potential.
+        v_reset: Voltage after a spike.
+        threshold: Voltage threshold for spiking.
+        resistance: Membrane resistance.
+        current: Constant input current.
+        t_ref: Absolute refractory period after each spike.
+
+    Returns:
+        Mean firing rate in spikes per second.
+    """
+    v_inf = v_rest + resistance * current
+    if v_inf <= threshold:
+        return 0.0
+    return 1000.0 / (t_ref + tau * math.log((v_inf - v_reset) / (v_inf - threshold)))
+
+
 def exponential_boost(v: torch.Tensor, *, delta: float, theta_rh: float) -> torch.Tensor:
     """Spike-initiation term of the exponential LIF, ``delta * exp((v - theta_rh) / delta)``."""
     return delta * torch.exp((v - theta_rh) / delta)
@@ -57,26 +92,62 @@ def euler_step(v: Scalar, tau_dv_dt: Scalar, *, tau: float, dt: float) -> Scalar
     return v + tau_dv_dt * (dt / tau)
 
 
+@overload
 def fire(
     v: torch.Tensor,
     *,
     threshold: Scalar,
     v_reset: Scalar,
     blocked: torch.Tensor | None = None,
-) -> tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]: ...
+
+
+@overload
+def fire(
+    v: float,
+    *,
+    threshold: float,
+    v_reset: float,
+    blocked: bool | None = None,
+) -> tuple[bool, float]: ...
+
+
+def fire(
+    v: Scalar,
+    *,
+    threshold: Scalar,
+    v_reset: Scalar,
+    blocked: torch.Tensor | bool | None = None,
+) -> tuple[Scalar, Scalar]:
     """Threshold crossing: the spikes and the voltage with spiking neurons reset.
 
-    Neurons in ``blocked`` (a boolean mask) cannot spike: their voltage is left as it is.
+    Neurons in ``blocked`` cannot spike: their voltage is left as it is. With a tensor
+    ``v`` (and an optional boolean-mask tensor ``blocked``) it returns tensors; with a
+    float ``v`` (and an optional bool ``blocked``) it returns a ``(bool, float)`` pair.
+
+    Args:
+        v: Membrane voltage, a tensor or a float.
+        threshold: Voltage threshold for spiking.
+        v_reset: Voltage after a spike.
+        blocked: Mask (bool tensor or bool) of neurons that must not spike.
+
+    Returns:
+        ``(spikes, v_after)``, both with the type of ``v``.
     """
-    spikes = v >= threshold
-    if blocked is not None:
-        spikes = spikes & ~blocked
-    if isinstance(v_reset, torch.Tensor):
-        v_after = torch.where(spikes, v_reset, v)
-    else:
-        # masked_fill takes the scalar directly: no host-to-device copy every step
-        v_after = v.masked_fill(spikes, v_reset)
-    return spikes, v_after
+    if isinstance(v, torch.Tensor):
+        spikes = v >= threshold
+        if blocked is not None:
+            if not isinstance(blocked, torch.Tensor):
+                raise TypeError(f"blocked must be a tensor with a tensor v, got {blocked!r}")
+            spikes = spikes & ~blocked
+        if isinstance(v_reset, torch.Tensor):
+            v_after = torch.where(spikes, v_reset, v)
+        else:
+            # masked_fill takes the scalar directly: no host-to-device copy every step
+            v_after = v.masked_fill(spikes, v_reset)
+        return spikes, v_after
+    spiked = v >= float(threshold) and not blocked
+    return spiked, float(v_reset) if spiked else v
 
 
 def adaptation_step(

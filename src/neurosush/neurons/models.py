@@ -41,6 +41,8 @@ class LIF(Behavior):
 
     Equation: tau * dv/dt = (v_rest - v) + R * I
 
+    Units: voltage mV, time ms (the unit of ``dt``), resistance MOhm, current nA.
+
     Args:
         tau: Membrane time constant.
         threshold: Voltage threshold for spiking.

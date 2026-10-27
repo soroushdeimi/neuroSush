@@ -59,11 +59,22 @@ class Recorder(Behavior):
                 value = value.detach().to(self.device, copy=True)
             self._values[name].append(value)
 
-    def get(self, name: str) -> torch.Tensor:
-        """Everything recorded for ``name``, stacked along a new first (time) dimension."""
+    def get(self, name: str, last: int | None = None) -> torch.Tensor:
+        """Recorded values of ``name``, stacked along a new first (time) dimension.
+
+        Args:
+            name: Name of the recorded attribute.
+            last: If given, only the last ``last`` samples (all of them when the history
+                is shorter); ``None`` (the default) returns the whole history.
+
+        Returns:
+            A tensor of shape ``(samples, ...)`` with one row per returned sample.
+        """
         if name not in self._values:
             raise KeyError(f"{name!r} is not recorded; recorded: {list(self.attributes)}")
-        values = self._values[name]
+        if last is not None and (isinstance(last, bool) or not isinstance(last, int) or last < 1):
+            raise ValueError(f"last must be a positive integer or None, got {last!r}")
+        values = self._values[name] if last is None else self._values[name][-last:]
         if values and isinstance(values[0], torch.Tensor):
             return torch.stack(values)
         return torch.tensor(values, device=self.device)

@@ -83,7 +83,7 @@ target = NeuronGroup(
     [
         DendriteStructure(),  # routes synaptic currents to the soma
         DendriteIntegration(),
-        LIF(tau=10.0, threshold=-55.0, v_reset=-70.0, v_rest=-65.0),
+        LIF(tau=10.0, threshold=-55.0, v_reset=-70.0, v_rest=-65.0, resistance=1.0),
         Fire(),
         Axon(),
     ],
@@ -141,7 +141,9 @@ k-winners-take-all and homeostasis learn to respond to one input pattern each.
   both; building without them is an error, not a silent network.
 - **Delays** are integers in steps: `src_delay` is axonal (read from the source's `Axon`
   history), `dst_delay` is dendritic (arrival in the destination's `DendriteStructure`).
-- **Units**: every time constant shares the unit of `dt` (milliseconds by convention).
+- **Units**: voltage in mV, time in ms (every time constant shares the unit of `dt`),
+  resistance in MOhm, current in nA, as in all examples; the library is unit-agnostic as long
+  as one consistent system is used.
 - **Signs**: weights are magnitudes; `NeuronGroup(..., inhibitory=True)` makes its outgoing
   currents negative.
 - **Batches**: `Network(batch_size=B)` simulates `B` samples side by side. State tensors get

@@ -6,6 +6,8 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- `dynamics.lif_rate`: the closed-form LIF firing rate for a constant current, now the single source used by the validation test.
+- `dynamics.fire` accepts plain floats (returns a `(bool, float)` pair); `Recorder.get(name, last=N)` returns only the last N samples; the README states the units convention (mV, ms, MOhm, nA).
 - Atlas plate `M01`: Euler steps, convergence and instability plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
 - Atlas shell: live plates (`source="live"`) hide the timeline, an empty margin column collapses, the header carries the neuroSush mark, and the layout scales at phone width.
 - Atlas plate `H01`: sparse distributed representation plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
