@@ -6,6 +6,7 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- Atlas plate `N04`: Izhikevich zoo of firing patterns, eight live cells with a computed pattern fingerprint, draggable parameter maps and the theory ghost.
 - Atlas plate `N02`: ELIF potential-well plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
 - Atlas plate `N08`: f-I curve and bifurcation plate, a live interactive figure with chapters, predict-then-reveal and the theory ghost.
 - README example: a standalone float-only LIF simulation reports its measured five-second firing rate next to `dynamics.lif_rate`.
