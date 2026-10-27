@@ -293,6 +293,8 @@ class Izhikevich(Behavior):
         substeps: Euler sub-steps of ``v`` per step.
     """
 
+    reads: ClassVar[tuple[str, ...]] = ("v", "u", "I")
+    writes: ClassVar[tuple[str, ...]] = ("v", "u")
     order = Order.NEURON_DYNAMICS
     independent_ok = True
     graph_safe = True

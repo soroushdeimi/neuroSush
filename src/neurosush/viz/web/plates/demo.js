@@ -38,8 +38,8 @@
       if (vSeries && vSeries.data && vSeries.data.length > 0) {
         let min = Infinity;
         let max = -Infinity;
-        for (let i = 0; i < vSeries.data.length; i++) {
-          const val = vSeries.data[i];
+        for (let i = 0; i < trace.steps; i++) {
+          const val = trace.at('v', i)[0];
           if (val < min) min = val;
           if (val > max) max = val;
         }
@@ -230,7 +230,7 @@
           const theoYs = [];
           for (let s = startStep; s < endStep; s++) {
             theoXs.push(xToPx(s));
-            theoYs.push(yToPx(theorySeries.data[s]));
+            theoYs.push(yToPx(trace.at('v_theory', s)[0]));
           }
           Atlas.lineSeries(plotCtx, theoXs, theoYs, {
             strokeStyle: c.theory,
@@ -248,7 +248,7 @@
             const fStart = Math.max(startStep, t);
             for (let s = fStart; s < endStep; s++) {
               futXs.push(xToPx(s));
-              futYs.push(yToPx(vSeries.data[s]));
+              futYs.push(yToPx(trace.at('v', s)[0]));
             }
             plotCtx.save();
             plotCtx.globalAlpha = 0.25;
@@ -265,7 +265,7 @@
           const pEnd = Math.min(endStep, t + 1);
           for (let s = startStep; s < pEnd; s++) {
             pastXs.push(xToPx(s));
-            pastYs.push(yToPx(vSeries.data[s]));
+            pastYs.push(yToPx(trace.at('v', s)[0]));
           }
           Atlas.lineSeries(plotCtx, pastXs, pastYs, {
             strokeStyle: c.volt,
@@ -276,9 +276,9 @@
           if (spikesSeries) {
             plotCtx.fillStyle = c.volt;
             for (let s = startStep; s < endStep; s++) {
-              if (spikesSeries.data[s] > 0) {
+              if (trace.at('spikes', s)[0] > 0) {
                 const spkX = xToPx(s);
-                const spkY = yToPx(vSeries.data[s]);
+                const spkY = yToPx(trace.at('v', s)[0]);
                 // Vertical marker pip
                 plotCtx.fillRect(spkX - 1.5, padTop, 3, 10);
                 // Dot on peak
@@ -292,7 +292,7 @@
           // 4. Current playhead point & scanning cursor
           if (t >= startStep && t < endStep) {
             const curX = xToPx(t);
-            const curY = yToPx(vSeries.data[t]);
+            const curY = yToPx(trace.at('v', t)[0]);
 
             // Vertical cursor line
             plotCtx.strokeStyle = c.inkMuted;

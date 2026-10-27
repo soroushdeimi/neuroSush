@@ -74,7 +74,7 @@
     constructor(traceDict = {}) {
       this.meta = traceDict.meta || {};
       this.series = {};
-      let inferredSteps = traceDict.steps;
+      let inferredSteps;
 
       for (const [name, packed] of Object.entries(traceDict.series || {})) {
         const data = unpack(packed);
@@ -84,7 +84,12 @@
           inferredSteps = shape[0];
         }
       }
-      this.steps = Math.max(0, inferredSteps ?? 0);
+      // Python's step-index list is canonical; normalize older count-only inputs here.
+      const steps = traceDict.steps;
+      this.indices = Array.isArray(steps)
+        ? [...steps]
+        : Array.from({ length: steps ?? inferredSteps ?? 0 }, (_, i) => i);
+      this.steps = this.indices.length;
 
       // Event steps (e.g. spikes)
       if (Array.isArray(traceDict.events)) {
@@ -889,7 +894,7 @@
             <span class="atlas-badge" id="atlas-source-label">${getSourceBadge(spec.source || (plate && plate.source) || (isLive ? 'live' : 'replay'))}</span>
           </div>
           <div class="atlas-footer-item">
-            <span>${t('library')} <span class="atlas-mono">${trace.meta.version || '0.6.0'}</span></span>
+            <span>${t('library')} <span class="atlas-mono">${trace.meta.library ?? ''}</span></span>
           </div>
         </footer>
 

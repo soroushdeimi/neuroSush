@@ -112,6 +112,24 @@ print(f"output spikes: {spikes}, mean weight: {synapse.weights.mean():.3f}")
 [`examples/two_patterns.py`](https://github.com/soroushdeimi/neuroSush/blob/main/examples/two_patterns.py) goes further: two output neurons with
 k-winners-take-all and homeostasis learn to respond to one input pattern each.
 
+## Single neuron without a network
+
+The dynamics equations also run directly on plain floats, without allocating a network.
+Here, 50,000 steps of 0.1 ms give a five-second window for counting spikes per second.
+
+```python
+from neurosush.neurons import dynamics as eq
+
+p = dict(tau=20.0, v_rest=-70.0, v_reset=-75.0, threshold=-40.0, resistance=10.0, current=5.0)
+v, spikes, dt = p["v_rest"], 0, 0.1
+for _ in range(50_000):
+    drive = eq.lif_derivative(v, p["current"], v_rest=p["v_rest"], resistance=p["resistance"])
+    v = eq.euler_step(v, drive, tau=p["tau"], dt=dt)
+    spiked, v = eq.fire(v, threshold=p["threshold"], v_reset=p["v_reset"])
+    spikes += spiked
+print(f"{spikes / (50_000 * dt / 1000):.1f} {eq.lif_rate(**p):.1f}")  # Prints: 49.4 49.4
+```
+
 ## Concepts
 
 - A **`Network`** owns neuron groups, synapse groups, the time step `dt`, the dtype, the
@@ -285,12 +303,51 @@ with 16 independent members in one batch, 11,395 against 1,525 and 838.
 
 ![Steps per second of one network on a CPU and on a GPU, eager and as a CUDA graph](https://raw.githubusercontent.com/soroushdeimi/neuroSush/main/docs/figures/single-network.svg)
 
+## Visualization
+
+`neurosush.viz` records packed tensor traces and exports self-contained HTML plates.
+Attach `TraceRecorder` to record host attributes, then use `render_plate` to get HTML
+or `write_html` to save it. `available_plates()` lists the installed plate IDs.
+The shipped teaching plates are live ports of the equations; for now only `demo`
+shows a recorded trace. Selecting `source="replay"` labels provenance; it does not
+turn a live plate into a trace renderer.
+
+```python
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from neurosush.core.network import Network, NeuronGroup
+from neurosush.neurons.models import LIF, Fire
+from neurosush.viz import Trace, TraceRecorder, available_plates, render_plate, write_html
+
+net = Network(seed=42)
+recorder = TraceRecorder("v", "spikes", max_steps=20)
+NeuronGroup(
+    net,
+    5,
+    [
+        LIF(tau=10.0, threshold=-55.0, v_reset=-70.0, v_rest=-65.0),
+        Fire(),
+        recorder,
+    ],
+)
+net.run(20)
+trace = recorder.trace(**Trace.make_meta(net))
+assert "demo" in available_plates()
+html = render_plate("demo", trace.to_dict(), source="replay")
+assert 'id="atlas-trace"' in html
+with TemporaryDirectory() as directory:
+    path = write_html(Path(directory) / "replay.html", "demo", trace.to_dict())
+    assert path.read_text(encoding="utf-8") == html
+```
+
 ## Modules
 
 | module | contents |
 |---|---|
 | `neurosush.core` | `Network`, `NeuronGroup`, `SynapseGroup`, `Behavior`, `Order`, delay buffers |
 | `neurosush.neurons.models` | `LIF`, `ELIF`, `AdaptiveELIF`, `Izhikevich`, `Refractory`, `Fire` (equations in `dynamics`) |
+| `neurosush.neurons.dynamics` | `lif_derivative`, `euler_step`, `fire`, `lif_rate`, `exponential_boost`, `lif_terms`, `elif_terms`, `adex_terms`, `izhikevich_terms`, `izhikevich_step`; pure equations on floats or tensors, no network needed |
 | `neurosush.neurons.hodgkin_huxley` | `HodgkinHuxley` (Hodgkin and Huxley 1952 squid axon with visible `m`, `h`, `n` gates and `i_na`, `i_k`, `i_leak` currents) |
 | `neurosush.neurons.adaptation` | `SpikeTriggeredCurrent` (after-spike current, spike-frequency adaptation) |
 | `neurosush.neurons.params` | helpers that check a parameter given as a number or one value per neuron |
@@ -311,6 +368,7 @@ with 16 independent members in one batch, 11,395 against 1,525 and 838.
 | `neurosush.filters`, `.transforms` | DoG (zero mean by default) and Gabor kernels; grid masks, polarity split, filter bank |
 | `neurosush.data` | `LocationDataset`, `spike_frames`, `load_mnist` (IDX files, optional download) |
 | `neurosush.structure` | layers, ports, `connect`, `CorticalColumn`, JSON specs, `sequence_memory` |
+| `neurosush.viz` | `Trace`, `TraceRecorder`, `render_plate`, `write_html`, `available_plates`, schedule inspection |
 | `neurosush.recording` | `Recorder`, `SpikeCounter` (per-neuron spike counts, graph-safe) |
 | `neurosush.readout` | `assign_labels`, `classify`, `accuracy` (label an unsupervised layer, Diehl and Cook 2015) |
 | `neurosush.checkpoint` | `state_dict`, `load_state_dict`, `save`, `load` |

@@ -7,7 +7,7 @@ import json
 import sys
 from dataclasses import dataclass
 from os import PathLike
-from typing import Any
+from typing import Any, ClassVar
 
 import torch
 
@@ -249,12 +249,16 @@ class Trace:
 class TraceRecorder(Behavior):
     """Preallocates device-side buffers to record host attributes efficiently.
 
+    Schedule inspection expands ``*attributes`` in ``reads`` to the selected names.
+
     Args:
         *attributes: Names of host attributes to record.
         interval: Recording step interval.
         max_steps: Maximum number of steps to record (preallocated capacity).
     """
 
+    reads: ClassVar[tuple[str, ...]] = ("*attributes",)
+    writes: ClassVar[tuple[str, ...]] = ()
     order = Order.RECORD
 
     def __init__(self, *attributes: str, interval: int = 1, max_steps: int) -> None:
@@ -301,15 +305,26 @@ class TraceRecorder(Behavior):
             return
         if self._count >= self.max_steps:
             raise RuntimeError(
-                f"TraceRecorder on {_name(host)} exceeded max_steps={self.max_steps}"
+                f"TraceRecorder on {_name(host)} exceeded max_steps={self.max_steps} "
+                f"at iteration {iteration}; increase max_steps to record more samples"
             )
-        self.steps.append(iteration)
+        values: dict[str, torch.Tensor] = {}
         for name in self.attributes:
+            buffer = self._buffers[name]
             val = getattr(host, name)
-            if isinstance(val, torch.Tensor):
-                self._buffers[name][self._count].copy_(val)
-            else:
-                self._buffers[name][self._count].fill_(val)
+            value = (
+                val if isinstance(val, torch.Tensor) else torch.as_tensor(val, device=buffer.device)
+            )
+            if value.shape != buffer.shape[1:] or value.dtype != buffer.dtype:
+                raise RuntimeError(
+                    f"TraceRecorder on {_name(host)} attribute {name!r}: "
+                    f"expected shape {tuple(buffer.shape[1:])} dtype {buffer.dtype}, "
+                    f"got shape {tuple(value.shape)} dtype {value.dtype}"
+                )
+            values[name] = value
+        for name, value in values.items():
+            self._buffers[name][self._count].copy_(value)
+        self.steps.append(iteration)
         self._count += 1
 
     def trace(self, **meta: Any) -> Trace:
