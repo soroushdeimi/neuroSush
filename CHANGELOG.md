@@ -5,6 +5,8 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-28
+
 ### Fixed
 - Atlas plates `N03`, `N07`, `N01`, `N08` and `Y02`: remaining label overlaps fixed, N07 shows a faint idle crowd when both conductances are zero, and the phone layouts keep every control reachable.
 - Atlas plate `N02`: missing spaces after commas in the predict-then-reveal text.
