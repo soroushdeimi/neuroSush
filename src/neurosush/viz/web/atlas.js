@@ -323,6 +323,37 @@
     return str;
   }
 
+  let cachedColors = null;
+
+  function invalidateColors() {
+    cachedColors = null;
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('atlas:theme'));
+      } catch {}
+    }
+  }
+
+  if (typeof document !== 'undefined' && document.documentElement && typeof MutationObserver !== 'undefined') {
+    try {
+      const themeObserver = new MutationObserver(invalidateColors);
+      themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme', 'class']
+      });
+    } catch {}
+  }
+
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    try {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', invalidateColors);
+    } catch {
+      try {
+        window.matchMedia('(prefers-color-scheme: dark)').addListener(invalidateColors);
+      } catch {}
+    }
+  }
+
   // Theme manager
   const Theme = {
     get() {
@@ -334,6 +365,7 @@
       return 'auto';
     },
     set(theme) {
+      invalidateColors();
       try {
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem('neurosush-theme', theme);
@@ -456,17 +488,18 @@
   function fitCanvas(canvas) {
     if (!canvas) return { width: 0, height: 0, dpr: 1 };
     const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
-    const rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { width: canvas.width, height: canvas.height };
-    const w = Math.round(rect.width || canvas.width || 300);
-    const h = Math.round(rect.height || canvas.height || 150);
-    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
-    }
-    const ctx = canvas.getContext ? canvas.getContext('2d') : null;
-    if (ctx && ctx.resetTransform) {
-      ctx.resetTransform();
-      ctx.scale(dpr, dpr);
+    const w = Math.round(canvas.clientWidth || (canvas.getBoundingClientRect ? canvas.getBoundingClientRect().width : canvas.width) || 300);
+    const h = Math.round(canvas.clientHeight || (canvas.getBoundingClientRect ? canvas.getBoundingClientRect().height : canvas.height) || 150);
+    const targetW = Math.round(w * dpr);
+    const targetH = Math.round(h * dpr);
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext ? canvas.getContext('2d') : null;
+      if (ctx && ctx.resetTransform) {
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+      }
     }
     return { width: w, height: h, dpr };
   }
@@ -476,6 +509,7 @@
    * @returns {object}
    */
   function colors() {
+    if (cachedColors) return cachedColors;
     if (typeof window === 'undefined' || typeof document === 'undefined') {
       return {
         volt: '#b45309',
@@ -493,7 +527,7 @@
     }
     const style = window.getComputedStyle(document.documentElement);
     const get = (prop, fallback) => style.getPropertyValue(prop).trim() || fallback;
-    return {
+    cachedColors = {
       volt: get('--volt', '#b45309'),
       exc: get('--exc', '#0f766e'),
       inh: get('--inh', '#be123c'),
@@ -506,6 +540,7 @@
       inkMuted: get('--ink-muted', '#57534e'),
       border: get('--border', '#d6cfbf')
     };
+    return cachedColors;
   }
 
   /**
@@ -588,6 +623,7 @@
 
     render() {
       if (!this.canvas || !this.ctx) return;
+      if (this.container && this.container.offsetParent === null) return;
       const { width, height } = fitCanvas(this.canvas);
       if (width <= 0 || height <= 0) return;
 

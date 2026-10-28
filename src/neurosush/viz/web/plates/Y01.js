@@ -423,9 +423,13 @@
     // Poisson state
     const poissonRng = core.mulberry32(999);
 
-    // Listen for shell theory ghost event
+    // Listen for shell theory ghost and theme events
     window.addEventListener('atlas:theory', (e) => {
       showTheory = e.detail && typeof e.detail.active === 'boolean' ? e.detail.active : !showTheory;
+      staticDirty = true;
+    });
+    window.addEventListener('atlas:theme', () => {
+      staticDirty = true;
     });
 
     // Populate Margin
@@ -666,6 +670,7 @@
 
     function applyChapter(num) {
       currentChapter = Math.max(1, Math.min(5, num));
+      staticDirty = true;
       chapterIdxEl.textContent = `${S.chapter_label} ${currentChapter} ${S.of_chapters} 5`;
       if (currentChapter === 1) {
         chapterTitleEl.textContent = S.ch1_title;
@@ -948,29 +953,11 @@
     heroCanvas.addEventListener('pointerup', stopDrag);
     heroCanvas.addEventListener('pointercancel', stopDrag);
 
-    // Animation & Render Loop
-    let lastTimestamp = performance.now();
+    // Canvas size cached via ResizeObserver
+    let canvasW = 800;
+    let canvasH = 415;
 
-    function render(timestamp) {
-      const dtMs = Math.min(60, Math.max(1, timestamp - lastTimestamp));
-      lastTimestamp = timestamp;
-
-      const c = colors();
-      const rect = heroCanvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      const W = Math.round(rect.width || 800);
-      const H = Math.round(rect.height || 415);
-
-      if (heroCanvas.width !== Math.round(W * dpr) || heroCanvas.height !== Math.round(H * dpr)) {
-        heroCanvas.width = Math.round(W * dpr);
-        heroCanvas.height = Math.round(H * dpr);
-      }
-
-      heroCtx.save();
-      heroCtx.scale(dpr, dpr);
-      heroCtx.clearRect(0, 0, W, H);
-
-      // Dynamic responsive layout
+    function updateLayout(W, H) {
       const isMobile = W < 600;
       const targetH = isMobile ? 510 : 355;
       if (canvasContainer.style.height !== targetH + 'px') {
@@ -1053,6 +1040,271 @@
         driftW,
         driftH
       };
+    }
+
+    try {
+      const initRect = heroCanvas.getBoundingClientRect();
+      if (initRect.width > 0 && initRect.height > 0) {
+        canvasW = Math.round(initRect.width);
+        canvasH = Math.round(initRect.height);
+      }
+    } catch {}
+    updateLayout(canvasW, canvasH);
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const cr = entry.contentRect;
+          if (cr && cr.width > 0 && cr.height > 0) {
+            const nw = Math.round(cr.width);
+            const nh = Math.round(cr.height);
+            if (nw !== canvasW || nh !== canvasH) {
+              canvasW = nw;
+              canvasH = nh;
+              updateLayout(canvasW, canvasH);
+              staticDirty = true;
+            }
+          }
+        }
+      });
+      ro.observe(heroCanvas);
+    }
+
+    // Static offscreen canvas for unchanged labels, grids and theory curves
+    let staticCanvas = null;
+    let staticCtx = null;
+    let staticDirty = true;
+
+    function renderStatic() {
+      if (!staticCanvas) {
+        staticCanvas = document.createElement('canvas');
+        staticCtx = staticCanvas.getContext('2d');
+      }
+      const dpr = window.devicePixelRatio || 1;
+      const pixelW = Math.round(canvasW * dpr);
+      const pixelH = Math.round(canvasH * dpr);
+      if (staticCanvas.width !== pixelW || staticCanvas.height !== pixelH) {
+        staticCanvas.width = pixelW;
+        staticCanvas.height = pixelH;
+      }
+      staticCtx.save();
+      staticCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      staticCtx.clearRect(0, 0, canvasW, canvasH);
+      const c = colors();
+      const isMobile = canvasW < 600;
+
+      // 1. Timeline Header Title & Box & Axis & Ticks
+      staticCtx.font = '11px var(--font-serif)';
+      staticCtx.fillStyle = c.ink;
+      staticCtx.textAlign = 'left';
+      staticCtx.fillText(isMobile ? 'Spike Timing' : 'Spike-Pair Timing (Drag Pre / Post)', layout.timelineX, layout.timelineY - 4);
+
+      staticCtx.fillStyle = c.paperCard;
+      staticCtx.fillRect(layout.timelineX, layout.timelineY, layout.timelineW, layout.timelineH);
+      staticCtx.strokeStyle = c.border;
+      staticCtx.lineWidth = 1;
+      staticCtx.strokeRect(layout.timelineX, layout.timelineY, layout.timelineW, layout.timelineH);
+
+      const tAxisY = layout.timelineY + 22;
+      staticCtx.beginPath();
+      staticCtx.moveTo(layout.timelineX, tAxisY);
+      staticCtx.lineTo(layout.timelineX + layout.timelineW, tAxisY);
+      staticCtx.strokeStyle = c.border;
+      staticCtx.lineWidth = 1.5;
+      staticCtx.stroke();
+
+      staticCtx.font = '9px var(--font-mono)';
+      staticCtx.textAlign = 'center';
+      const toTimelineX = (tMs) => layout.timelineX + ((tMs + 50.0) / 100.0) * layout.timelineW;
+      for (let tk = -40; tk <= 40; tk += 20) {
+        const tx = toTimelineX(tk);
+        staticCtx.beginPath();
+        staticCtx.moveTo(tx, tAxisY - 3);
+        staticCtx.lineTo(tx, tAxisY + 3);
+        staticCtx.strokeStyle = tk === 0 ? c.ink : c.border;
+        staticCtx.lineWidth = tk === 0 ? 1.5 : 1;
+        staticCtx.stroke();
+        staticCtx.fillStyle = c.inkMuted;
+        staticCtx.fillText(`${tk > 0 ? '+' : ''}${tk}`, tx, tAxisY + 16);
+      }
+
+      // 2. Oscilloscope Box & Grid & Header Label & Baseline
+      staticCtx.fillStyle = c.paperCard;
+      staticCtx.fillRect(layout.stripX, layout.stripY, layout.stripW, layout.stripH);
+      staticCtx.strokeStyle = c.border;
+      staticCtx.lineWidth = 1;
+      staticCtx.strokeRect(layout.stripX, layout.stripY, layout.stripW, layout.stripH);
+
+      const graphZeroY = layout.stripY + layout.stripH - 22;
+      const graphTopY = layout.stripY + 22;
+      const graphH = graphZeroY - graphTopY;
+
+      staticCtx.save();
+      staticCtx.strokeStyle = c.border;
+      staticCtx.lineWidth = 0.5;
+      staticCtx.setLineDash([2, 4]);
+      for (let gy = graphTopY + graphH * 0.33; gy < graphZeroY; gy += graphH * 0.33) {
+        staticCtx.beginPath();
+        staticCtx.moveTo(layout.stripX + 6, gy);
+        staticCtx.lineTo(layout.stripX + layout.stripW - 6, gy);
+        staticCtx.stroke();
+      }
+      staticCtx.restore();
+
+      staticCtx.font = '10px var(--font-serif)';
+      staticCtx.fillStyle = c.ink;
+      staticCtx.textAlign = 'left';
+      staticCtx.fillText('Trace Memory & Readout', layout.stripX + 8, layout.stripY + 13);
+
+      staticCtx.beginPath();
+      staticCtx.moveTo(layout.stripX + 6, graphZeroY);
+      staticCtx.lineTo(layout.stripX + layout.stripW - 6, graphZeroY);
+      staticCtx.strokeStyle = c.border;
+      staticCtx.lineWidth = 1;
+      staticCtx.stroke();
+
+      // 3. STDP Window Plot Box & Header & Axes & Tags & Theory Curve
+      staticCtx.fillStyle = c.paperCard;
+      staticCtx.fillRect(layout.plotX, layout.plotY, layout.plotW, layout.plotH);
+      staticCtx.strokeStyle = c.border;
+      staticCtx.lineWidth = 1;
+      staticCtx.strokeRect(layout.plotX, layout.plotY, layout.plotW, layout.plotH);
+
+      staticCtx.font = '10px var(--font-serif)';
+      staticCtx.fillStyle = c.ink;
+      staticCtx.textAlign = 'left';
+      staticCtx.fillText(S.plot_window_title, layout.plotX + 6, layout.plotY + 11);
+
+      const toPlotX = (dt) => layout.plotX + ((dt + 50.0) / 100.0) * layout.plotW;
+      const toPlotY = (dw) => layout.plotY + layout.plotH * (0.5 - dw / 0.05);
+
+      staticCtx.beginPath();
+      staticCtx.moveTo(toPlotX(-50), toPlotY(0));
+      staticCtx.lineTo(toPlotX(50), toPlotY(0));
+      staticCtx.moveTo(toPlotX(0), layout.plotY);
+      staticCtx.lineTo(toPlotX(0), layout.plotY + layout.plotH);
+      staticCtx.strokeStyle = c.border;
+      staticCtx.lineWidth = 1.2;
+      staticCtx.stroke();
+
+      staticCtx.font = '9px var(--font-sans)';
+      staticCtx.fillStyle = c.exc;
+      staticCtx.textAlign = 'right';
+      staticCtx.fillText(S.tag_ltp, layout.plotX + layout.plotW - 6, layout.plotY + 12);
+      staticCtx.fillStyle = c.inh;
+      staticCtx.textAlign = 'left';
+      staticCtx.fillText(S.tag_ltd, layout.plotX + 6, layout.plotY + layout.plotH - 5);
+
+      if (showTheory) {
+        staticCtx.save();
+        staticCtx.beginPath();
+        staticCtx.setLineDash([3, 2.5]);
+        staticCtx.strokeStyle = c.theory;
+        staticCtx.lineWidth = 1.4;
+
+        let first = true;
+        for (let dt = -50; dt <= -0.5; dt += 1) {
+          const dwTheo = core.theory_dw(dt);
+          const px = toPlotX(dt);
+          const py = toPlotY(dwTheo);
+          if (first) {
+            staticCtx.moveTo(px, py);
+            first = false;
+          } else {
+            staticCtx.lineTo(px, py);
+          }
+        }
+        staticCtx.stroke();
+
+        staticCtx.beginPath();
+        first = true;
+        for (let dt = 0.5; dt <= 50; dt += 1) {
+          const dwTheo = core.theory_dw(dt);
+          const px = toPlotX(dt);
+          const py = toPlotY(dwTheo);
+          if (first) {
+            staticCtx.moveTo(px, py);
+            first = false;
+          } else {
+            staticCtx.lineTo(px, py);
+          }
+        }
+        staticCtx.stroke();
+        staticCtx.restore();
+      }
+
+      // 4. Running Weight Drift Mini Plot Box & Header & Bounds & Axis Labels
+      staticCtx.fillStyle = c.paperCard;
+      staticCtx.fillRect(layout.driftX, layout.driftY, layout.driftW, layout.driftH);
+      staticCtx.strokeStyle = c.border;
+      staticCtx.lineWidth = 1;
+      staticCtx.strokeRect(layout.driftX, layout.driftY, layout.driftW, layout.driftH);
+
+      staticCtx.font = '10px var(--font-serif)';
+      staticCtx.fillStyle = c.ink;
+      staticCtx.textAlign = 'left';
+      staticCtx.fillText(S.plot_drift_title, layout.driftX + 6, layout.driftY + 11);
+
+      const toDriftX = (step) => layout.driftX + 26 + (step / 60.0) * (layout.driftW - 36);
+      const toDriftY = (w) => layout.driftY + layout.driftH - 14 - w * (layout.driftH - 34);
+
+      staticCtx.save();
+      staticCtx.beginPath();
+      staticCtx.setLineDash([2, 2]);
+      staticCtx.strokeStyle = c.border;
+      staticCtx.moveTo(layout.driftX + 20, toDriftY(0.5));
+      staticCtx.lineTo(layout.driftX + layout.driftW - 8, toDriftY(0.5));
+      staticCtx.moveTo(layout.driftX + 20, toDriftY(1.0));
+      staticCtx.lineTo(layout.driftX + layout.driftW - 8, toDriftY(1.0));
+      staticCtx.moveTo(layout.driftX + 20, toDriftY(0.0));
+      staticCtx.lineTo(layout.driftX + layout.driftW - 8, toDriftY(0.0));
+      staticCtx.stroke();
+      staticCtx.restore();
+
+      staticCtx.font = '8px var(--font-mono)';
+      staticCtx.fillStyle = c.inkMuted;
+      staticCtx.textAlign = 'right';
+      staticCtx.fillText('1.0', layout.driftX + 20, toDriftY(1.0) + 3);
+      staticCtx.fillText('0.5', layout.driftX + 20, toDriftY(0.5) + 3);
+      staticCtx.fillText('0.0', layout.driftX + 20, toDriftY(0.0) + 3);
+
+      staticCtx.textAlign = 'center';
+      staticCtx.fillText('0', toDriftX(0), layout.driftY + layout.driftH - 3);
+      staticCtx.fillText('30', toDriftX(30), layout.driftY + layout.driftH - 3);
+      staticCtx.fillText('60', toDriftX(60), layout.driftY + layout.driftH - 3);
+
+      staticCtx.restore();
+      staticDirty = false;
+    }
+
+    // Animation & Render Loop
+    let lastTimestamp = performance.now();
+
+    function render(timestamp) {
+      const dtMs = Math.min(60, Math.max(1, timestamp - lastTimestamp));
+      lastTimestamp = timestamp;
+
+      const c = colors();
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvasW;
+      const H = canvasH;
+
+      if (heroCanvas.width !== Math.round(W * dpr) || heroCanvas.height !== Math.round(H * dpr)) {
+        heroCanvas.width = Math.round(W * dpr);
+        heroCanvas.height = Math.round(H * dpr);
+        staticDirty = true;
+      }
+
+      heroCtx.save();
+      heroCtx.scale(dpr, dpr);
+      heroCtx.clearRect(0, 0, W, H);
+
+      const isMobile = W < 600;
+      const somaY = layout.somaY;
+      const preX = layout.preX;
+      const postX = layout.postX;
+      const synX = layout.synX;
+      const somaR = layout.somaR;
 
       // Update Simulation Physics
       simTimeMs += dtMs;
@@ -1501,53 +1753,24 @@
       }
       heroCtx.restore();
 
+      // Blit static background (Timeline, Strip, Plot, Drift boxes, axes, grids and labels)
+      if (staticDirty || !staticCanvas) {
+        renderStatic();
+      }
+      heroCtx.drawImage(staticCanvas, 0, 0, W, H);
+
       // =========================================================================
       // 2. TIMELINE OF TWO SPIKE MARKERS (DRAG EITHER MARKER)
       // =========================================================================
       heroCtx.save();
-      // Timeline Header: Title on left, Tag on right
-      heroCtx.font = '11px var(--font-serif)';
-      heroCtx.fillStyle = c.ink;
-      heroCtx.textAlign = 'left';
-      heroCtx.fillText(isMobile ? 'Spike Timing' : 'Spike-Pair Timing (Drag Pre / Post)', layout.timelineX, layout.timelineY - 4);
-
       const tagText = `Δt = ${currentDeltaT > 0 ? '+' : ''}${currentDeltaT.toFixed(1)} ms (${currentDeltaT > 0 ? 'LTP' : currentDeltaT < 0 ? 'LTD' : 'Sync'})`;
       heroCtx.font = 'bold 10px var(--font-mono)';
       heroCtx.fillStyle = currentDeltaT > 0 ? c.exc : (currentDeltaT < 0 ? c.inh : c.ink);
       heroCtx.textAlign = 'right';
       heroCtx.fillText(tagText, layout.timelineX + layout.timelineW, layout.timelineY - 4);
 
-      // Timeline track box
-      heroCtx.fillStyle = c.paperCard;
-      heroCtx.fillRect(layout.timelineX, layout.timelineY, layout.timelineW, layout.timelineH);
-      heroCtx.strokeStyle = c.border;
-      heroCtx.lineWidth = 1;
-      heroCtx.strokeRect(layout.timelineX, layout.timelineY, layout.timelineW, layout.timelineH);
-
-      // Timeline axis line
-      const tAxisY = layout.timelineY + 22;
-      heroCtx.beginPath();
-      heroCtx.moveTo(layout.timelineX, tAxisY);
-      heroCtx.lineTo(layout.timelineX + layout.timelineW, tAxisY);
-      heroCtx.strokeStyle = c.border;
-      heroCtx.lineWidth = 1.5;
-      heroCtx.stroke();
-
-      // Axis ticks (-40 to +40 ms)
-      heroCtx.font = '9px var(--font-mono)';
-      heroCtx.textAlign = 'center';
       const toTimelineX = (tMs) => layout.timelineX + ((tMs + 50.0) / 100.0) * layout.timelineW;
-      for (let tk = -40; tk <= 40; tk += 20) {
-        const tx = toTimelineX(tk);
-        heroCtx.beginPath();
-        heroCtx.moveTo(tx, tAxisY - 3);
-        heroCtx.lineTo(tx, tAxisY + 3);
-        heroCtx.strokeStyle = tk === 0 ? c.ink : c.border;
-        heroCtx.lineWidth = tk === 0 ? 1.5 : 1;
-        heroCtx.stroke();
-        heroCtx.fillStyle = c.inkMuted;
-        heroCtx.fillText(`${tk > 0 ? '+' : ''}${tk}`, tx, tAxisY + 16);
-      }
+      const tAxisY = layout.timelineY + 22;
 
       // Connecting Span on Axis between Pre and Post
       const pX1 = toTimelineX(tPreMarker);
@@ -1609,44 +1832,10 @@
       // 3. OSCILLOSCOPE TRACE STRIP & SAMPLING READOUT LINE (Req 2)
       // =========================================================================
       heroCtx.save();
-      // Strip Box
-      heroCtx.fillStyle = c.paperCard;
-      heroCtx.fillRect(layout.stripX, layout.stripY, layout.stripW, layout.stripH);
-      heroCtx.strokeStyle = c.border;
-      heroCtx.lineWidth = 1;
-      heroCtx.strokeRect(layout.stripX, layout.stripY, layout.stripW, layout.stripH);
-
-      // Subtle graticule grid lines
-      heroCtx.save();
-      heroCtx.strokeStyle = c.border;
-      heroCtx.lineWidth = 0.5;
-      heroCtx.setLineDash([2, 4]);
-
       // Graph baseline
       const graphZeroY = layout.stripY + layout.stripH - 22;
       const graphTopY = layout.stripY + 22;
       const graphH = graphZeroY - graphTopY;
-
-      for (let gy = graphTopY + graphH * 0.33; gy < graphZeroY; gy += graphH * 0.33) {
-        heroCtx.beginPath();
-        heroCtx.moveTo(layout.stripX + 6, gy);
-        heroCtx.lineTo(layout.stripX + layout.stripW - 6, gy);
-        heroCtx.stroke();
-      }
-      heroCtx.restore();
-
-      // Strip Header Label
-      heroCtx.font = '10px var(--font-serif)';
-      heroCtx.fillStyle = c.ink;
-      heroCtx.textAlign = 'left';
-      heroCtx.fillText('Trace Memory & Readout', layout.stripX + 8, layout.stripY + 13);
-
-      heroCtx.beginPath();
-      heroCtx.moveTo(layout.stripX + 6, graphZeroY);
-      heroCtx.lineTo(layout.stripX + layout.stripW - 6, graphZeroY);
-      heroCtx.strokeStyle = c.border;
-      heroCtx.lineWidth = 1;
-      heroCtx.stroke();
 
       // Relative time range: window of 100 ms (-50 to +50 ms relative to center)
       const toStripX = (tMs) => layout.stripX + 10 + ((tMs + 50.0) / 100.0) * (layout.stripW - 20);
@@ -1794,82 +1983,9 @@
 
       // --- Top: STDP Window Plot ---
       heroCtx.save();
-      // Plot Box Background
-      heroCtx.fillStyle = c.paperCard;
-      heroCtx.fillRect(layout.plotX, layout.plotY, layout.plotW, layout.plotH);
-      heroCtx.strokeStyle = c.border;
-      heroCtx.lineWidth = 1;
-      heroCtx.strokeRect(layout.plotX, layout.plotY, layout.plotW, layout.plotH);
-
-      // Plot Header
-      heroCtx.font = '10px var(--font-serif)';
-      heroCtx.fillStyle = c.ink;
-      heroCtx.textAlign = 'left';
-      heroCtx.fillText(S.plot_window_title, layout.plotX + 6, layout.plotY + 11);
-
       // Transforms for plot: X in [-50, +50], Y in [-0.025, +0.025]
       const toPlotX = (dt) => layout.plotX + ((dt + 50.0) / 100.0) * layout.plotW;
       const toPlotY = (dw) => layout.plotY + layout.plotH * (0.5 - dw / 0.05);
-
-      // Zero axes lines
-      heroCtx.beginPath();
-      heroCtx.moveTo(toPlotX(-50), toPlotY(0));
-      heroCtx.lineTo(toPlotX(50), toPlotY(0));
-      heroCtx.moveTo(toPlotX(0), layout.plotY);
-      heroCtx.lineTo(toPlotX(0), layout.plotY + layout.plotH);
-      heroCtx.strokeStyle = c.border;
-      heroCtx.lineWidth = 1.2;
-      heroCtx.stroke();
-
-      // Region corner labels (placed in corners to never collide with curve, Req 6)
-      heroCtx.font = '9px var(--font-sans)';
-      heroCtx.fillStyle = c.exc;
-      heroCtx.textAlign = 'right';
-      heroCtx.fillText(S.tag_ltp, layout.plotX + layout.plotW - 6, layout.plotY + 12);
-      heroCtx.fillStyle = c.inh;
-      heroCtx.textAlign = 'left';
-      heroCtx.fillText(S.tag_ltd, layout.plotX + 6, layout.plotY + layout.plotH - 5);
-
-      // Theory Ghost Curve: dw = a_plus * exp(-dt/tau_plus) for dt>0, -a_minus * exp(dt/tau_minus) for dt<0
-      if (showTheory) {
-        heroCtx.save();
-        heroCtx.beginPath();
-        heroCtx.setLineDash([3, 2.5]);
-        heroCtx.strokeStyle = c.theory;
-        heroCtx.lineWidth = 1.4;
-
-        // Negative branch (dt < 0)
-        let first = true;
-        for (let dt = -50; dt <= -0.5; dt += 1) {
-          const dwTheo = core.theory_dw(dt);
-          const px = toPlotX(dt);
-          const py = toPlotY(dwTheo);
-          if (first) {
-            heroCtx.moveTo(px, py);
-            first = false;
-          } else {
-            heroCtx.lineTo(px, py);
-          }
-        }
-        heroCtx.stroke();
-
-        // Positive branch (dt > 0)
-        heroCtx.beginPath();
-        first = true;
-        for (let dt = 0.5; dt <= 50; dt += 1) {
-          const dwTheo = core.theory_dw(dt);
-          const px = toPlotX(dt);
-          const py = toPlotY(dwTheo);
-          if (first) {
-            heroCtx.moveTo(px, py);
-            first = false;
-          } else {
-            heroCtx.lineTo(px, py);
-          }
-        }
-        heroCtx.stroke();
-        heroCtx.restore();
-      }
 
       // Sweep points scatter
       for (const pt of sweepPoints) {
@@ -1920,52 +2036,9 @@
 
       // --- Bottom: Running Weight Drift Mini Plot (Req 4) ---
       heroCtx.save();
-      // Box Background
-      heroCtx.fillStyle = c.paperCard;
-      heroCtx.fillRect(layout.driftX, layout.driftY, layout.driftW, layout.driftH);
-      heroCtx.strokeStyle = c.border;
-      heroCtx.lineWidth = 1;
-      heroCtx.strokeRect(layout.driftX, layout.driftY, layout.driftW, layout.driftH);
-
-      // Plot Title
-      heroCtx.font = '10px var(--font-serif)';
-      heroCtx.fillStyle = c.ink;
-      heroCtx.textAlign = 'left';
-      heroCtx.fillText(S.plot_drift_title, layout.driftX + 6, layout.driftY + 11);
-
       // Coordinate transforms: X in [0, 60], Y in [0.0, 1.0]
       const toDriftX = (step) => layout.driftX + 26 + (step / 60.0) * (layout.driftW - 36);
       const toDriftY = (w) => layout.driftY + layout.driftH - 14 - w * (layout.driftH - 34);
-
-      // Grid & Bounds lines
-      heroCtx.save();
-      heroCtx.beginPath();
-      heroCtx.setLineDash([2, 2]);
-      heroCtx.strokeStyle = c.border;
-      // Baseline w = 0.50
-      heroCtx.moveTo(layout.driftX + 20, toDriftY(0.5));
-      heroCtx.lineTo(layout.driftX + layout.driftW - 8, toDriftY(0.5));
-      // Max bound w = 1.0
-      heroCtx.moveTo(layout.driftX + 20, toDriftY(1.0));
-      heroCtx.lineTo(layout.driftX + layout.driftW - 8, toDriftY(1.0));
-      // Min bound w = 0.0
-      heroCtx.moveTo(layout.driftX + 20, toDriftY(0.0));
-      heroCtx.lineTo(layout.driftX + layout.driftW - 8, toDriftY(0.0));
-      heroCtx.stroke();
-      heroCtx.restore();
-
-      // Axis ticks and labels
-      heroCtx.font = '8px var(--font-mono)';
-      heroCtx.fillStyle = c.inkMuted;
-      heroCtx.textAlign = 'right';
-      heroCtx.fillText('1.0', layout.driftX + 20, toDriftY(1.0) + 3);
-      heroCtx.fillText('0.5', layout.driftX + 20, toDriftY(0.5) + 3);
-      heroCtx.fillText('0.0', layout.driftX + 20, toDriftY(0.0) + 3);
-
-      heroCtx.textAlign = 'center';
-      heroCtx.fillText('0', toDriftX(0), layout.driftY + layout.driftH - 3);
-      heroCtx.fillText('30', toDriftX(30), layout.driftY + layout.driftH - 3);
-      heroCtx.fillText('60', toDriftX(60), layout.driftY + layout.driftH - 3);
 
       // Draw Running Drift Line
       if (weightDriftHistory.length > 0) {
@@ -2004,25 +2077,39 @@
       // =========================================================================
       // 5. UPDATE MARGIN READOUTS
       // =========================================================================
-      if (valDtEl) valDtEl.textContent = `${currentDeltaT > 0 ? '+' : ''}${currentDeltaT.toFixed(1)} ms`;
-      if (valDwEl) valDwEl.textContent = `${currentDw > 0 ? '+' : ''}${currentDw.toFixed(4)}`;
-      if (valXpreEl) valXpreEl.textContent = preTrace.toFixed(3);
-      if (valXpostEl) valXpostEl.textContent = postTrace.toFixed(3);
-      if (valWeightEl) valWeightEl.textContent = currentWeight.toFixed(3);
+      const setText = (el, str) => {
+        if (el && el._lastText !== str) {
+          el._lastText = str;
+          el.textContent = str;
+        }
+      };
+      setText(valDtEl, `${currentDeltaT > 0 ? '+' : ''}${currentDeltaT.toFixed(1)} ms`);
+      setText(valDwEl, `${currentDw > 0 ? '+' : ''}${currentDw.toFixed(4)}`);
+      setText(valXpreEl, preTrace.toFixed(3));
+      setText(valXpostEl, postTrace.toFixed(3));
+      setText(valWeightEl, currentWeight.toFixed(3));
 
       const theoDw = core.theory_dw(currentDeltaT);
       const diffVal = Math.abs(currentDw - theoDw);
-      if (valDiffEl) valDiffEl.textContent = diffVal.toFixed(4);
+      setText(valDiffEl, diffVal.toFixed(4));
 
       heroCtx.restore();
+    }
 
-      requestAnimationFrame(render);
+    let isLooping = false;
+    function loop(timestamp) {
+      render(timestamp);
+      requestAnimationFrame(loop);
     }
 
     if (typeof ctx.onFrame === 'function') {
-      ctx.onFrame(() => render(performance.now()));
+      ctx.onFrame(() => {
+        if (!isLooping) render(performance.now());
+      });
     }
-    render(performance.now());
+
+    isLooping = true;
+    requestAnimationFrame(loop);
   }
 
   // CommonJS export for Node tests
