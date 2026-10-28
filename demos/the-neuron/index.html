@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Neuron — bucket and gates demo</title>
+<style>
+  :root{
+    --ink:#22303c; --muted:#7a8797; --line:#dce2ea; --paper:#ffffff;
+    --na:#C0392B; --k:#2E6DB4; --accent:#1f6f8b; --soft:#f4f6f9;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:radial-gradient(1200px 700px at 20% 0%, #f8fafc 0%, #e9eef4 55%, #e2e8f0 100%);
+    color:var(--ink); font-family:"Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    overflow:hidden; user-select:none;
+  }
+  .app{height:100vh; display:flex; flex-direction:column; gap:10px; padding:12px 16px 14px}
+  header{display:flex; align-items:center; justify-content:space-between; padding:0 6px; min-height:52px}
+  .brand{display:flex; align-items:baseline; gap:10px; font-weight:800; letter-spacing:-.5px; font-size:21px}
+  .brand .dot{width:11px; height:11px; border-radius:50%; background:var(--na); display:inline-block; box-shadow:0 0 0 5px rgba(192,57,43,.12)}
+  .brand .sub{font-size:13px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted)}
+  .mode{
+    font-size:clamp(30px, 3.4vw, 52px); font-weight:900; letter-spacing:-1.6px; line-height:1;
+    color:#2c3e50; transition:color .25s ease, transform .25s ease;
+  }
+  .mode.hh{color:#174f66}
+  main{flex:1; min-height:0; display:grid; grid-template-columns:1.52fr 1fr; gap:12px}
+  .panel{position:relative; background:var(--paper); border-radius:18px; box-shadow:0 10px 34px rgba(31,45,61,.10), 0 2px 6px rgba(31,45,61,.05); overflow:hidden}
+  .panel-title{position:absolute; top:13px; left:18px; z-index:2; font-size:12px; font-weight:800; letter-spacing:1.6px; text-transform:uppercase; color:var(--muted)}
+  canvas{display:block; width:100%; height:100%}
+  .rate{position:absolute; top:8px; right:20px; z-index:2; text-align:right; pointer-events:none}
+  .rate #rateVal{display:block; font-size:50px; font-weight:900; letter-spacing:-2px; line-height:1; color:var(--ink)}
+  .rate .unit{display:block; margin-top:2px; font-size:12px; font-weight:800; letter-spacing:1.3px; text-transform:uppercase; color:var(--muted)}
+  .temp{position:absolute; right:16px; bottom:10px; z-index:2; font-size:12px; font-weight:600; color:#94a0ae; letter-spacing:.2px}
+  .hint{position:absolute; left:18px; bottom:12px; z-index:3; font-size:13px; font-weight:700; color:#8b5e3c; opacity:0; transition:opacity .2s}
+  .hint.show{opacity:1}
+  footer{background:var(--paper); border-radius:18px; box-shadow:0 8px 26px rgba(31,45,61,.08); padding:10px 18px; display:flex; align-items:center; gap:22px}
+  .controls{display:flex; align-items:center; gap:14px; min-width:0; flex:1}
+  .slider-label{font-size:14px; font-weight:700; color:var(--muted); white-space:nowrap}
+  .slider-label b{color:var(--ink); font-size:20px; font-weight:900; letter-spacing:-.5px; margin:0 2px}
+  input[type=range]{-webkit-appearance:none; appearance:none; flex:1; min-width:120px; height:8px; border-radius:99px; background:linear-gradient(90deg,var(--na) var(--fill,0%), #dfe5ec var(--fill,0%)); outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:#fff; border:3px solid var(--ink); box-shadow:0 2px 8px rgba(0,0,0,.18); cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:20px; height:20px; border-radius:50%; background:#fff; border:3px solid var(--ink); cursor:pointer}
+  .current-note{font-size:12px; color:var(--muted); font-weight:600; white-space:nowrap; min-width:118px}
+  .keys{display:flex; gap:7px; flex-wrap:wrap; justify-content:flex-end}
+  .key{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:#59677a; background:var(--soft); border:1px solid #e5ebf2; border-radius:999px; padding:5px 9px 5px 6px; white-space:nowrap; cursor:pointer}
+  .key kbd{font:inherit; font-size:11px; font-weight:900; color:var(--ink); background:#fff; border:1px solid #d7dee7; border-bottom-width:2px; border-radius:6px; padding:1px 6px; min-width:22px; text-align:center}
+  .key.on{background:#fff5f3; border-color:#f0c4bc; color:var(--na)}
+  .overlay{position:absolute; z-index:5; left:8%; right:8%; top:22%; background:rgba(255,255,255,.97); border:2px solid #f0c4bc; border-radius:16px; padding:18px 20px; box-shadow:0 18px 50px rgba(31,45,61,.18); font-size:17px; font-weight:700; line-height:1.45; color:#5b2b24}
+  .overlay small{display:block; margin-top:6px; font-size:12px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#b27a70}
+  .overlay.hidden,.trial-banner.hidden{display:none}
+  .trial-banner{position:absolute; z-index:6; left:18px; bottom:46px; max-width:78%; background:rgba(24,36,48,.94); color:#fff; border-radius:14px; padding:12px 16px; box-shadow:0 12px 28px rgba(0,0,0,.24); font-size:15px; font-weight:700; line-height:1.35}
+  .trial-banner b{color:#ffb4a8}
+  .trial-banner .sub{display:block; margin-top:4px; font-size:12px; font-weight:600; color:#b9c6d4; letter-spacing:.3px}
+  @media (max-width:900px){ main{grid-template-columns:1fr; grid-template-rows:1fr .9fr} .keys{display:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><span class="dot"></span>The Neuron <span class="sub">live demo</span></div>
+    <div class="mode" id="modeBadge">Bucket model</div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="panel-title">Membrane voltage</div>
+      <canvas id="trace"></canvas>
+      <div class="rate"><span id="rateVal">0</span><span class="unit">spikes / s</span></div>
+      <div class="hint" id="hint"></div>
+    </section>
+
+    <aside class="panel">
+      <div class="panel-title" id="sideTitle">The leaky bucket</div>
+      <canvas id="side"></canvas>
+      <div class="temp" id="tempLabel"></div>
+      <div class="overlay hidden" id="pumpOverlay">
+        Na/K pump: not in this model.
+        <small>Spikes still reset in ~1 ms. The pump is a label, not a simulation change.</small>
+      </div>
+      <div class="trial-banner hidden" id="trialBanner"></div>
+    </aside>
+  </main>
+
+  <footer>
+    <div class="controls">
+      <div class="slider-label">input <b id="inputVal">0.0</b> nA</div>
+      <input id="slider" type="range" min="0" max="20" step="0.1" value="0">
+      <div class="current-note" id="currentNote"></div>
+    </div>
+    <div class="keys">
+      <div class="key" id="keyH"><kbd>H</kbd>model</div>
+      <div class="key" id="keyN"><kbd>N</kbd>noise</div>
+      <div class="key" id="keyS"><kbd>S</kbd>slow</div>
+      <div class="key" id="keySpace"><kbd>␣</kbd>pause</div>
+      <div class="key" id="keyP"><kbd>P</kbd>pump</div>
+      <div class="key" id="keyD"><kbd>D</kbd>double pulse</div>
+      <div class="key" id="keyT"><kbd>T</kbd>take-off</div>
+    </div>
+  </footer>
+</div>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- HH_CORE_START                                                       -->
+<!-- Pure equations, no DOM. Extracted by hh_crosscheck.mjs for testing. -->
+<!-- ------------------------------------------------------------------ -->
+<script>
+(function (root) {
+  'use strict';
+
+  // Voltage axis shift. The neuroSush library rests at about -64.996 mV.
+  // To match the talk, every voltage is displayed 5.00362066880794 mV lower:
+  //   V_display = V_library - 5.00362066880794
+  // and every reversal potential is shifted by the same constant.  The
+  // gating rates are evaluated at the unshifted (library) voltage, so the
+  // physics is unchanged.  With this offset the displayed rest is -70.000 mV.
+  const V_OFFSET = -5.00362066880794;
+
+  const clamp01 = (x) => x < 0 ? 0 : (x > 1 ? 1 : x);
+
+  const core = {
+    V_OFFSET: V_OFFSET,
+    C_M: 1.0,
+    G_NA: 120.0,
+    G_K: 36.0,
+    G_L: 0.3,
+    // reversal potentials, shifted into the talk's voltage axis
+    E_NA: 50.0 + V_OFFSET,
+    E_K: -77.0 + V_OFFSET,
+    E_L: -54.387 + V_OFFSET,
+
+    REST_V: -70.0,
+    REST_M: 0.052932485,
+    REST_H: 0.596120753,
+    REST_N: 0.317676914,
+
+    T_C: 12.0,
+    PHI: Math.pow(3.0, (12.0 - 6.3) / 10.0),
+
+    phys(v) { return v - V_OFFSET; },
+
+    // Hodgkin-Huxley 1952 rate equations, with the removable singularities
+    // at -40 mV and -55 mV handled by Taylor expansion.  phi multiplies
+    // every rate (Q10 = 3).
+    alpha_m(v) {
+      const u = (this.phys(v) + 40.0) / 10.0;
+      if (Math.abs(u) < 1e-6) return this.PHI * (1.0 + 0.5 * u + u * u / 12.0);
+      return this.PHI * (-u / Math.expm1(-u));
+    },
+    beta_m(v) {
+      return this.PHI * 4.0 * Math.exp(-(this.phys(v) + 65.0) / 18.0);
+    },
+    alpha_h(v) {
+      return this.PHI * 0.07 * Math.exp(-(this.phys(v) + 65.0) / 20.0);
+    },
+    beta_h(v) {
+      return this.PHI / (1.0 + Math.exp(-(this.phys(v) + 35.0) / 10.0));
+    },
+    alpha_n(v) {
+      const u = (this.phys(v) + 55.0) / 10.0;
+      if (Math.abs(u) < 1e-6) return this.PHI * 0.1 * (1.0 + 0.5 * u + u * u / 12.0);
+      return this.PHI * 0.1 * (-u / Math.expm1(-u));
+    },
+    beta_n(v) {
+      return this.PHI * 0.125 * Math.exp(-(this.phys(v) + 65.0) / 80.0);
+    },
+
+    m_inf(v) { const a = this.alpha_m(v), b = this.beta_m(v); return a / (a + b); },
+    h_inf(v) { const a = this.alpha_h(v), b = this.beta_h(v); return a / (a + b); },
+    n_inf(v) { const a = this.alpha_n(v), b = this.beta_n(v); return a / (a + b); },
+    tau_m(v) { return 1.0 / (this.alpha_m(v) + this.beta_m(v)); },
+    tau_h(v) { return 1.0 / (this.alpha_h(v) + this.beta_h(v)); },
+    tau_n(v) { return 1.0 / (this.alpha_n(v) + this.beta_n(v)); },
+
+    restState() {
+      return { V: this.REST_V, m: this.REST_M, h: this.REST_H, n: this.REST_N };
+    },
+
+    derivatives(s, I_ext) {
+      const V = s.V, m = s.m, h = s.h, n = s.n;
+      const i_na = this.G_NA * m * m * m * h * (V - this.E_NA);
+      const i_k = this.G_K * n * n * n * n * (V - this.E_K);
+      const i_l = this.G_L * (V - this.E_L);
+      return {
+        dV: (I_ext - i_na - i_k - i_l) / this.C_M,
+        dm: this.alpha_m(V) * (1.0 - m) - this.beta_m(V) * m,
+        dh: this.alpha_h(V) * (1.0 - h) - this.beta_h(V) * h,
+        dn: this.alpha_n(V) * (1.0 - n) - this.beta_n(V) * n,
+        i_na: i_na, i_k: i_k, i_l: i_l
+      };
+    },
+
+    rk4Step(s, I_ext, dt) {
+      const k1 = this.derivatives(s, I_ext);
+      const s2 = {
+        V: s.V + 0.5 * dt * k1.dV,
+        m: clamp01(s.m + 0.5 * dt * k1.dm),
+        h: clamp01(s.h + 0.5 * dt * k1.dh),
+        n: clamp01(s.n + 0.5 * dt * k1.dn)
+      };
+      const k2 = this.derivatives(s2, I_ext);
+      const s3 = {
+        V: s.V + 0.5 * dt * k2.dV,
+        m: clamp01(s.m + 0.5 * dt * k2.dm),
+        h: clamp01(s.h + 0.5 * dt * k2.dh),
+        n: clamp01(s.n + 0.5 * dt * k2.dn)
+      };
+      const k3 = this.derivatives(s3, I_ext);
+      const s4 = {
+        V: s.V + dt * k3.dV,
+        m: clamp01(s.m + dt * k3.dm),
+        h: clamp01(s.h + dt * k3.dh),
+        n: clamp01(s.n + dt * k3.dn)
+      };
+      const k4 = this.derivatives(s4, I_ext);
+      const next = {
+        V: s.V + (dt / 6.0) * (k1.dV + 2.0 * k2.dV + 2.0 * k3.dV + k4.dV),
+        m: clamp01(s.m + (dt / 6.0) * (k1.dm + 2.0 * k2.dm + 2.0 * k3.dm + k4.dm)),
+        h: clamp01(s.h + (dt / 6.0) * (k1.dh + 2.0 * k2.dh + 2.0 * k3.dh + k4.dh)),
+        n: clamp01(s.n + (dt / 6.0) * (k1.dn + 2.0 * k2.dn + 2.0 * k3.dn + k4.dn))
+      };
+      const d = this.derivatives(next, I_ext);
+      next.i_na = d.i_na; next.i_k = d.i_k; next.i_l = d.i_l;
+      return next;
+    },
+
+    simulate(duration, dt, I_ext, initial) {
+      let s = initial ? { ...initial } : this.restState();
+      const steps = Math.round(duration / dt);
+      const history = [];
+      for (let i = 0; i < steps; i++) {
+        const t = i * dt;
+        const cur = typeof I_ext === 'function' ? I_ext(t) : I_ext;
+        s = this.rk4Step(s, cur, dt);
+        history.push({ t: t, V: s.V, m: s.m, h: s.h, n: s.n });
+      }
+      return { state: s, history: history };
+    }
+  };
+
+  root.HHCore = core;
+  if (typeof module !== 'undefined' && module.exports) module.exports = core;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<!-- HH_CORE_END -->
+
+<script>
+(function () {
+  'use strict';
+
+  const HH = globalThis.HHCore;
+  const $ = (id) => document.getElementById(id);
+
+  const traceCanvas = $('trace');
+  const sideCanvas = $('side');
+  const modeBadge = $('modeBadge');
+  const sideTitle = $('sideTitle');
+  const tempLabel = $('tempLabel');
+  const rateVal = $('rateVal');
+  const hintEl = $('hint');
+  const slider = $('slider');
+  const inputVal = $('inputVal');
+  const currentNote = $('currentNote');
+  const pumpOverlay = $('pumpOverlay');
+  const trialBanner = $('trialBanner');
+  const keys = { H: $('keyH'), N: $('keyN'), S: $('keyS'), Space: $('keySpace'), P: $('keyP'), D: $('keyD'), T: $('keyT') };
+
+  // ---------------- LIF parameters (the original bucket model) ----------------
+  const LIF = {
+    REST: -70.0,        // mV, dotted line
+    THRESH: -40.0,      // mV, dashed rim
+    RESET: -75.0,       // mV, bottom after a spike
+    TAU: 20.0,          // ms
+    R: 10.0,            // MOhm, so nA * MOhm = mV
+    REFRACTORY: 3.0,    // ms, total dead time after threshold
+    DRAW: 1.2,          // ms, drawn spike shape
+    DT: 0.05,
+    WINDOW: 400.0       // ms, unchanged bucket window
+  };
+
+  const HH_DT = 0.01;
+  const HH_WINDOW = 40.0;      // ms; a spike is ~1 ms, so 40 ms keeps it visible
+  const TRIAL_WINDOW = 32.0;
+  const TRIAL_PULSE = 20.0;    // uA/cm2, 1 ms
+  const DELAYS = [1, 2, 3, 5, 8, 12];
+
+  const ui = {
+    mode: 'LIF',
+    input: 0.0,
+    noise: false,
+    slow: false,
+    paused: false,
+    pump: false,
+    takeoff: false,
+    trialDelay: 0
+  };
+
+  const lif = {
+    t: 0, V: LIF.REST, refractory: 0, noise: 0,
+    spikeTimes: [], hist: [], flash: 0
+  };
+
+  const hh = {
+    t: 0, V: HH.REST_V, m: HH.REST_M, h: HH.REST_H, n: HH.REST_N,
+    noise: 0, lastTakeoff: -99, spikeTimes: [], takeoffs: [], hist: [],
+    trial: null
+  };
+
+  // ---------------- small helpers ----------------
+  function gauss() {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  }
+  function clamp(x, a, b) { return x < a ? a : (x > b ? b : x); }
+  function smoothstep(a, b, x) { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+  function setupCanvas(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(1, Math.round(rect.width));
+    const h = Math.max(1, Math.round(rect.height));
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w, h };
+  }
+  function roundRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function arrow(ctx, x1, y1, x2, y2, size) {
+    const a = Math.atan2(y2 - y1, x2 - x1);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - size * Math.cos(a - 0.45), y2 - size * Math.sin(a - 0.45));
+    ctx.lineTo(x2 - size * Math.cos(a + 0.45), y2 - size * Math.sin(a + 0.45));
+    ctx.closePath(); ctx.fill();
+  }
+  let hintTimer = 0;
+  function flashHint(text) {
+    hintEl.textContent = text;
+    hintEl.classList.add('show');
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => hintEl.classList.remove('show'), 2200);
+  }
+
+  // ---------------- mode / controls ----------------
+  function resetHH() {
+    hh.t = 0;
+    hh.V = HH.REST_V;
+    hh.m = HH.REST_M; hh.h = HH.REST_H; hh.n = HH.REST_N;
+    hh.noise = 0; hh.lastTakeoff = -99;
+    hh.spikeTimes = []; hh.takeoffs = []; hh.hist = [];
+  }
+  function setMode(mode) {
+    if (ui.mode === mode) return;
+    ui.mode = mode;
+    ui.trialDelay = 0;
+    hh.trial = null;
+    trialBanner.classList.add('hidden');
+    if (mode === 'HH') {
+      resetHH();
+      modeBadge.textContent = 'Gates model';
+      modeBadge.classList.add('hh');
+      sideTitle.textContent = 'Ion channels';
+      tempLabel.textContent = 'T = ' + HH.T_C.toFixed(1) + ' °C  ·  φ = ' + HH.PHI.toFixed(2);
+      pumpOverlay.classList.toggle('hidden', !ui.pump);
+    } else {
+      modeBadge.textContent = 'Bucket model';
+      modeBadge.classList.remove('hh');
+      sideTitle.textContent = 'The leaky bucket';
+      tempLabel.textContent = '';
+      pumpOverlay.classList.add('hidden');
+      ui.pump = false;
+    }
+    lif.spikeTimes = []; hh.spikeTimes = [];
+    updateKeyChips();
+    updateLabels();
+  }
+  function updateKeyChips() {
+    keys.H.classList.toggle('on', ui.mode === 'HH');
+    keys.N.classList.toggle('on', ui.noise);
+    keys.S.classList.toggle('on', ui.slow);
+    keys.Space.classList.toggle('on', ui.paused);
+    keys.P.classList.toggle('on', ui.pump);
+    keys.D.classList.toggle('on', !!hh.trial);
+    keys.T.classList.toggle('on', ui.takeoff);
+  }
+  function updateLabels() {
+    inputVal.textContent = ui.input.toFixed(1);
+    slider.style.setProperty('--fill', (100 * ui.input / 20).toFixed(1) + '%');
+    if (ui.mode === 'HH') currentNote.textContent = 'I = ' + (ui.input * 1.0).toFixed(1) + ' µA/cm²';
+    else currentNote.textContent = 'tap strength · leaky bucket';
+  }
+  slider.addEventListener('input', () => {
+    ui.input = parseFloat(slider.value);
+    updateLabels();
+  });
+
+  // ---------------- double pulse ----------------
+  function startTrial() {
+    if (ui.mode !== 'HH') {
+      flashHint('Double pulse is in Gates mode — press H first');
+      return;
+    }
+    ui.trialDelay = hh.trial ? (ui.trialDelay + 1) % DELAYS.length : 0;
+    const delay = DELAYS[ui.trialDelay];
+    resetHH();
+    hh.trial = {
+      delay: delay, h2: null, t2: null, peak2: -100, done: false,
+      verdict: 'running', pulse1: [5, 6], pulse2: [6 + delay, 7 + delay]
+    };
+    trialBanner.classList.remove('hidden');
+    updateTrialBanner();
+    updateKeyChips();
+  }
+  function updateTrialBanner() {
+    const tr = hh.trial;
+    if (!tr) return;
+    const hText = tr.h2 === null ? '—' : tr.h2.toFixed(2);
+    const vText = tr.peak2 <= -99 ? '—' : tr.peak2.toFixed(0) + ' mV';
+    trialBanner.innerHTML =
+      'Double pulse · delay <b>' + tr.delay + ' ms</b> · h at 2nd pulse <b>' + hText + '</b><br>' +
+      '2nd spike: <b>' + tr.verdict + '</b> <span class="sub">second peak ' + vText +
+      ' · h=1 open, h=0 jammed · D steps 1 → 2 → 3 → 5 → 8 → 12 ms</span>';
+  }
+
+  // ---------------- simulation ----------------
+  function stepLIF(dtReal) {
+    const speed = ui.slow ? 0.10 : 1.0;
+    const simMs = dtReal * 1000 * speed;
+    const dt = LIF.DT;
+    const steps = Math.max(1, Math.round(simMs / dt));
+    const noiseTau = 3.0, noiseSigma = 1.35;
+
+    for (let k = 0; k < steps; k++) {
+      lif.t += dt;
+
+      if (lif.refractory > 0) {
+        lif.refractory -= dt;
+        if (lif.refractory > LIF.REFRACTORY - LIF.DRAW) {
+          const p = (LIF.REFRACTORY - lif.refractory) / LIF.DRAW;
+          lif.V = p < 0.5
+            ? LIF.THRESH + 80.0 * Math.sin(Math.PI * p)
+            : LIF.RESET + 115.0 * Math.cos(Math.PI * (p - 0.5));
+        } else {
+          lif.V = LIF.RESET;
+        }
+      } else {
+        if (ui.noise) {
+          lif.noise += (-lif.noise / noiseTau) * dt + noiseSigma * Math.sqrt(2.0 * dt / noiseTau) * gauss();
+        } else {
+          lif.noise *= Math.exp(-dt / noiseTau);
+        }
+        const I = ui.input + lif.noise;
+        lif.V += dt * ((-(lif.V - LIF.REST) + I * LIF.R) / LIF.TAU);
+        if (lif.V >= LIF.THRESH) {
+          lif.V = LIF.THRESH;
+          lif.refractory = LIF.REFRACTORY;
+          lif.flash = 1.0;
+          lif.spikeTimes.push(lif.t);
+        }
+      }
+      lif.flash *= Math.exp(-dt / 80.0);
+      lif.hist.push({ t: lif.t, V: lif.V });
+    }
+    const cut = lif.t - 600;
+    while (lif.hist.length && lif.hist[0].t < cut) lif.hist.shift();
+    while (lif.spikeTimes.length && lif.spikeTimes[0] < lif.t - 800) lif.spikeTimes.shift();
+  }
+
+  function stepHH(dtReal) {
+    const tr = hh.trial;
+    const speed = tr ? (ui.slow ? 0.035 : 0.06) : (ui.slow ? 0.02 : 1.0);
+    const simMs = dtReal * 1000 * speed;
+    const dt = HH_DT;
+    const steps = Math.max(1, Math.round(simMs / dt));
+    const noiseTau = 4.0, noiseSigma = 1.0;
+
+    for (let k = 0; k < steps; k++) {
+      let I = 0.0;
+      if (tr) {
+        const t0 = hh.t;
+        if (t0 >= tr.pulse1[0] && t0 < tr.pulse1[1]) I += TRIAL_PULSE;
+        if (t0 >= tr.pulse2[0] && t0 < tr.pulse2[1]) I += TRIAL_PULSE;
+      } else {
+        if (ui.noise) {
+          hh.noise += (-hh.noise / noiseTau) * dt + noiseSigma * Math.sqrt(2.0 * dt / noiseTau) * gauss();
+        } else {
+          hh.noise *= Math.exp(-dt / noiseTau);
+        }
+        I = ui.input * 1.0 + hh.noise; // slider nA -> µA/cm² (1:1)
+      }
+
+      if (tr && tr.h2 === null && hh.t >= tr.pulse2[0]) {
+        tr.h2 = hh.h;
+        tr.t2 = hh.t;
+      }
+
+      const prevV = hh.V;
+      const next = HH.rk4Step(hh, I, dt);
+      hh.V = next.V; hh.m = next.m; hh.h = next.h; hh.n = next.n;
+      hh.t += dt;
+
+      if (prevV < 0.0 && hh.V >= 0.0) hh.spikeTimes.push(hh.t);
+
+      const dv = (hh.V - prevV) / dt;
+      if (dv > 25.0 && hh.t - hh.lastTakeoff > 1.5) {
+        hh.takeoffs.push({ t: hh.t, V: hh.V });
+        hh.lastTakeoff = hh.t;
+        if (hh.takeoffs.length > 30) hh.takeoffs.shift();
+      }
+
+      hh.hist.push({ t: hh.t, V: hh.V, m: hh.m, h: hh.h, n: hh.n });
+      while (hh.hist.length > 22000) hh.hist.shift();
+
+      if (tr) {
+        const end2 = tr.pulse2[1];
+        if (hh.t >= end2 && hh.t <= end2 + 15.0) {
+          tr.peak2 = Math.max(tr.peak2, hh.V);
+        }
+        if (hh.t >= end2 + 15.0 && !tr.done) {
+          tr.done = true;
+          tr.verdict = tr.peak2 > 28.0 ? 'full' : (tr.peak2 > -40.0 ? 'smaller' : 'fails');
+          updateTrialBanner();
+        }
+        if (hh.t >= TRIAL_WINDOW) {
+          if (!tr.done) {
+            tr.done = true;
+            tr.verdict = tr.peak2 > 28.0 ? 'full' : (tr.peak2 > -40.0 ? 'smaller' : 'fails');
+          }
+          updateTrialBanner();
+          break;
+        }
+      }
+    }
+
+    const cut = hh.t - 220;
+    while (hh.hist.length && hh.hist[0].t < cut) hh.hist.shift();
+    while (hh.spikeTimes.length && hh.spikeTimes[0] < hh.t - 900) hh.spikeTimes.shift();
+  }
+
+  function currentRate() {
+    const now = ui.mode === 'LIF' ? lif.t : hh.t;
+    const arr = ui.mode === 'LIF' ? lif.spikeTimes : hh.spikeTimes;
+    if (ui.mode === 'LIF') {
+      const cut = now - 500.0;
+      let n = 0;
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if (arr[i] < cut) break;
+        n++;
+      }
+      return n / 0.5;
+    }
+    if (arr.length < 2) return 0;
+    const win = Math.min(500.0, Math.max(50.0, now));
+    const cut = now - win;
+    let n = 0;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      if (arr[i] < cut) break;
+      n++;
+    }
+    return n / (win / 1000.0);
+  }
+
+  // ---------------- draw: voltage trace ----------------
+  function niceTicks(min, max, step) {
+    const out = [];
+    for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step) out.push(v);
+    return out;
+  }
+
+  function drawTrace() {
+    const { ctx, w, h } = setupCanvas(traceCanvas);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+
+    const m = { l: 66, r: 22, t: 30, b: 44 };
+    const pw = w - m.l - m.r;
+    const ph = h - m.t - m.b;
+    const ymin = -90, ymax = 50;
+    const trial = ui.mode === 'HH' && hh.trial;
+    const win = trial ? TRIAL_WINDOW : (ui.mode === 'HH' ? HH_WINDOW : LIF.WINDOW);
+    const now = ui.mode === 'LIF' ? lif.t : hh.t;
+    let xmin, xmax;
+    if (trial) { xmin = 0; xmax = TRIAL_WINDOW; }
+    else { xmax = Math.max(win, now); xmin = xmax - win; }
+    const X = (t) => m.l + (t - xmin) / (xmax - xmin) * pw;
+    const Y = (v) => m.t + (ymax - v) / (ymax - ymin) * ph;
+
+    // grid
+    ctx.strokeStyle = '#eef2f7'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (const v of niceTicks(ymin, ymax, 20)) {
+      const y = Y(v);
+      ctx.moveTo(m.l, y); ctx.lineTo(m.l + pw, y);
+    }
+    ctx.stroke();
+    const xstep = ui.mode === 'LIF' ? 50 : (trial ? 5 : 10);
+    ctx.beginPath();
+    for (const t of niceTicks(xmin, xmax, xstep)) {
+      const x = X(t);
+      ctx.moveTo(x, m.t); ctx.lineTo(x, m.t + ph);
+    }
+    ctx.stroke();
+
+    // axes
+    ctx.strokeStyle = '#c9d2dd'; ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(m.l, m.t); ctx.lineTo(m.l, m.t + ph); ctx.lineTo(m.l + pw, m.t + ph);
+    ctx.stroke();
+
+    // tick labels
+    ctx.fillStyle = '#8b97a6'; ctx.font = '600 12px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (const v of niceTicks(ymin, ymax, 20)) {
+      if (v === -90 || v === 50) continue;
+      ctx.fillText(v + '', m.l - 8, Y(v));
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (const t of niceTicks(xmin, xmax, xstep)) {
+      ctx.fillText(Math.round(t) + '', X(t), m.t + ph + 8);
+    }
+    ctx.font = '700 12px Inter, system-ui, sans-serif';
+    ctx.fillStyle = '#7a8797';
+    ctx.fillText('time (ms)', m.l + pw / 2, m.t + ph + 24);
+    ctx.save();
+    ctx.translate(18, m.t + ph / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('mV', 0, 0);
+    ctx.restore();
+
+    // rest line
+    ctx.save();
+    ctx.setLineDash([2, 5]); ctx.strokeStyle = '#8b97a6'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(m.l, Y(-70)); ctx.lineTo(m.l + pw, Y(-70)); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = '#7a8797'; ctx.font = '700 12px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillText('rest  −70', m.l + 8, Y(-70) - 4);
+
+    // threshold / bucket rim
+    const hhMode = ui.mode === 'HH';
+    ctx.save();
+    ctx.setLineDash([8, 6]);
+    ctx.strokeStyle = hhMode ? 'rgba(150,160,172,.55)' : 'rgba(60,72,86,.78)';
+    ctx.lineWidth = hhMode ? 1.5 : 2.0;
+    ctx.beginPath(); ctx.moveTo(m.l, Y(-40)); ctx.lineTo(m.l + pw, Y(-40)); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = hhMode ? 'rgba(130,140,152,.85)' : '#4e5b6a';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    ctx.font = hhMode ? '600 11px Inter, system-ui, sans-serif' : '700 12px Inter, system-ui, sans-serif';
+    ctx.fillText(hhMode ? 'bucket rim (LIF)  −40' : 'threshold  −40', m.l + pw - 8, Y(-40) - 4);
+
+    // pulses in double-pulse trial
+    if (trial) {
+      const shade = (a, b, label) => {
+        const x1 = X(a), x2 = X(b);
+        ctx.fillStyle = 'rgba(31,111,139,.10)';
+        ctx.fillRect(x1, m.t, x2 - x1, ph);
+        ctx.strokeStyle = 'rgba(31,111,139,.35)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x1, m.t); ctx.lineTo(x1, m.t + ph); ctx.moveTo(x2, m.t); ctx.lineTo(x2, m.t + ph); ctx.stroke();
+        ctx.fillStyle = '#1f6f8b'; ctx.font = '800 11px Inter, system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(label, (x1 + x2) / 2, m.t + 2);
+      };
+      shade(hh.trial.pulse1[0], hh.trial.pulse1[1], '1st');
+      shade(hh.trial.pulse2[0], hh.trial.pulse2[1], '2nd');
+    }
+
+    // trace
+    const hist = ui.mode === 'LIF' ? lif.hist : hh.hist;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(m.l, m.t, pw, ph);
+    ctx.clip();
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < hist.length; i++) {
+      const p = hist[i];
+      if (p.t < xmin) continue;
+      const x = X(p.t), y = Y(p.V);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = hhMode ? '#20303f' : '#2c3e50';
+    ctx.lineWidth = hhMode ? 2.0 : 2.6;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    // take-off markers
+    if (hhMode && ui.takeoff && !trial) {
+      for (const p of hh.takeoffs) {
+        if (p.t < xmin) continue;
+        const x = X(p.t), y = Y(p.V);
+        ctx.fillStyle = '#1f8a57';
+        ctx.beginPath();
+        ctx.moveTo(x, y - 5); ctx.lineTo(x - 6, y - 14); ctx.lineTo(x + 6, y - 14); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(31,138,87,.55)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(m.l + pw, y); ctx.stroke();
+      }
+    }
+
+    // double-pulse second-pulse marker and readout
+    if (trial && hh.trial.t2 !== null) {
+      const x = X(hh.trial.t2);
+      ctx.strokeStyle = 'rgba(192,57,43,.55)'; ctx.lineWidth = 1.4;
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(x, m.t); ctx.lineTo(x, m.t + ph); ctx.stroke();
+      ctx.setLineDash([]);
+      if (hh.trial.peak2 > -99) {
+        const y = Y(hh.trial.peak2);
+        ctx.fillStyle = '#C0392B';
+        ctx.beginPath(); ctx.arc(X(hh.trial.pulse2[1] + 1.4), y, 5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // current time banner in HH
+    if (hhMode) {
+      ctx.fillStyle = '#94a0ae'; ctx.font = '600 11px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+      ctx.fillText('window ' + (trial ? TRIAL_WINDOW : HH_WINDOW) + ' ms', m.l + pw, m.t + ph + 24);
+    }
+  }
+
+  // ---------------- draw: leaky bucket (LIF) ----------------
+  let bucketPhase = 0;
+  function drawBucket(ctx, w, h) {
+    const cx = w * 0.5;
+    const topY = h * 0.29, botY = h * 0.74;
+    const topW = w * 0.54, botW = w * 0.41;
+    const topL = cx - topW / 2, topR = cx + topW / 2;
+    const botL = cx - botW / 2, botR = cx + botW / 2;
+    const frac = clamp((lif.V - LIF.RESET) / (LIF.THRESH - LIF.RESET), 0, 1);
+    const waterY = botY - frac * (botY - topY);
+    const widthAt = (y) => {
+      const p = clamp((botY - y) / (botY - topY), 0, 1);
+      return botW + p * (topW - botW);
+    };
+
+    // taps and streams
+    const flow = ui.input / 20.0;
+    ctx.strokeStyle = '#9aabbc'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(w * 0.18, topY - h * 0.17); ctx.lineTo(w * 0.18, topY - h * 0.09);
+    ctx.moveTo(w * 0.82, topY - h * 0.17); ctx.lineTo(w * 0.82, topY - h * 0.09);
+    ctx.moveTo(w * 0.5, topY - h * 0.20); ctx.lineTo(w * 0.5, topY - h * 0.10);
+    ctx.stroke();
+    ctx.strokeStyle = '#b7c4d1'; ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.18, topY - h * 0.09); ctx.lineTo(w * 0.22, topY - h * 0.06);
+    ctx.moveTo(w * 0.82, topY - h * 0.09); ctx.lineTo(w * 0.78, topY - h * 0.06);
+    ctx.moveTo(w * 0.5, topY - h * 0.10); ctx.lineTo(w * 0.5, topY - h * 0.07);
+    ctx.stroke();
+
+    const streamW = 1.5 + 10 * flow;
+    ctx.strokeStyle = 'rgba(74,158,214,.65)';
+    ctx.lineWidth = streamW; ctx.lineCap = 'round';
+    for (const x of [w * 0.22, w * 0.5, w * 0.78]) {
+      if (flow < 0.02) continue;
+      ctx.beginPath();
+      ctx.moveTo(x, topY - h * 0.065);
+      ctx.lineTo(x, topY - h * 0.01);
+      ctx.stroke();
+    }
+
+    // bucket body
+    ctx.beginPath();
+    ctx.moveTo(topL, topY); ctx.lineTo(botL, botY);
+    ctx.quadraticCurveTo(cx, botY + 10, botR, botY);
+    ctx.lineTo(topR, topY);
+    ctx.closePath();
+    ctx.fillStyle = '#fbfcfd'; ctx.fill();
+    ctx.strokeStyle = '#516175'; ctx.lineWidth = 4; ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    // water clipped to bucket
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(topL, topY); ctx.lineTo(botL, botY);
+    ctx.quadraticCurveTo(cx, botY + 10, botR, botY);
+    ctx.lineTo(topR, topY);
+    ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle = 'rgba(74,158,214,.34)';
+    ctx.fillRect(0, waterY, w, h);
+    ctx.strokeStyle = 'rgba(46,109,180,.75)'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    const halfW = widthAt(waterY) / 2;
+    ctx.moveTo(cx - halfW, waterY); ctx.lineTo(cx + halfW, waterY);
+    ctx.stroke();
+    ctx.restore();
+
+    // rest marker inside bucket
+    const restY = botY - clamp((LIF.REST - LIF.RESET) / (LIF.THRESH - LIF.RESET), 0, 1) * (botY - topY);
+    ctx.save();
+    ctx.setLineDash([3, 5]); ctx.strokeStyle = 'rgba(120,132,146,.65)'; ctx.lineWidth = 1.4;
+    const rh = widthAt(restY) / 2;
+    ctx.beginPath(); ctx.moveTo(cx - rh, restY); ctx.lineTo(cx + rh, restY); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = '#8b97a6'; ctx.font = '700 12px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillText('rest −70', cx - rh + 4, restY - 3);
+
+    // rim label
+    ctx.fillStyle = '#4e5b6a'; ctx.font = '800 13px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText('rim = threshold  −40 mV', cx, topY - 5);
+
+    // leak hole and drips
+    const holeX = cx + botW * 0.22, holeY = botY - 6;
+    ctx.fillStyle = 'rgba(46,109,180,.9)';
+    ctx.beginPath(); ctx.ellipse(holeX, holeY, 7, 4, 0, 0, Math.PI * 2); ctx.fill();
+    bucketPhase = (bucketPhase + 0.016) % 1;
+    const leak = clamp((lif.V - LIF.REST) / 20 + 0.25, 0.12, 1);
+    for (let i = 0; i < 3; i++) {
+      const p = (bucketPhase + i / 3) % 1;
+      const y = holeY + 8 + p * h * 0.12;
+      ctx.fillStyle = 'rgba(74,158,214,' + (0.25 + 0.45 * (1 - p)) + ')';
+      ctx.beginPath(); ctx.arc(holeX, y, 3.2 * (1 - 0.4 * p), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = '#8b97a6'; ctx.font = '700 12px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('leak', holeX + 12, holeY + 12);
+    ctx.textAlign = 'right';
+    ctx.fillText('input', w * 0.18 - 12, topY - h * 0.13);
+
+    // spike flash
+    if (lif.flash > 0.03) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, lif.flash);
+      ctx.fillStyle = '#C0392B';
+      ctx.font = '900 26px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('SPIKE', cx, topY - h * 0.12);
+      ctx.restore();
+    }
+  }
+
+  // ---------------- draw: HH channels ----------------
+  const particles = { na: [], k: [] };
+  let flowPhase = 0;
+  let lastDraw = performance.now();
+  function updateParticles(dt, iNaIn, iKOut, m3, hGate, n4) {
+    flowPhase += dt * (0.7 + 2.8 * Math.min(1, Math.max(iNaIn, iKOut) / 300));
+    const targets = {
+      na: Math.round(8 * Math.min(1, iNaIn / 350) * (0.35 + 0.65 * hGate)),
+      k: Math.round(8 * Math.min(1, iKOut / 350) * (0.35 + 0.65 * n4))
+    };
+    for (const key of ['na', 'k']) {
+      const arr = particles[key];
+      while (arr.length < targets[key]) arr.push({ ph: Math.random(), x: (Math.random() - 0.5) * 0.66, s: 0.7 + Math.random() * 0.7 });
+      while (arr.length > targets[key]) arr.pop();
+      for (const p of arr) {
+        p.ph += dt * (0.5 + 2.4 * Math.min(1, (key === 'na' ? iNaIn : iKOut) / 350)) * p.s;
+        if (p.ph > 1) { p.ph -= 1; p.x = (Math.random() - 0.5) * 0.66; }
+      }
+    }
+  }
+
+  function drawChannels(ctx, w, h) {
+    const d = HH.derivatives({ V: hh.V, m: hh.m, h: hh.h, n: hh.n }, 0);
+    const iNa = d.i_na, iK = d.i_k;
+    const iNaIn = Math.max(0, -iNa);  // inward Na current magnitude
+    const iKOut = Math.max(0, iK);    // outward K current
+    const m3 = hh.m * hh.m * hh.m;
+    const n4 = hh.n * hh.n * hh.n * hh.n;
+
+    const nowMs = performance.now();
+    const dt = Math.min(0.05, (nowMs - lastDraw) / 1000);
+    lastDraw = nowMs;
+    updateParticles(dt, iNaIn, iKOut, m3, hh.h, n4);
+
+    const yOut = h * 0.15, yIn = h * 0.79;
+    const bandTop = h * 0.285, bandBot = h * 0.705;
+    const midY = (bandTop + bandBot) / 2;
+
+    // labels
+    ctx.fillStyle = '#8b97a6'; ctx.font = '800 11px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('OUTSIDE', 18, yOut - 6);
+    ctx.fillText('INSIDE', 18, yIn + 6);
+    ctx.textAlign = 'right';
+    ctx.fillText('high Na⁺', w - 18, yOut - 6);
+    ctx.fillText('high K⁺', w - 18, yIn + 6);
+
+    // membrane band
+    ctx.fillStyle = '#f3f6fa';
+    ctx.fillRect(0, bandTop, w, bandBot - bandTop);
+    ctx.fillStyle = 'rgba(197,208,220,.55)';
+    for (let x = 10; x < w; x += 22) {
+      ctx.beginPath(); ctx.arc(x, bandTop + 8, 3.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, bandBot - 8, 3.2, 0, Math.PI * 2); ctx.fill();
+    }
+
+    const channels = [
+      {
+        key: 'na', cx: w * 0.31, color: '#C0392B', label: 'Na⁺ channel',
+        gate1: m3, gate1Label: 'm³', gate2: hh.h, gate2Label: 'h (jam)',
+        inCurrent: iNaIn, outCurrent: 0, barLabel: 'Na⁺ in'
+      },
+      {
+        key: 'k', cx: w * 0.69, color: '#2E6DB4', label: 'K⁺ channel',
+        gate1: n4, gate1Label: 'n⁴', gate2: null, gate2Label: '',
+        inCurrent: 0, outCurrent: iKOut, barLabel: 'K⁺ out'
+      }
+    ];
+
+    for (const ch of channels) {
+      const cw = Math.min(w * 0.20, 148);
+      const pw = Math.max(18, cw * 0.34);
+      const xL = ch.cx - cw / 2, xR = ch.cx + cw / 2;
+      const poreL = ch.cx - pw / 2, poreR = ch.cx + pw / 2;
+
+      // channel body: two pillars
+      ctx.fillStyle = '#fbfcfd';
+      ctx.strokeStyle = ch.color; ctx.lineWidth = 2.4;
+      roundRect(ctx, xL, bandTop + 4, (cw - pw) / 2, bandBot - bandTop - 8, 10); ctx.fill(); ctx.stroke();
+      roundRect(ctx, poreR, bandTop + 4, (cw - pw) / 2, bandBot - bandTop - 8, 10); ctx.fill(); ctx.stroke();
+
+      // pore
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(poreL, bandTop + 8, pw, bandBot - bandTop - 16);
+
+      // activation door (sliding panels) at upper pore
+      const doorY = bandTop + (bandBot - bandTop) * 0.30;
+      const doorH = 11;
+      const open = clamp(ch.gate1, 0, 1);
+      const halfDoor = (pw / 2) * (1 - open);
+      ctx.fillStyle = ch.color;
+      ctx.globalAlpha = 0.88;
+      if (halfDoor > 0.4) {
+        roundRect(ctx, poreL, doorY - doorH / 2, halfDoor, doorH, 4); ctx.fill();
+        roundRect(ctx, poreR - halfDoor, doorY - doorH / 2, halfDoor, doorH, 4); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = ch.color; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(poreL, doorY); ctx.lineTo(poreR, doorY); ctx.stroke();
+
+      // gate label
+      ctx.fillStyle = ch.color;
+      ctx.font = '800 13px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(ch.gate1Label + ' ' + ch.gate1.toFixed(2), xL - 8, doorY);
+
+      // inactivation ball (Na only)
+      if (ch.gate2 !== null) {
+        const ballR = Math.max(7, pw * 0.22);
+        const jam = 1 - clamp(ch.gate2, 0, 1);
+        const parkX = poreR + (xR - poreR) * 0.55;
+        const ballX = ch.cx + jam * (parkX - ch.cx);
+        const ballY = bandTop + (bandBot - bandTop) * 0.62;
+        ctx.strokeStyle = 'rgba(192,57,43,.55)'; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(xR - 8, ballY - 18); ctx.lineTo(ballX, ballY); ctx.stroke();
+        ctx.fillStyle = '#C0392B';
+        ctx.beginPath(); ctx.arc(ballX, ballY, ballR, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(ballX, ballY, ballR * 0.55, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = ch.color;
+        ctx.font = '800 12px Inter, system-ui, sans-serif';
+        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        ctx.fillText(ch.gate2Label + ' ' + ch.gate2.toFixed(2), xL - 8, ballY + 2);
+      }
+
+      // particles
+      const arr = particles[ch.key];
+      const speedScale = 1;
+      for (const p of arr) {
+        const y = ch.key === 'na'
+          ? bandTop + 8 + p.ph * (bandBot - bandTop - 16)
+          : bandBot - 8 - p.ph * (bandBot - bandTop - 16);
+        const x = ch.cx + p.x * (pw - 10);
+        ctx.fillStyle = ch.color;
+        ctx.globalAlpha = 0.55 + 0.4 * Math.sin(Math.PI * p.ph);
+        ctx.beginPath(); ctx.arc(x, y, 4.4, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // flow arrow
+      ctx.strokeStyle = ch.color; ctx.fillStyle = ch.color; ctx.lineWidth = 2;
+      if (ch.key === 'na') {
+        arrow(ctx, ch.cx, bandTop - 26, ch.cx, bandTop - 6, 7);
+        arrow(ctx, ch.cx, bandBot + 26, ch.cx, bandBot + 6, 7);
+      } else {
+        arrow(ctx, ch.cx, bandBot + 26, ch.cx, bandBot + 6, 7);
+        arrow(ctx, ch.cx, bandTop - 26, ch.cx, bandTop - 6, 7);
+      }
+
+      // channel caption
+      ctx.fillStyle = ch.color;
+      ctx.font = '800 13px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(ch.label, ch.cx, bandBot + 34);
+
+      // current bar
+      const barW = cw, barH = 13;
+      const barX = ch.cx - barW / 2, barY = h * 0.865;
+      const cur = ch.key === 'na' ? ch.inCurrent : ch.outCurrent;
+      const norm = Math.min(1, cur / 350);
+      ctx.fillStyle = '#eef2f7';
+      roundRect(ctx, barX, barY, barW, barH, 7); ctx.fill();
+      if (norm > 0.005) {
+        ctx.fillStyle = ch.color;
+        ctx.globalAlpha = 0.85;
+        roundRect(ctx, barX, barY, Math.max(4, barW * norm), barH, 7); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = '#687789';
+      ctx.font = '700 12px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(ch.barLabel, barX, barY - 18);
+      ctx.textAlign = 'right';
+      ctx.fillText(cur.toFixed(0) + ' µA/cm²', barX + barW, barY - 18);
+    }
+
+    // stage caption
+    let stage = 'resting: gates quiet';
+    if (m3 > 0.22 && iNaIn > 30 && hh.V < 10) stage = 'm opens  →  Na⁺ rushes in';
+    else if (hh.V > 5 && hh.h < 0.42) stage = 'h jams shut, n opens  →  K⁺ out';
+    else if (hh.V < -70.5 && n4 > 0.03) stage = 'undershoot: K⁺ still flowing out';
+    else if (hh.V < -68 && hh.h < HH.REST_H - 0.01) stage = 'h slowly un-jams';
+    else if (hh.V > -68) stage = 'm opens  →  Na⁺ rushes in';
+    ctx.fillStyle = '#59677a';
+    ctx.font = '800 13px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(stage, w / 2, h - 14);
+  }
+
+  // ---------------- main draw ----------------
+  function draw() {
+    if (ui.mode === 'LIF') {
+      const { ctx, w, h } = setupCanvas(sideCanvas);
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+      drawBucket(ctx, w, h);
+    } else {
+      const { ctx, w, h } = setupCanvas(sideCanvas);
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+      drawChannels(ctx, w, h);
+    }
+    drawTrace();
+    rateVal.textContent = Math.round(currentRate());
+    if (ui.mode === 'HH' && hh.trial && !hh.trial.done) updateTrialBanner();
+  }
+
+  // ---------------- events ----------------
+  window.addEventListener('keydown', (e) => {
+    const k = e.key;
+    if (k === ' ') {
+      e.preventDefault();
+      ui.paused = !ui.paused;
+      updateKeyChips();
+      return;
+    }
+    const low = k.toLowerCase();
+    if (low === 'n') { ui.noise = !ui.noise; updateKeyChips(); }
+    else if (low === 's') { ui.slow = !ui.slow; updateKeyChips(); }
+    else if (low === 'h') { setMode(ui.mode === 'LIF' ? 'HH' : 'LIF'); }
+    else if (low === 'p') {
+      if (ui.mode !== 'HH') { flashHint('Pump overlay is in Gates mode — press H'); return; }
+      ui.pump = !ui.pump;
+      pumpOverlay.classList.toggle('hidden', !ui.pump);
+      updateKeyChips();
+    } else if (low === 'd') {
+      startTrial();
+      updateKeyChips();
+    } else if (low === 't') {
+      if (ui.mode !== 'HH') { flashHint('Take-off markers are in Gates mode — press H'); return; }
+      ui.takeoff = !ui.takeoff;
+      updateKeyChips();
+    } else if (k === 'Escape') {
+      if (hh.trial) {
+        hh.trial = null;
+        trialBanner.classList.add('hidden');
+        resetHH();
+        updateKeyChips();
+      }
+    }
+  });
+
+  // ---------------- main loop ----------------
+  let last = performance.now();
+  function loop(now) {
+    const dtReal = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (!ui.paused) {
+      if (ui.mode === 'LIF') stepLIF(dtReal);
+      else stepHH(dtReal);
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('resize', () => { draw(); });
+
+  // Allow clicking on key chips
+  keys.H.addEventListener('click', () => setMode(ui.mode === 'LIF' ? 'HH' : 'LIF'));
+  keys.N.addEventListener('click', () => { ui.noise = !ui.noise; updateKeyChips(); });
+  keys.S.addEventListener('click', () => { ui.slow = !ui.slow; updateKeyChips(); });
+  keys.Space.addEventListener('click', () => { ui.paused = !ui.paused; updateKeyChips(); });
+  keys.P.addEventListener('click', () => {
+    if (ui.mode !== 'HH') { flashHint('Pump overlay is in Gates mode — press H'); return; }
+    ui.pump = !ui.pump;
+    pumpOverlay.classList.toggle('hidden', !ui.pump);
+    updateKeyChips();
+  });
+  keys.D.addEventListener('click', () => { startTrial(); updateKeyChips(); });
+  keys.T.addEventListener('click', () => {
+    if (ui.mode !== 'HH') { flashHint('Take-off markers are in Gates mode — press H'); return; }
+    ui.takeoff = !ui.takeoff;
+    updateKeyChips();
+  });
+
+  // Optional URL helpers for rehearsal / screenshots:
+  //   index.html?mode=hh&input=10&slow=1
+  const params = new URLSearchParams(location.search);
+  if (params.has('input')) {
+    const v = parseFloat(params.get('input'));
+    if (Number.isFinite(v)) ui.input = clamp(v, 0, 20);
+    slider.value = ui.input;
+  }
+  updateLabels();
+  updateKeyChips();
+  setMode('LIF');
+  if (params.get('mode') === 'hh' || location.hash.toLowerCase().indexOf('hh') >= 0) {
+    setMode('HH');
+  }
+  if (params.get('slow') === '1') { ui.slow = true; updateKeyChips(); }
+  if (params.get('noise') === '1') { ui.noise = true; updateKeyChips(); }
+  if (params.get('pump') === '1' && ui.mode === 'HH') { ui.pump = true; pumpOverlay.classList.remove('hidden'); updateKeyChips(); }
+  if ((params.get('d') === '1' || params.get('trial') === '1') && ui.mode === 'HH') { startTrial(); }
+  if (params.get('t') === '1' || params.get('takeoff') === '1') { ui.takeoff = true; updateKeyChips(); }
+  if (params.get('pause') === '1') { ui.paused = true; updateKeyChips(); }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

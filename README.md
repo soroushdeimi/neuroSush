@@ -21,6 +21,12 @@ reported in its papers, on small setups.
 | [Validation](#validation) | the mathematics every part is checked against |
 | [Benchmarks](https://github.com/soroushdeimi/neuroSush/blob/main/docs/BENCHMARKS.md) | steps per second on a CPU and a GPU, with and without CUDA graphs and batching |
 
+## Live demos
+
+[https://soroushdeimi.github.io/neuroSush/](https://soroushdeimi.github.io/neuroSush/)
+
+Every Atlas plate and the live Hodgkin-Huxley demo, built from this repository by `scripts/build_site.py`.
+
 ## Design
 
 - **Pure math, thin behaviors.** Every equation is a small function that returns new tensors
