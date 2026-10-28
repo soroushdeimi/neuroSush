@@ -439,6 +439,7 @@
       backpropPulseProgress = -1.0;
       plasticityPulse = 0.0;
       vesiclesReleased.length = 0;
+      staticDirty = true;
     }
 
     function setFrequency(val) {
@@ -546,6 +547,11 @@
 
     window.addEventListener('atlas:theory', (e) => {
       showTheory = e.detail && typeof e.detail.active === 'boolean' ? e.detail.active : !showTheory;
+      staticDirty = true;
+    });
+
+    window.addEventListener('atlas:theme', () => {
+      staticDirty = true;
     });
 
     window.addEventListener('keydown', (e) => {
@@ -559,6 +565,7 @@
         setChapter(chapter - 1);
       } else if (e.key === 't' || e.key === 'T') {
         showTheory = !showTheory;
+        staticDirty = true;
       } else if (e.key >= '1' && e.key <= '5') {
         setChapter(parseInt(e.key, 10));
       } else if (e.key === 'p' || e.key === 'P') {
@@ -702,6 +709,315 @@
       g.fillText(s, x, y);
     }
 
+    // Canvas size cached via ResizeObserver
+    let canvasW = 800;
+    let canvasH = 520;
+
+    function updateLayout(W, H) {
+      const isMobile = W < 600;
+      const heroH = isMobile ? 125 : Math.round(H * 0.35); // ~180px on desktop
+      const hero = { x: 12, y: 6, w: W - 24, h: heroH };
+
+      const scopeH = 110; // Exactly meets >= 110px requirement
+      const scopeY = hero.y + hero.h + (isMobile ? 6 : 8);
+      const scope = { x: 12, y: scopeY, w: W - 24, h: scopeH };
+
+      let plot1, plot2, dial;
+      let trackX, trackW;
+
+      if (isMobile) {
+        const p1Y = scope.y + scope.h + 26;
+        const pH = 85;
+        plot1 = { x: 12, y: p1Y, w: W - 24, h: pH };
+
+        const p2Y = plot1.y + plot1.h + 46;
+        plot2 = { x: 12, y: p2Y, w: W - 24, h: pH };
+
+        dial = { x: 12, y: plot2.y + plot2.h + 38, w: W - 24, h: 26 };
+        trackX = dial.x + 10;
+        trackW = dial.w - 20;
+      } else {
+        const dialH = 26;
+        const dialY = H - 32;
+        dial = { x: 16, y: dialY, w: W - 32, h: dialH };
+
+        const plotsY = scope.y + scope.h + 28;
+        const plotsAvailH = Math.max(65, dial.y - plotsY - 24);
+
+        const plotW = Math.floor((W - 38) / 2);
+        plot1 = { x: 12, y: plotsY, w: plotW, h: plotsAvailH };
+        plot2 = { x: plot1.x + plot1.w + 14, y: plotsY, w: plotW, h: plotsAvailH };
+
+        const labelW = 160;
+        const readoutW = 140;
+        trackX = dial.x + labelW + 10;
+        trackW = Math.max(80, dial.w - labelW - readoutW - 20);
+      }
+
+      const preX = hero.x + Math.max(isMobile ? 55 : 75, hero.w * (isMobile ? 0.18 : 0.17));
+      const postX = hero.x + hero.w - Math.max(isMobile ? 55 : 75, hero.w * (isMobile ? 0.18 : 0.17));
+      const somaY = hero.y + Math.round(hero.h * (isMobile ? 0.40 : 0.44));
+      const somaR = isMobile ? 20 : Math.min(27, Math.max(20, Math.round(hero.w * 0.038)));
+      const boutonX = (preX + postX) / 2;
+
+      layout = {
+        hero,
+        scope,
+        preX,
+        postX,
+        somaY,
+        somaR,
+        boutonX,
+        dial,
+        trackX,
+        trackW,
+        plot1,
+        plot2
+      };
+    }
+
+    try {
+      const initRect = canvas.getBoundingClientRect();
+      if (initRect.width > 0 && initRect.height > 0) {
+        canvasW = Math.max(1, Math.round(initRect.width));
+        canvasH = Math.max(1, Math.round(initRect.height));
+      }
+    } catch {}
+    updateLayout(canvasW, canvasH);
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const cr = entry.contentRect;
+          if (cr && cr.width > 0 && cr.height > 0) {
+            const isMob = cr.width < 600;
+            const targetHeight = isMob ? '580px' : '520px';
+            if (host.style.height !== targetHeight) {
+              host.style.setProperty('aspect-ratio', 'auto', 'important');
+              host.style.setProperty('height', targetHeight, 'important');
+              host.style.setProperty('min-height', targetHeight, 'important');
+              host.style.setProperty('flex-shrink', '0', 'important');
+              host.style.setProperty('max-height', 'none', 'important');
+            }
+            const nw = Math.max(1, Math.round(cr.width));
+            const nh = Math.max(1, Math.round(cr.height));
+            if (nw !== canvasW || nh !== canvasH) {
+              canvasW = nw;
+              canvasH = nh;
+              updateLayout(canvasW, canvasH);
+              staticDirty = true;
+            }
+          }
+        }
+      });
+      ro.observe(canvas);
+    }
+
+    // Static offscreen canvas for unchanged plots, grids, curves and labels
+    let staticCanvas = null;
+    let staticCtx = null;
+    let staticDirty = true;
+
+    function renderStatic() {
+      if (!staticCanvas) {
+        staticCanvas = document.createElement('canvas');
+        staticCtx = staticCanvas.getContext('2d');
+      }
+      const dpr = window.devicePixelRatio || 1;
+      const pixelW = Math.round(canvasW * dpr);
+      const pixelH = Math.round(canvasH * dpr);
+      if (staticCanvas.width !== pixelW || staticCanvas.height !== pixelH) {
+        staticCanvas.width = pixelW;
+        staticCanvas.height = pixelH;
+      }
+      staticCtx.save();
+      staticCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      staticCtx.clearRect(0, 0, canvasW, canvasH);
+      const c = colors();
+      const isMobile = canvasW < 600;
+
+      const sLine = (x1, y1, x2, y2, stroke, width = 1, dash = []) => {
+        staticCtx.save();
+        staticCtx.strokeStyle = stroke;
+        staticCtx.lineWidth = width;
+        staticCtx.setLineDash(dash);
+        staticCtx.beginPath();
+        staticCtx.moveTo(x1, y1);
+        staticCtx.lineTo(x2, y2);
+        staticCtx.stroke();
+        staticCtx.restore();
+      };
+
+      const sText = (s, x, y, color, size = 12, align = 'left', bold = false) => {
+        staticCtx.fillStyle = color;
+        staticCtx.font = `${bold ? '600 ' : ''}${size}px ui-monospace, monospace`;
+        staticCtx.textAlign = align;
+        staticCtx.fillText(s, x, y);
+      };
+
+      const scope = layout.scope;
+      const plot1 = layout.plot1;
+      const plot2 = layout.plot2;
+      const dial = layout.dial;
+      const trackX = layout.trackX;
+      const trackW = layout.trackW;
+
+      // 1. Oscilloscope Band borders, divider, title, gutter static labels & swatches, subtle grid lines
+      sLine(scope.x, scope.y, scope.x + scope.w, scope.y, c.border, 1);
+      sLine(scope.x, scope.y + scope.h, scope.x + scope.w, scope.y + scope.h, c.border, 1);
+
+      const gutterW = isMobile ? 125 : 175;
+      const waveX = scope.x + gutterW + 10;
+      const waveW = scope.w - gutterW - 14;
+      const waveH = scope.h - 22;
+      const waveY = scope.y + 16;
+
+      sLine(scope.x + gutterW, scope.y, scope.x + gutterW, scope.y + scope.h, c.border, 1);
+      sText(S.scopeTitle, scope.x + 8, scope.y + 11, c.inkMuted, 12, 'left', true);
+
+      const traceDefsStatic = [
+        { label: isMobile ? 'r₁ pre' : S.r1Label, color: c.trace, dash: [] },
+        { label: isMobile ? 'r₂ pre' : S.r2Label, color: c.exc, dash: [4, 3] },
+        { label: isMobile ? 'o₁ post' : S.o1Label, color: c.inh, dash: [] },
+        { label: isMobile ? 'o₂ post' : S.o2Label, color: c.mod, dash: [4, 3] }
+      ];
+      traceDefsStatic.forEach((td, idx) => {
+        const rowY = scope.y + 24 + idx * 20;
+        sLine(scope.x + 8, rowY + 5, scope.x + 24, rowY + 5, td.color, 2, td.dash);
+        sText(td.label, scope.x + 28, rowY + 8, td.color, 12, 'left', true);
+      });
+
+      sLine(waveX, waveY + waveH, waveX + waveW, waveY + waveH, c.border, 1);
+      sLine(waveX, waveY + waveH * 0.5, waveX + waveW, waveY + waveH * 0.5, c.border, 0.7, [3, 4]);
+
+      // 2. Plot 1: Pairing Train - Weight over Time
+      const ax1 = plot1.x + padYAxis;
+      const pw1 = plot1.w - padYAxis;
+      sLine(ax1, plot1.y, ax1, plot1.y + plot1.h, c.border, 1);
+      sLine(ax1, plot1.y + plot1.h, ax1 + pw1, plot1.y + plot1.h, c.border, 1);
+
+      sText(S.plot1Title, plot1.x, plot1.y - 18, c.ink, 12, 'left', true);
+
+      sLine(plot1.x, plot1.y - 8, plot1.x + 14, plot1.y - 8, c.exc, 2);
+      sText(S.legendTriplet, plot1.x + 18, plot1.y - 5, c.exc, 12);
+
+      sLine(plot1.x + 115, plot1.y - 8, plot1.x + 129, plot1.y - 8, c.trace, 1.8, [3, 2]);
+      sText(S.legendPair, plot1.x + 133, plot1.y - 5, c.trace, 12);
+
+      if (showTheory) {
+        sLine(plot1.x + 215, plot1.y - 8, plot1.x + 229, plot1.y - 8, c.theory, 1.5, [4, 3]);
+        sText(S.legendGhost, plot1.x + 233, plot1.y - 5, c.theory, 12);
+      }
+
+      sText('0.50', ax1 - 5, plot1.y + plot1.h - 2, c.inkMuted, 11, 'right');
+      sText('0.60', ax1 - 5, plot1.y + 12, c.inkMuted, 11, 'right');
+
+      sText(S.axisPairings, ax1 + pw1 / 2, plot1.y + plot1.h + 16, c.inkMuted, 12, 'center');
+      sText('1', ax1 + 2, plot1.y + plot1.h + 16, c.inkMuted, 12);
+      sText('24', ax1 + pw1 - 2, plot1.y + plot1.h + 16, c.inkMuted, 12, 'right');
+
+      const maxW = Math.max(0.60, experiment.state.w, pairExperiment.state.w) + 0.01;
+      const minW = 0.495;
+
+      // Draw Pair Rule Trajectory (dotted/dashed)
+      staticCtx.save();
+      staticCtx.strokeStyle = c.trace;
+      staticCtx.lineWidth = 1.6;
+      staticCtx.setLineDash([4, 3]);
+      staticCtx.beginPath();
+      pairExperiment.history.forEach((h, i) => {
+        const x = ax1 + (i / (pairExperiment.history.length - 1)) * pw1;
+        const y = plot1.y + plot1.h - ((h.w - minW) / (maxW - minW)) * plot1.h;
+        if (i === 0) staticCtx.moveTo(x, y);
+        else staticCtx.lineTo(x, y);
+      });
+      staticCtx.stroke();
+      staticCtx.restore();
+
+      // Draw Triplet STDP Trajectory (solid curve)
+      staticCtx.save();
+      staticCtx.strokeStyle = c.exc;
+      staticCtx.lineWidth = 2.2;
+      staticCtx.beginPath();
+      experiment.history.forEach((h, i) => {
+        const x = ax1 + (i / (experiment.history.length - 1)) * pw1;
+        const y = plot1.y + plot1.h - ((h.w - minW) / (maxW - minW)) * plot1.h;
+        if (i === 0) staticCtx.moveTo(x, y);
+        else staticCtx.lineTo(x, y);
+      });
+      staticCtx.stroke();
+      staticCtx.restore();
+
+      if (showTheory) {
+        const pairTheoryY = plot1.y + plot1.h - ((pairExperiment.state.w - minW) / (maxW - minW)) * plot1.h;
+        sLine(ax1, pairTheoryY, ax1 + pw1, pairTheoryY, c.theory, 1.5, [5, 4]);
+      }
+
+      // 3. Plot 2: Frequency Sweep
+      const ax2 = plot2.x + padYAxis;
+      const pw2 = plot2.w - padYAxis;
+      sLine(ax2, plot2.y, ax2, plot2.y + plot2.h, c.border, 1);
+      sLine(ax2, plot2.y + plot2.h, ax2 + pw2, plot2.y + plot2.h, c.border, 1);
+
+      sText(S.plot2Title, plot2.x, plot2.y - 18, c.ink, 12, 'left', true);
+
+      sLine(plot2.x, plot2.y - 8, plot2.x + 14, plot2.y - 8, c.exc, 2);
+      staticCtx.beginPath();
+      staticCtx.arc(plot2.x + 7, plot2.y - 8, 3, 0, Math.PI * 2);
+      staticCtx.fillStyle = c.exc;
+      staticCtx.fill();
+      sText(S.legendTriplet, plot2.x + 18, plot2.y - 5, c.exc, 12);
+
+      if (showTheory) {
+        sLine(plot2.x + 120, plot2.y - 8, plot2.x + 134, plot2.y - 8, c.theory, 1.5, [4, 3]);
+        sText(S.legendGhost, plot2.x + 138, plot2.y - 5, c.theory, 12);
+      }
+
+      const maxDelta = 0.60;
+      sText('0.00', ax2 - 5, plot2.y + plot2.h - 2, c.inkMuted, 11, 'right');
+      sText('0.55', ax2 - 5, plot2.y + 12, c.inkMuted, 11, 'right');
+
+      sText(S.axisFreq, ax2 + pw2 / 2, plot2.y + plot2.h + 16, c.inkMuted, 12, 'center');
+      sText('1 Hz', ax2 + 2, plot2.y + plot2.h + 16, c.inkMuted, 12);
+      sText('50 Hz', ax2 + pw2 - 2, plot2.y + plot2.h + 16, c.inkMuted, 12, 'right');
+
+      const pairTheoryDelta = core.pairDelta() * 24;
+      const pairLineY = plot2.y + plot2.h - (pairTheoryDelta / maxDelta) * plot2.h;
+      if (showTheory) {
+        sLine(ax2, pairLineY, ax2 + pw2, pairLineY, c.theory, 1.5, [5, 4]);
+      }
+
+      // 4. Dial row background track and static text
+      const trackY = dial.y + 13;
+      if (isMobile) {
+        sLine(trackX, trackY, trackX + trackW, trackY, c.border, 3);
+        sText('1 Hz', trackX, trackY + 16, c.inkMuted, 12, 'left');
+        sText('50 Hz', trackX + trackW, trackY + 16, c.inkMuted, 12, 'right');
+      } else {
+        sText(S.dial, dial.x, trackY + 4, c.ink, 12, 'left', true);
+        sLine(trackX, trackY, trackX + trackW, trackY, c.border, 3);
+        sText('1 Hz', trackX, trackY + 16, c.inkMuted, 12, 'center');
+        sText('50 Hz', trackX + trackW, trackY + 16, c.inkMuted, 12, 'center');
+      }
+
+      staticCtx.restore();
+      staticDirty = false;
+    }
+
+    const r1El = $('y02-r1');
+    const o1El = $('y02-o1');
+    const r2El = $('y02-r2');
+    const o2El = $('y02-o2');
+    const dwEl = $('y02-dw');
+    const diffEl = $('y02-diff');
+
+    const setText = (el, str) => {
+      if (el && el._lastText !== str) {
+        el._lastText = str;
+        el.textContent = str;
+      }
+    };
+
     let lastTimestamp = performance.now();
 
     function render(timestamp) {
@@ -709,28 +1025,25 @@
       lastTimestamp = timestamp;
 
       const c = colors();
-      const rect = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
-      const W = Math.max(1, Math.round(rect.width));
-      const H = Math.max(1, Math.round(rect.height));
+      const W = canvasW;
+      const H = canvasH;
 
       if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
         canvas.width = Math.round(W * dpr);
         canvas.height = Math.round(H * dpr);
+        staticDirty = true;
       }
 
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
       g.clearRect(0, 0, W, H);
 
-      const isMobile = W < 600;
-      const targetHeight = isMobile ? '580px' : '520px';
-      if (host.style.height !== targetHeight) {
-        host.style.setProperty('aspect-ratio', 'auto', 'important');
-        host.style.setProperty('height', targetHeight, 'important');
-        host.style.setProperty('min-height', targetHeight, 'important');
-        host.style.setProperty('flex-shrink', '0', 'important');
-        host.style.setProperty('max-height', 'none', 'important');
+      if (staticDirty || !staticCanvas) {
+        renderStatic();
       }
+      g.drawImage(staticCanvas, 0, 0, W, H);
+
+      const isMobile = W < 600;
 
       // Advance train simulation physics (simulated rate calibrated for lively 60 fps action)
       if (isRunning) {
@@ -773,69 +1086,18 @@
         if (backpropPulseProgress >= 1.0) backpropPulseProgress = -1.0;
       }
 
-      // =========================================================================
-      // DYNAMIC GEOMETRIC LAYOUT
-      // =========================================================================
-      const heroH = isMobile ? 125 : Math.round(H * 0.35); // ~180px on desktop
-      const hero = { x: 12, y: 6, w: W - 24, h: heroH };
-
-      const scopeH = 110; // Exactly meets >= 110px requirement
-      const scopeY = hero.y + hero.h + (isMobile ? 6 : 8);
-      const scope = { x: 12, y: scopeY, w: W - 24, h: scopeH };
-
-      let plot1, plot2, dial;
-      let trackX, trackW;
-
-      if (isMobile) {
-        // Vertical stacked layout for phone
-        const p1Y = scope.y + scope.h + 26;
-        const pH = 85;
-        plot1 = { x: 12, y: p1Y, w: W - 24, h: pH };
-
-        const p2Y = plot1.y + plot1.h + 46;
-        plot2 = { x: 12, y: p2Y, w: W - 24, h: pH };
-
-        dial = { x: 12, y: plot2.y + plot2.h + 38, w: W - 24, h: 26 };
-        trackX = dial.x + 10;
-        trackW = dial.w - 20;
-      } else {
-        // Desktop 2-column side-by-side plots
-        const dialH = 26;
-        const dialY = H - 32;
-        dial = { x: 16, y: dialY, w: W - 32, h: dialH };
-
-        const plotsY = scope.y + scope.h + 28; // Room for plot titles & legends
-        const plotsAvailH = Math.max(65, dial.y - plotsY - 24);
-
-        const plotW = Math.floor((W - 38) / 2);
-        plot1 = { x: 12, y: plotsY, w: plotW, h: plotsAvailH };
-        plot2 = { x: plot1.x + plot1.w + 14, y: plotsY, w: plotW, h: plotsAvailH };
-
-        const labelW = 160;
-        const readoutW = 140;
-        trackX = dial.x + labelW + 10;
-        trackW = Math.max(80, dial.w - labelW - readoutW - 20);
-      }
-
-      // Cache layout for pointer hits
-      const preX = hero.x + Math.max(isMobile ? 55 : 75, hero.w * (isMobile ? 0.18 : 0.17));
-      const postX = hero.x + hero.w - Math.max(isMobile ? 55 : 75, hero.w * (isMobile ? 0.18 : 0.17));
-      const somaY = hero.y + Math.round(hero.h * (isMobile ? 0.40 : 0.44));
-      const somaR = isMobile ? 20 : Math.min(27, Math.max(20, Math.round(hero.w * 0.038)));
-      const boutonX = (preX + postX) / 2;
-
-      layout = {
-        preX,
-        postX,
-        somaY,
-        somaR,
-        boutonX,
-        dial,
-        trackX,
-        trackW,
-        plot1,
-        plot2
-      };
+      const hero = layout.hero;
+      const scope = layout.scope;
+      const plot1 = layout.plot1;
+      const plot2 = layout.plot2;
+      const dial = layout.dial;
+      const trackX = layout.trackX;
+      const trackW = layout.trackW;
+      const preX = layout.preX;
+      const postX = layout.postX;
+      const somaY = layout.somaY;
+      const somaR = layout.somaR;
+      const boutonX = layout.boutonX;
 
       // =========================================================================
       // 1. HERO BAND (40% of Figure Height): BIOLOGICAL NEURONS & 4 TRACE HALOS
@@ -1092,42 +1354,24 @@
       // =========================================================================
       // 2. OSCILLOSCOPE BAND (>= 110 px tall): 4 TRACE MEMORIES WITH GUTTER
       // =========================================================================
-      line(scope.x, scope.y, scope.x + scope.w, scope.y, c.border, 1);
-      line(scope.x, scope.y + scope.h, scope.x + scope.w, scope.y + scope.h, c.border, 1);
-
-      // Left Gutter (wide enough for labels and live numbers without overlap!)
       const gutterW = isMobile ? 125 : 175;
       const waveX = scope.x + gutterW + 10;
       const waveW = scope.w - gutterW - 14;
       const waveH = scope.h - 22;
       const waveY = scope.y + 16;
 
-      line(scope.x + gutterW, scope.y, scope.x + gutterW, scope.y + scope.h, c.border, 1);
+      // Live numeric values in gutter
+      text(lastState.r1.toFixed(3), scope.x + gutterW - 6, scope.y + 32, c.trace, 12, 'right');
+      text(lastState.r2.toFixed(3), scope.x + gutterW - 6, scope.y + 52, c.exc, 12, 'right');
+      text(lastState.o1.toFixed(3), scope.x + gutterW - 6, scope.y + 72, c.inh, 12, 'right');
+      text(lastState.o2.toFixed(3), scope.x + gutterW - 6, scope.y + 92, c.mod, 12, 'right');
 
-      // Scope Title
-      text(S.scopeTitle, scope.x + 8, scope.y + 11, c.inkMuted, 12, 'left', true);
-
-      // Gutter Labels with Live Values & Colors
       const traceDefs = [
-        { label: isMobile ? 'r₁ pre' : S.r1Label, key: 'r1', color: c.trace, dash: [], val: lastState.r1 },
-        { label: isMobile ? 'r₂ pre' : S.r2Label, key: 'r2', color: c.exc, dash: [4, 3], val: lastState.r2 },
-        { label: isMobile ? 'o₁ post' : S.o1Label, key: 'o1', color: c.inh, dash: [], val: lastState.o1 },
-        { label: isMobile ? 'o₂ post' : S.o2Label, key: 'o2', color: c.mod, dash: [4, 3], val: lastState.o2 }
+        { key: 'r1', color: c.trace, dash: [] },
+        { key: 'r2', color: c.exc, dash: [4, 3] },
+        { key: 'o1', color: c.inh, dash: [] },
+        { key: 'o2', color: c.mod, dash: [4, 3] }
       ];
-
-      traceDefs.forEach((td, idx) => {
-        const rowY = scope.y + 24 + idx * 20;
-        // Swatch
-        line(scope.x + 8, rowY + 5, scope.x + 24, rowY + 5, td.color, 2, td.dash);
-        // Text label
-        text(td.label, scope.x + 28, rowY + 8, td.color, 12, 'left', true);
-        // Live numeric value
-        text(td.val.toFixed(3), scope.x + gutterW - 6, rowY + 8, td.color, 12, 'right');
-      });
-
-      // Oscilloscope background subtle grid lines
-      line(waveX, waveY + waveH, waveX + waveW, waveY + waveH, c.border, 1);
-      line(waveX, waveY + waveH * 0.5, waveX + waveW, waveY + waveH * 0.5, c.border, 0.7, [3, 4]);
 
       // Rolling window of trace samples
       const windowSteps = 160;
@@ -1176,71 +1420,8 @@
       // --- Plot 1: Pairing Train - Weight over Time ---
       const ax1 = plot1.x + padYAxis;
       const pw1 = plot1.w - padYAxis;
-      line(ax1, plot1.y, ax1, plot1.y + plot1.h, c.border, 1);
-      line(ax1, plot1.y + plot1.h, ax1 + pw1, plot1.y + plot1.h, c.border, 1);
-
-      // Top title on Row 1 (plot1.y - 18)
-      text(S.plot1Title, plot1.x, plot1.y - 18, c.ink, 12, 'left', true);
-
-      // Legend on Row 2 (plot1.y - 4) with zero overlap
-      line(plot1.x, plot1.y - 8, plot1.x + 14, plot1.y - 8, c.exc, 2);
-      text(S.legendTriplet, plot1.x + 18, plot1.y - 5, c.exc, 12);
-
-      line(plot1.x + 115, plot1.y - 8, plot1.x + 129, plot1.y - 8, c.trace, 1.8, [3, 2]);
-      text(S.legendPair, plot1.x + 133, plot1.y - 5, c.trace, 12);
-
-      if (showTheory) {
-        line(plot1.x + 215, plot1.y - 8, plot1.x + 229, plot1.y - 8, c.theory, 1.5, [4, 3]);
-        text(S.legendGhost, plot1.x + 233, plot1.y - 5, c.theory, 12);
-      }
-
-      // Numeric Y-axis ticks - cleanly placed to the left of the axis
-      text('0.50', ax1 - 5, plot1.y + plot1.h - 2, c.inkMuted, 11, 'right');
-      text('0.60', ax1 - 5, plot1.y + 12, c.inkMuted, 11, 'right');
-
-      // X-axis label & ticks
-      text(S.axisPairings, ax1 + pw1 / 2, plot1.y + plot1.h + 16, c.inkMuted, 12, 'center');
-      text('1', ax1 + 2, plot1.y + plot1.h + 16, c.inkMuted, 12);
-      text('24', ax1 + pw1 - 2, plot1.y + plot1.h + 16, c.inkMuted, 12, 'right');
-
-      // Prefilled curves: draw full 24-pairing weight trajectory
       const maxW = Math.max(0.60, experiment.state.w, pairExperiment.state.w) + 0.01;
       const minW = 0.495;
-
-      // Draw Pair Rule Trajectory (dotted/dashed)
-      g.save();
-      g.strokeStyle = c.trace;
-      g.lineWidth = 1.6;
-      g.setLineDash([4, 3]);
-      g.beginPath();
-      pairExperiment.history.forEach((h, i) => {
-        const x = ax1 + (i / (pairExperiment.history.length - 1)) * pw1;
-        const y = plot1.y + plot1.h - ((h.w - minW) / (maxW - minW)) * plot1.h;
-        if (i === 0) g.moveTo(x, y);
-        else g.lineTo(x, y);
-      });
-      g.stroke();
-      g.restore();
-
-      // Draw Triplet STDP Trajectory (solid curve)
-      g.save();
-      g.strokeStyle = c.exc;
-      g.lineWidth = 2.2;
-      g.beginPath();
-      experiment.history.forEach((h, i) => {
-        const x = ax1 + (i / (experiment.history.length - 1)) * pw1;
-        const y = plot1.y + plot1.h - ((h.w - minW) / (maxW - minW)) * plot1.h;
-        if (i === 0) g.moveTo(x, y);
-        else g.lineTo(x, y);
-      });
-      g.stroke();
-      g.restore();
-
-      // Theory Ghost for Pair STDP (dashed horizontal line at final pair theoretical weight)
-      if (showTheory) {
-        const pairTheoryY = plot1.y + plot1.h - ((pairExperiment.state.w - minW) / (maxW - minW)) * plot1.h;
-        line(ax1, pairTheoryY, ax1 + pw1, pairTheoryY, c.theory, 1.5, [5, 4]);
-      }
 
       // Animated live cursor tracking current step
       const cursorX = ax1 + (elapsed / Math.max(1, experiment.history.length - 1)) * pw1;
@@ -1255,41 +1436,7 @@
       // --- Plot 2: Frequency Sweep ---
       const ax2 = plot2.x + padYAxis;
       const pw2 = plot2.w - padYAxis;
-      line(ax2, plot2.y, ax2, plot2.y + plot2.h, c.border, 1);
-      line(ax2, plot2.y + plot2.h, ax2 + pw2, plot2.y + plot2.h, c.border, 1);
-
-      // Top title on Row 1 (plot2.y - 18)
-      text(S.plot2Title, plot2.x, plot2.y - 18, c.ink, 12, 'left', true);
-
-      // Legend on Row 2 (plot2.y - 4) with zero overlap
-      line(plot2.x, plot2.y - 8, plot2.x + 14, plot2.y - 8, c.exc, 2);
-      g.beginPath();
-      g.arc(plot2.x + 7, plot2.y - 8, 3, 0, Math.PI * 2);
-      g.fillStyle = c.exc;
-      g.fill();
-      text(S.legendTriplet, plot2.x + 18, plot2.y - 5, c.exc, 12);
-
-      if (showTheory) {
-        line(plot2.x + 120, plot2.y - 8, plot2.x + 134, plot2.y - 8, c.theory, 1.5, [4, 3]);
-        text(S.legendGhost, plot2.x + 138, plot2.y - 5, c.theory, 12);
-      }
-
-      // Numeric Y-axis ticks - cleanly placed to the left of the axis
       const maxDelta = 0.60;
-      text('0.00', ax2 - 5, plot2.y + plot2.h - 2, c.inkMuted, 11, 'right');
-      text('0.55', ax2 - 5, plot2.y + 12, c.inkMuted, 11, 'right');
-
-      // X-axis label & ticks
-      text(S.axisFreq, ax2 + pw2 / 2, plot2.y + plot2.h + 16, c.inkMuted, 12, 'center');
-      text('1 Hz', ax2 + 2, plot2.y + plot2.h + 16, c.inkMuted, 12);
-      text('50 Hz', ax2 + pw2 - 2, plot2.y + plot2.h + 16, c.inkMuted, 12, 'right');
-
-      // Pre-plot Pair Line (Frequency-independent theory reference, dashed line across 1 to 50 Hz)
-      const pairTheoryDelta = core.pairDelta() * 24;
-      const pairLineY = plot2.y + plot2.h - (pairTheoryDelta / maxDelta) * plot2.h;
-      if (showTheory) {
-        line(ax2, pairLineY, ax2 + pw2, pairLineY, c.theory, 1.5, [5, 4]);
-      }
 
       // Current dial frequency marker on sweep plot
       const dialMarkerX = ax2 + ((frequency - 1) / 49) * pw2;
@@ -1341,71 +1488,51 @@
       // 4. DIAL SLIDER ROW: DEDICATED SEPARATE ROW WITH LABELS >= 12 PX
       // =========================================================================
       const trackY = dial.y + 13;
+      const thumbX = trackX + ((frequency - 1) / 49) * trackW;
+      line(trackX, trackY, thumbX, trackY, c.exc, 3.5);
 
       if (isMobile) {
         // Mobile dial row: centered track with label above
         text(`${S.dial} ${frequency} Hz (${S.dragHint})`, dial.x + dial.w / 2, dial.y - 2, c.exc, 12, 'center', true);
-        line(trackX, trackY, trackX + trackW, trackY, c.border, 3);
-        const thumbX = trackX + ((frequency - 1) / 49) * trackW;
-        line(trackX, trackY, thumbX, trackY, c.exc, 3.5);
-
-        text('1 Hz', trackX, trackY + 16, c.inkMuted, 12, 'left');
-        text('50 Hz', trackX + trackW, trackY + 16, c.inkMuted, 12, 'right');
-
-        g.save();
-        g.fillStyle = c.paperCard;
-        g.strokeStyle = c.exc;
-        g.lineWidth = 2.2;
-        g.beginPath();
-        g.arc(thumbX, trackY, 9, 0, Math.PI * 2);
-        g.fill();
-        g.stroke();
-        g.restore();
       } else {
         // Desktop dial row
-        text(S.dial, dial.x, trackY + 4, c.ink, 12, 'left', true);
-
-        // Slider Track
-        line(trackX, trackY, trackX + trackW, trackY, c.border, 3);
-        const thumbX = trackX + ((frequency - 1) / 49) * trackW;
-        line(trackX, trackY, thumbX, trackY, c.exc, 3.5);
-
-        // Track min/max labels below track ends
-        text('1 Hz', trackX, trackY + 16, c.inkMuted, 12, 'center');
-        text('50 Hz', trackX + trackW, trackY + 16, c.inkMuted, 12, 'center');
-
-        // Draggable thumb knob
-        g.save();
-        g.fillStyle = c.paperCard;
-        g.strokeStyle = c.exc;
-        g.lineWidth = 2.2;
-        g.beginPath();
-        g.arc(thumbX, trackY, 9, 0, Math.PI * 2);
-        g.fill();
-        g.stroke();
-        g.restore();
-
-        // Right Readout & Hint
         text(`${frequency} Hz (${S.dragHint})`, trackX + trackW + 14, trackY + 4, c.exc, 12, 'left', true);
       }
 
+      g.save();
+      g.fillStyle = c.paperCard;
+      g.strokeStyle = c.exc;
+      g.lineWidth = 2.2;
+      g.beginPath();
+      g.arc(thumbX, trackY, 9, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+      g.restore();
+
       // Update Marginalia readouts
       const livePairTheory = core.pairDelta() * 24;
-      $('y02-r1').textContent = lastState.r1.toFixed(3);
-      $('y02-o1').textContent = lastState.o1.toFixed(3);
-      $('y02-r2').textContent = lastState.r2.toFixed(3);
-      $('y02-o2').textContent = lastState.o2.toFixed(3);
-      $('y02-dw').textContent = (lastState.dw >= 0 ? '+' : '') + lastState.dw.toFixed(5);
-      $('y02-diff').textContent = Math.abs(experiment.delta - livePairTheory).toFixed(4);
+      setText(r1El, lastState.r1.toFixed(3));
+      setText(o1El, lastState.o1.toFixed(3));
+      setText(r2El, lastState.r2.toFixed(3));
+      setText(o2El, lastState.o2.toFixed(3));
+      setText(dwEl, (lastState.dw >= 0 ? '+' : '') + lastState.dw.toFixed(5));
+      setText(diffEl, Math.abs(experiment.delta - livePairTheory).toFixed(4));
+    }
 
-      // Request next frame continuously at 60 fps!
-      requestAnimationFrame(render);
+    let isLooping = false;
+    function loop(timestamp) {
+      render(timestamp);
+      requestAnimationFrame(loop);
     }
 
     if (typeof ctx.onFrame === 'function') {
-      ctx.onFrame(() => render(performance.now()));
+      ctx.onFrame(() => {
+        if (!isLooping) render(performance.now());
+      });
     }
-    render(performance.now());
+
+    isLooping = true;
+    requestAnimationFrame(loop);
   }
 
   if (typeof module !== 'undefined' && module.exports) {
