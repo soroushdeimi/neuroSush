@@ -5,6 +5,9 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+### Added
+- Static demo site (gallery, all shipped plates, the talk demo, GitHub Pages workflow, `scripts/build_site.py`).
+
 ## [0.6.0] - 2026-10-28
 
 ### Fixed
