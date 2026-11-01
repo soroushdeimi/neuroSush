@@ -1,0 +1,10 @@
+.git
+.venv
+.worker
+**/__pycache__
+gui/.venv
+gui/.browsers
+gui/web/node_modules
+gui/web/dist
+gui/web/test-results
+gui/web/playwright-report
