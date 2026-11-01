@@ -8,3 +8,10 @@ gui/web/node_modules
 gui/web/dist
 gui/web/test-results
 gui/web/playwright-report
+**/.venv
+gui/.uv-cache
+gui/.build
+.mypy_cache
+.ruff_cache
+.pytest_cache
+**/*.egg-info
