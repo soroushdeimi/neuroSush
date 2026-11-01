@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling==1.33.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "neurosush-studio"
+version = "0.1.0"
+description = "Local Compose interface for neuroSush"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "neurosush",
+  "torch==2.14.1",
+  "fastapi==0.162.0",
+  "uvicorn==0.54.0",
+  "pydantic==2.14.2",
+]
+
+[dependency-groups]
+dev = ["pytest==9.0.2", "httpx2==2.16.0", "mypy==1.19.1", "ruff==0.15.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["studio"]
+
+[tool.uv.sources]
+neurosush = { path = "../..", editable = true }
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.ruff]
+extend = "../../pyproject.toml"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
