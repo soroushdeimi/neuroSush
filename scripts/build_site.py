@@ -38,7 +38,7 @@ h2{margin-top:32px}
 """
 
 
-def build_index(plates: list[tuple[str, str]], version: str) -> str:
+def build_gallery(plates: list[tuple[str, str]], version: str) -> str:
     """Return the gallery page; ``plates`` is a list of (id, title) pairs."""
     cards = "\n".join(
         f'<li><a href="plates/{html.escape(pid)}.html"><span class="id">{html.escape(pid)}</span>'
@@ -55,6 +55,7 @@ def build_index(plates: list[tuple[str, str]], version: str) -> str:
 </head>
 <body>
 <main>
+<p><a href="index.html">← neuroSush home</a></p>
 <h1>neuroSush Atlas</h1>
 <p class="lead">Animated plates for spiking neurons, built from the neuroSush library
 (version {html.escape(version)}).</p>
@@ -69,6 +70,33 @@ The neuron: bucket model and Hodgkin-Huxley gates</a></li></ul>
 </body>
 </html>
 """
+
+
+_ASSETS = Path(__file__).resolve().parent / "site_assets"
+
+
+def build_index(plates: list[tuple[str, str]], version: str) -> str:
+    """Render the landing template with links to every shipped plate."""
+    template = (_ASSETS / "index.html").read_text(encoding="utf-8")
+    cards = "\n".join(
+        f'<li><a href="plates/{html.escape(pid, quote=True)}.html">'
+        f'<span class="id">{html.escape(pid)}</span>{html.escape(title)}</a></li>'
+        for pid, title in plates
+    )
+    featured = {"N01": "neurons", "N05": "wave", "Y01": "stdp", "H01": "sdr"}
+    previews = "\n".join(
+        f'<a class="preview" href="plates/{html.escape(pid, quote=True)}.html">'
+        f'<canvas data-art="{featured[pid]}" aria-label="Illustrative plate preview"></canvas>'
+        f'<div><small>{html.escape(pid)} / LIVE PLATE ↗</small>'
+        f'<h3>{html.escape(title)}</h3></div></a>'
+        for pid, title in plates
+        if pid in featured
+    )
+    return (
+        template.replace("{{VERSION}}", html.escape(version))
+        .replace("{{PREVIEWS}}", previews)
+        .replace("{{PLATES}}", cards)
+    )
 
 
 def main():
@@ -107,12 +135,23 @@ def main():
         encoding="utf-8",
     )
 
-    # 5. Index
+    # 5. Landing assets and the original gallery
+    shutil.copytree(_ASSETS, out_dir / "assets", dirs_exist_ok=True)
+    (out_dir / "assets" / "index.html").unlink(missing_ok=True)
+
+    # 6. Index
     index_content = build_index(
         [(p, PLATES[p].title_en if p in PLATES else p) for p in all_plates if p != "demo"],
         __version__,
     )
     (out_dir / "index.html").write_text(index_content, encoding="utf-8")
+    (out_dir / "gallery.html").write_text(
+        build_gallery(
+            [(p, PLATES[p].title_en if p in PLATES else p) for p in all_plates if p != "demo"],
+            __version__,
+        ),
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":
