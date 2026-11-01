@@ -73,6 +73,8 @@ filterwarnings = [
     "ignore:Failed to initialize NumPy:UserWarning",
     # torch 2.1 warns about its own storage classes inside torch.save and torch.load
     "ignore:TypedStorage is deprecated:UserWarning",
+    # torch.compile touches torch.mps on macOS runners lacking Metal 2.0
+    "ignore:Skipping device .* does not support Metal:UserWarning",
 ]
 
 [tool.coverage.run]
