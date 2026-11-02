@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Live Tolman-Eichenbaum Machine (TEM) Replay and Spatial Probe Explorer.">
+<title>neuroSush — Live TEM Replay</title>
+<link rel="icon" href="assets/mark.svg">
+<link rel="stylesheet" href="assets/site.css">
+<script defer src="assets/site.js"></script>
+<script defer src="assets/tem.js"></script>
+</head>
+<body class="atlas-page">
+{{HEADER}}
+<main id="main">
+<div class="catalog" style="max-width: 1200px; margin: auto; padding-top: 40px;">
+  <p class="eyebrow">INTERACTIVE REPLAY / TOLMAN-EICHENBAUM MACHINE</p>
+  <h1>Live TEM Explorer</h1>
+
+  <div id="tem-fixture-banner" style="display: none; background: var(--surface-2); border: 1px solid var(--rule-strong); border-radius: var(--r-2); padding: var(--s-4); margin-bottom: var(--s-6); color: var(--text); font-weight: 500;">test fixture</div>
+
+  <div id="tem-meta-banner" style="background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-2); padding: var(--s-5); margin-bottom: var(--s-6);">
+    <p id="tem-label-display" style="font-weight: 500; color: var(--text); margin-bottom: var(--s-2);">Label: Loading...</p>
+    <small id="tem-note-display" style="color: var(--text-3);">Note: Loading metadata caveat...</small>
+  </div>
+
+  <div id="tem-message" style="display: none; background: var(--surface-2); border: 1px solid var(--rule-strong); border-radius: var(--r-2); padding: var(--s-4); margin-bottom: var(--s-6); color: var(--text);"></div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: var(--s-4); margin-bottom: var(--s-6); align-items: center;">
+    <div>
+      <label for="tem-variant-select" style="font: var(--t-label) var(--font-sans); color: var(--text-2); margin-bottom: var(--s-2);">Variant</label>
+      <select id="tem-variant-select" style="background: var(--surface); color: var(--text); border: 1px solid var(--rule); border-radius: var(--r-1); padding: var(--s-3); min-height: 40px;">
+        <option value="v2">v2 (learned structure + reliability fusion)</option>
+        <option value="v1">v1 (learned structure)</option>
+      </select>
+    </div>
+    <div>
+      <label for="tem-world-select" style="font: var(--t-label) var(--font-sans); color: var(--text-2); margin-bottom: var(--s-2);">World</label>
+      <select id="tem-world-select" style="background: var(--surface); color: var(--text); border: 1px solid var(--rule); border-radius: var(--r-1); padding: var(--s-3); min-height: 40px;">
+        <option value="0">World 0</option>
+      </select>
+    </div>
+    <div style="display: flex; gap: var(--s-3); align-items: flex-end;">
+      <button id="tem-btn-play" class="button" style="min-height: 40px;">Play</button>
+      <button id="tem-btn-pause" class="button" style="min-height: 40px;">Pause</button>
+      <button id="tem-btn-step" class="button" style="min-height: 40px;">Step →</button>
+      <div>
+        <label for="tem-speed-range" style="font: var(--t-label) var(--font-sans); color: var(--text-2); display: block; margin-bottom: 2px;">Speed</label>
+        <input id="tem-speed-range" type="range" min="1" max="5" value="1" style="width: 100px;">
+      </div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-6); margin-bottom: var(--s-8);">
+    <div style="background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-2); padding: var(--s-6);">
+      <h2>Walk & Prediction Replay</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin: var(--s-4) 0;">
+        <span id="tem-step-counter" style="font: 500 var(--t-readout) var(--font-mono);">Step: 0 / 0</span>
+        <span id="tem-accuracy-counter" style="font: 500 var(--t-readout) var(--font-mono); color: var(--accent);">New-edge accuracy: —</span>
+      </div>
+      <div style="position: relative; aspect-ratio: 1; max-width: 100%; background: var(--bg); border: 1px solid var(--rule); border-radius: var(--r-1); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+        <canvas id="tem-grid-canvas" width="400" height="400" style="width: 100%; height: 100%; display: block;"></canvas>
+      </div>
+      <div style="margin-top: var(--s-4); display: flex; gap: var(--s-4); font-size: 0.85rem; color: var(--text-2);">
+        <span>■ Agent position</span>
+        <span>● Sensory glyph</span>
+        <span style="color: var(--exc);">✓ Correct pred</span>
+        <span style="color: var(--inh);">✕ Incorrect pred</span>
+      </div>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-2); padding: var(--s-6); display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <h2>Spatial Probe & Metrics</h2>
+        <p style="color: var(--text-2); margin: var(--s-4) 0;">
+          Evaluation of structural map latent representations (<strong>g</strong>) and conjunctive representations (<strong>p</strong>) across worlds.
+        </p>
+        <div id="tem-probe-panel" style="background: var(--bg); border: 1px solid var(--rule); border-radius: var(--r-1); padding: var(--s-5); font-size: 0.9rem; font-family: var(--font-mono); margin-bottom: var(--s-5);">
+          Loading probe metrics...
+        </div>
+        <div id="tem-interpretation" style="background: var(--surface-2); border-left: 3px solid var(--accent); padding: var(--s-4); font-size: 0.9rem; color: var(--text);">
+          Interpretation: Loading...
+        </div>
+      </div>
+      <div style="margin-top: var(--s-6);">
+        <h3 style="font-size: 1rem; margin-bottom: var(--s-3);">Rate-Map Gallery (Unit 0)</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4);">
+          <div>
+            <small style="display:block; margin-bottom:4px; color:var(--text-3);">g unit 0</small>
+            <canvas id="tem-ratemap-g" width="160" height="160" style="width: 100%; background: var(--bg); border: 1px solid var(--rule); border-radius: var(--r-1); display: block;"></canvas>
+          </div>
+          <div>
+            <small style="display:block; margin-bottom:4px; color:var(--text-3);">p unit 0</small>
+            <canvas id="tem-ratemap-p" width="160" height="160" style="width: 100%; background: var(--bg); border: 1px solid var(--rule); border-radius: var(--r-1); display: block;"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</main>
+{{FOOTER}}
+</body>
+</html>

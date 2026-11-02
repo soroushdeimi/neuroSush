@@ -32,6 +32,9 @@ def test_build_writes_every_plate_and_support_files(tmp_path, monkeypatch):
         "gallery.html",
         "results.html",
         "research.html",
+        "tem.html",
+        "data/tem-run-v2-s0.json",
+        "data/tem-run-v1-s0.json",
         "assets/site.css",
         "assets/site.js",
         "404.html",
@@ -112,6 +115,7 @@ def test_shared_shell_and_scroll_story(tmp_path, monkeypatch):
         "gallery.html",
         "results.html",
         "research.html",
+        "tem.html",
         "plates/N01.html",
         "plates/Y01.html",
     ):
