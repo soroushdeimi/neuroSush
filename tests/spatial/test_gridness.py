@@ -95,3 +95,33 @@ class TestGridness:
             score = gridness(bump)
             assert score.hexagonal < 0.5
             assert score.square < 0.5
+
+    def test_16x16_synthetic_validation_hex_square_random(self):
+        axis = torch.arange(16, dtype=torch.float64)
+        y, x = torch.meshgrid(axis, axis, indexing="ij")
+        coords = torch.stack((x, y), -1)
+
+        hex_rate = hexagonal_rate(coords, scale=5, orientation=0.0)
+        score_hex = gridness(hex_rate, annulus=(3, 7))
+        assert score_hex.resolvable
+        assert score_hex.hexagonal > score_hex.square
+
+        u = x * math.cos(0) - y * math.sin(0)
+        v = x * math.sin(0) + y * math.cos(0)
+        sq_rate = 2 + torch.cos(2 * math.pi * u / 5) + torch.cos(2 * math.pi * v / 5)
+        score_sq = gridness(sq_rate, annulus=(3, 7))
+        assert score_sq.resolvable
+        assert score_sq.square > score_sq.hexagonal
+
+        rand_rate = torch.randn(16, 16, generator=torch.Generator().manual_seed(42))
+        score_rand = gridness(rand_rate, annulus=(3, 7))
+        assert score_rand.hexagonal < 0.5
+        assert score_rand.square < 0.5
+
+    def test_8x8_stays_resolvable_false(self):
+        axis = torch.arange(8, dtype=torch.float64)
+        y, x = torch.meshgrid(axis, axis, indexing="ij")
+        coords = torch.stack((x, y), -1)
+        hex_rate = hexagonal_rate(coords, scale=4, orientation=0.0)
+        score = gridness(hex_rate)
+        assert not score.resolvable
