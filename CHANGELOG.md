@@ -11,12 +11,11 @@ All notable changes to neuroSush are documented here, following the
 - `neurosush.introspect` (catalog and fingerprint inspection).
 - `neurosush.structure.network_spec` (network specification v2).
 - Behavior catalog metadata.
-- TEM training checkpoints and spatial probe (`neurosush.tem.checkpoint`, `experiments/tem_spatial_probe.py`).
+- Portable TEM training checkpoints (`neurosush.tem.checkpoint`) and a frozen spatial probe with reference-matched nulls, decoding, cross-world geometry and random-init controls (`experiments/tem_spatial_probe.py`).
 - Atlas plate `T01` (TEM Hebbian binding teaching plate, position imposed).
-- Portable TEM training checkpoints and frozen spatial probes with reference-matched nulls, decoding, cross-world geometry, and random-init controls.
 - Cinematic product landing page with original canvas artwork, a live LIF tuner, dark/light themes, reduced-motion support, and a labeled GUI concept (repository only, not part of the PyPI package).
 - Studio (`gui/`), landing page, and Atlas submission validator (repository only, not part of the PyPI package).
-- Experimental rate and spiking TEM models, training, diagnostics, regression fixtures, benchmarks, and runnable examples. (TEM wording kept experimental; no claims of grid cell emergence or outperforming papers).
+- Experimental rate and spiking TEM models, training, diagnostics, regression fixtures, benchmarks, and runnable examples..
 - Overnight TEM experiment records and aggregation, with teaching notes in `docs/TEM.md` distinguishing internal prediction scores from paper spatial analyses.
 - Top-level `Network`, `NeuronGroup`, and `SynapseGroup` exports.
 - Static demo site (gallery, all shipped plates, the talk demo, GitHub Pages workflow, `scripts/build_site.py`).
