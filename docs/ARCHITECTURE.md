@@ -53,6 +53,20 @@ cortical structures.
 | `filters.py` | `dog_kernel` (zero mean by default), `gabor_kernel` |
 | `transforms.py` | `grid_boxes`, `GridErase`, `GridKeep`, `GridCrop`, `split_polarity`, `FilterBank` |
 | `data.py` | `LocationDataset`, `spike_frames`, `read_idx`, `load_mnist` |
+| `neurons/surrogate.py` | `SurrogateSpike`, `spike`, `lif_step` (surrogate gradient spikes and LIF integration steps) |
+| `neurons/oscillation.py` | `theta_current` (imposed theta-band inhibitory current) |
+| `neurons/sampling.py` | `bernoulli_group_means` (Bernoulli spike sampling and group averaging) |
+| `synapses/stdp_memory.py` | `stdp_memory_update` (trace-based STDP memory update) |
+| `memory/hebbian.py` | `hebbian_update`, `attractor`, `HebbianMemory` (Hebbian attractor memory and associative updates) |
+| `schedule.py` | `linear_ramp`, `step_decay` (scheduling training ramps and decay rates) |
+| `spatial/graph_world.py` | `GraphWorld`, `Walk` (discrete square graphs and linear tracks with random walks) |
+| `spatial/batch.py` | `BatchedWalk`, `make_worlds`, `batched_random_walks` (batched walks across graph worlds) |
+| `spatial/rate_maps.py` | `rate_maps`, `spatial_information`, `ShuffleNull`, `shuffled_position_control` (rate maps and position-shuffle controls) |
+| `spatial/gridness.py` | `spatial_autocorrelogram`, `Gridness`, `gridness` (spatial autocorrelogram and gridness metrics) |
+| `spatial/phase.py` | `PhaseRegression`, `circular_linear_regression`, `phase_slope_class` (theta phase regression and precession classification) |
+| `spatial/fields.py` | `grid_fraction`, `spatial_information_vs_shuffle`, `track_phase_slopes`, `summarize_classes` (spatial field evaluation metrics) |
+| `spatial/probe.py` | `coordinates`, `position_probe` (coordinate decoding probes and shift controls) |
+| `spatial/controls.py` | `seen_targets`, `sensory_count_predictions` (behavioral and sensory control baselines) |
 | `structure/layer.py` | `Layer`, `CorticalLayer` (named groups and ports) |
 | `structure/connect.py` | `connect` (one synapse group per source/destination pair) |
 | `structure/column.py` | `CorticalColumn` |
@@ -259,6 +273,14 @@ the bit-exact references. Four pieces differ from the graph stepper:
   `enabled` flag) make Dynamo guard and compile a variant per value, matching the per-key
   graphs. The stepper raises Dynamo's recompile limit to 64 so networks of several shapes
   can coexist in one process.
+
+## Differentiable spiking and fast memory
+
+Surrogate spikes (`SurrogateSpike`, `spike`, `lif_step`) provide differentiable thresholding (`v - threshold > 0`) with arctan or triangle surrogate derivatives and hard voltage resets. `stdp_memory_update` computes trace-based STDP on fast-memory matrices clamped to `[-clip, clip]`, with $A_+$ for potentiation and $A_-$ for depression (note that the Spiking TEM paper's Eq. 9 and Table 1 disagree about the sign of $A_-$). `hebbian_update`, `attractor`, and `HebbianMemory` implement Hebbian attractor memory with decay, outer-product updates, leaky ReLU attractor iterations, and in-place tensor operations. `linear_ramp` and `step_decay` provide parameter scheduling. None of these are Network behaviors (plain tensor functions, no Order slot, not graph-captured).
+
+## Spatial analysis
+
+`GraphWorld` and `BatchedWalk` simulate discrete square graphs and linear tracks with random walks and boundary rejection. `rate_maps` computes unit-first occupancy means and counts, evaluated against `shuffled_position_control` sample-wise node shuffles. `gridness` and `spatial_autocorrelogram` score SAC rotations, reporting hexagonal and square scores separately (periodicity alone is not a hexagonal grid; small maps $<16$ bins are marked not resolvable). `circular_linear_regression` and `phase_slope_class` fit theta phase precession along running direction (0.2 and 0.6 bins follow one paper's convention). `position_probe` and `seen_targets` / `sensory_count_predictions` provide coordinate decoding ridge regression and behavioral/sensory baselines.
 
 ## Thousand Brains models
 

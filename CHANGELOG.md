@@ -7,6 +7,23 @@ All notable changes to neuroSush are documented here, following the
 
 ### Added
 - Static demo site (gallery, all shipped plates, the talk demo, GitHub Pages workflow, `scripts/build_site.py`).
+- `neurosush.neurons.surrogate`: `SurrogateSpike`, `spike`, and `lif_step` for differentiable surrogate gradient spikes and Leaky Integrate-and-Fire steps.
+- `neurosush.neurons.oscillation`: `theta_current` for imposed theta-band inhibitory modulation.
+- `neurosush.neurons.sampling`: `bernoulli_group_means` for Bernoulli spike sampling and group averaging.
+- `neurosush.synapses.stdp_memory`: `stdp_memory_update` for trace-based STDP on fast-memory matrices.
+- `neurosush.memory.hebbian`: `hebbian_update`, `attractor`, and `HebbianMemory` for Hebbian attractor memory storage and retrieval.
+- `neurosush.schedule`: `linear_ramp` and `step_decay` for scheduling training parameters.
+- `neurosush.spatial.graph_world`: `GraphWorld` and `Walk` for discrete square graphs and linear tracks with random walks.
+- `neurosush.spatial.batch`: `BatchedWalk`, `make_worlds`, and `batched_random_walks` for batched walks across multiple graph worlds.
+- `neurosush.spatial.rate_maps`: `rate_maps`, `spatial_information`, `ShuffleNull`, and `shuffled_position_control` for spatial rate maps and position-shuffle controls.
+- `neurosush.spatial.gridness`: `spatial_autocorrelogram`, `Gridness`, and `gridness` for spatial autocorrelograms and gridness metrics.
+- `neurosush.spatial.phase`: `PhaseRegression`, `circular_linear_regression`, `phase_slope_class`, `LOCKED_MAX`, and `PRECESSION_MAX` for theta phase regression and classification.
+- `neurosush.spatial.fields`: `grid_fraction`, `spatial_information_vs_shuffle`, `track_phase_slopes`, and `summarize_classes` for evaluation metrics on grid and phase fields.
+- `neurosush.spatial.probe`: `coordinates` and `position_probe` for ridge coordinate decoding and shift controls.
+- `neurosush.spatial.controls`: `seen_targets` and `sensory_count_predictions` for behavioral and sensory baselines.
+
+### Notes
+- Spatial gridness scores report hexagonal and square values separately and mark small maps as not resolvable.
 
 ## [0.6.0] - 2026-10-28
 
