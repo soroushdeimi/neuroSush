@@ -18,6 +18,7 @@ reported in its papers, on small setups.
 | [Spiking networks](#quickstart) | neurons, dendrites, delays, STDP, reward, homeostasis, batching, recording and checkpoints |
 | [Thousand Brains models](#thousand-brains-models) | SDRs, encoders, spatial pooler, temporal memory, grid cells, active dendrites, voting columns, predictive coding |
 | [Spiking temporal memory](#spiking-temporal-memory) | dendritic segments with NMDA-like plateaus, minicolumn inhibition, sequence learning in spike time |
+| [Experimental TEM](docs/TEM.md) | structural and sensory binding, Hebbian memory, rate and spiking training examples |
 | [Validation](#validation) | the mathematics every part is checked against |
 | [Benchmarks](https://github.com/soroushdeimi/neuroSush/blob/main/docs/BENCHMARKS.md) | steps per second on a CPU and a GPU, with and without CUDA graphs and batching |
 
