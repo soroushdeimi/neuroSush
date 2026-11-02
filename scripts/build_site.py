@@ -9,30 +9,78 @@ from neurosush.viz.export import available_plates, render_plate
 
 
 def chrome(prefix: str = "") -> tuple[str, str]:
+    repo = "https://github.com/soroushdeimi/neuroSush"
+    home = prefix + "index.html"
     header = (
         '<a class="skip" href="#main">Skip to content</a>'
-        '<header class="site-header"><a class="brand" href="'
-        + prefix
-        + 'index.html">neuroSush<small>PYTORCH / ATLAS</small></a>'
-        '<nav aria-label="Main"><a href="' + prefix + 'gallery.html">Atlas</a>'
+        '<header class="site-header"><a class="brand" href="' + home + '">neuroSush</a>'
+        '<a class="version" href="' + repo + '/blob/main/CHANGELOG.md">v' + __version__ + "</a>"
+        '<nav id="main-nav" aria-label="Main">'
+        '<a href="' + home + '#workflow">Library</a>'
+        '<a href="' + prefix + 'gallery.html">Atlas</a>'
         '<a href="' + prefix + 'research.html">Research</a>'
         '<a href="' + prefix + 'results.html">Results</a>'
-        '<a class="repo" href="https://github.com/soroushdeimi/neuroSush">GitHub ↗</a>'
-        '<button id="theme" aria-label="Switch to light theme">◐ Theme</button></nav></header>'
+        '<a href="' + home + '#studio">Studio <span class="chip">preview</span></a>'
+        '<a href="' + home + '#evidence">Benchmarks</a>'
+        '<a href="' + repo + '/tree/main/docs">Docs ↗</a></nav>'
+        '<div class="header-tools"><a class="icon-button" href="' + repo + '" '
+        'aria-label="GitHub repository" title="GitHub repository">'
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-5 1-5-3-7-3m'
+        "14 6v-4c0-1-.3-2-1-2 4 0 6-2 6-6 0-2-1-3-2-4 0-1 0-2-1-3-2 0-3 1-4 2h-4C"
+        '9 4 8 3 6 3 5 4 5 5 5 6c-1 1-2 2-2 4 0 4 2 6 6 6-.7.5-1 1-1 2v4"/></svg>'
+        "</a>"
+        '<button id="theme" class="icon-button" aria-label="Switch to dark theme"'
+        ' title="Change theme">'
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15A9 9 0 0 1 9 '
+        '4a9 9 0 1 0 11 11Z"/></svg></button>'
+        '<button id="motion" class="icon-button" aria-label="Reduce motion" aria-'
+        'pressed="false" title="Reduce motion">'
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg></button>'
+        '<a class="button" href="' + home + '#install">Install</a>'
+        '<button id="menu" class="icon-button" aria-label="Open navigation" aria-'
+        'expanded="false" aria-controls="main-nav">'
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 1'
+        '8h18"/></svg></button></div></header>'
     )
     footer = (
-        '<footer class="site-footer"><span>neuroSush / Brain-inspired. Tensor-native. / MIT</span>'
-        '<nav aria-label="Footer"><a href="'
+        '<footer class="site-footer"><div class="footer-grid"><div><a class="brand" href="'
+        + home
+        + '">neuroSush</a>'
+        "<p>Spiking networks, HTM / Thousand Brains and predictive coding on PyTo"
+        "rch.</p><small>MIT licence</small></div>"
+        '<nav aria-label="Library"><strong>Library</strong><a href="'
+        + home
+        + '#install">Install</a>'
+        '<a href="'
+        + repo
+        + '/tree/main/docs">API docs ↗</a><a href="'
+        + repo
+        + '/tree/main/examples">Examples ↗</a>'
+        '<a href="' + repo + '/blob/main/CHANGELOG.md">Changelog ↗</a></nav>'
+        '<nav aria-label="Atlas"><strong>Atlas</strong><a href="'
         + prefix
-        + 'index.html">Home</a><a href="'
+        + 'gallery.html">All plates</a>'
+        '<a href="' + prefix + 'research.html">Research</a>'
+        '<a href="' + prefix + 'results.html">Results</a>'
+        '<a href="'
         + prefix
-        + 'gallery.html">Atlas</a><a href="'
+        + 'gallery.html#neurons">Neurons</a><a href="'
         + prefix
-        + 'research.html">Research</a><a href="'
+        + 'gallery.html#synapses">Synapses</a>'
+        '<a href="'
         + prefix
-        + 'results.html">Results</a>'
-        '<a href="https://github.com/soroushdeimi/neuroSush/tree/main/docs">Docs ↗</a>'
-        "</nav></footer>"
+        + 'gallery.html#htm">HTM</a><a href="'
+        + prefix
+        + 'gallery.html#maths">Maths</a></nav>'
+        '<nav aria-label="Project"><strong>Project</strong><a href="' + repo + '">GitHub ↗</a>'
+        '<a href="'
+        + repo
+        + '/blob/main/CITATION.cff">Citation ↗</a><a href="'
+        + repo
+        + '/blob/main/docs/BENCHMARKS.md">Benchmark method ↗</a>'
+        '<a href="' + repo + '/issues">Report an issue ↗</a></nav></div>'
+        '<div class="footer-meta">MIT licence · Cite via CITATION.cff: neuroSush:'
+        " brain-inspired computing on PyTorch, v" + __version__ + "</div></footer>"
     )
     return header, footer
 
@@ -41,13 +89,14 @@ def build_gallery(plates: list[tuple[str, str]], version: str) -> str:
     page = build_index(plates, version)
     head = page[: page.index("<body>")]
     header, footer = chrome()
-    catalog = page[page.index('<section class="catalog"') : page.index("</main>")]
+    catalog_start = page.index('<section class="catalog ')
+    catalog = page[catalog_start : page.index("</section>", catalog_start) + 10]
     return (
-        head.replace("neuroSush — Give your ideas a nervous system.", "neuroSush Atlas")
+        head.replace("neuroSush — Neural circuits, written in PyTorch.", "neuroSush Atlas")
         + '<body class="atlas-page">'
         + header
         + '<main id="main">'
-        + catalog.replace("A question worth running.", "The living Atlas.")
+        + catalog.replace("Teaching plates you can perturb.", "Atlas")
         + "</main>"
         + footer
         + "</body></html>"
@@ -96,7 +145,6 @@ def main():
     plates_dir.mkdir(parents=True, exist_ok=True)
 
     all_plates = available_plates()
-    # available_plates() returns sorted list.
     for plate_id in all_plates:
         if plate_id == "demo":
             continue
@@ -130,7 +178,7 @@ def main():
         encoding="utf-8",
     )
 
-    # 5. Landing assets and the original gallery
+    # 5. Landing assets and gallery
     shutil.copytree(_ASSETS, out_dir / "assets", dirs_exist_ok=True)
     (out_dir / "assets" / "index.html").unlink(missing_ok=True)
     (out_dir / "assets" / "results.html").unlink(missing_ok=True)
