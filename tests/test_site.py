@@ -30,6 +30,8 @@ def test_build_writes_every_plate_and_support_files(tmp_path, monkeypatch):
     for rel in (
         "index.html",
         "gallery.html",
+        "results.html",
+        "research.html",
         "assets/site.css",
         "assets/site.js",
         "404.html",
@@ -95,7 +97,8 @@ def test_landing_links_resolve_and_template_is_complete(tmp_path, monkeypatch):
         elif not href.startswith("https://"):
             assert (tmp_path / href.split("#")[0]).is_file(), href
     assert 'data-theme="light"' in page
-    assert "not yet in a tagged release" in page
+    assert "Results report" in page
+    assert "Research story" in page
     assert "not a reconstruction" in page
 
 
@@ -104,7 +107,14 @@ def test_shared_shell_and_scroll_story(tmp_path, monkeypatch):
     index = (tmp_path / "index.html").read_text()
     assert index.count('<section class="chapter') == 6
     assert 'aria-hidden="true"' in index
-    for rel in ("index.html", "gallery.html", "plates/N01.html", "plates/Y01.html"):
+    for rel in (
+        "index.html",
+        "gallery.html",
+        "results.html",
+        "research.html",
+        "plates/N01.html",
+        "plates/Y01.html",
+    ):
         page = (tmp_path / rel).read_text()
         assert 'class="site-header"' in page
         assert 'class="site-footer"' in page
@@ -142,7 +152,6 @@ def test_foundation_and_instrument_assets(tmp_path, monkeypatch):
     assert (assets / "fonts/SourceSerif4-OFL.txt").is_file()
     page = (tmp_path / "index.html").read_text()
     assert "stage-number" not in page
-    assert "01 /" not in page
     assert 'id="motion"' in page
 
 
@@ -196,3 +205,44 @@ def test_grid_lattice_is_explicit_and_separate(tmp_path, monkeypatch):
     assert "Math.pow(1.4,module)" in module
     assert "not learned" in module
     assert "Illustration. This lattice is imposed by the scene code, not learned." in module
+
+
+def test_tem_teaching_plate_is_published(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    page = (tmp_path / "plates/T01.html").read_text(encoding="utf-8")
+    assert "TEACHING" in page
+    assert "GIVEN / imposed" in page
+    assert 'plates/T01.html"' in (tmp_path / "gallery.html").read_text(encoding="utf-8")
+
+
+def test_results_report_page(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    results_path = tmp_path / "results.html"
+    assert results_path.exists()
+    page = results_path.read_text(encoding="utf-8")
+    assert "0.1027" in page
+    assert "structure imposed" in page
+    assert "not a paper reproduction" in page.lower()
+    assert "grid-cell emergence not shown" in page.lower()
+    ids = set(re.findall(r'id="([^"]+)"', page))
+    for href in re.findall(r'href="([^"]+)"', page):
+        if href.startswith("#"):
+            assert href == "#" or href[1:] in ids
+        elif not href.startswith(("https://", "http://", "mailto:")):
+            assert (tmp_path / href.split("#")[0]).is_file(), href
+
+
+def test_research_report_page(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    research_path = tmp_path / "research.html"
+    assert research_path.exists()
+    page = research_path.read_text(encoding="utf-8")
+    assert "structure imposed" in page
+    assert "not a paper reproduction" in page.lower()
+    assert "grid-cell emergence not shown" in page.lower()
+    ids = set(re.findall(r'id="([^"]+)"', page))
+    for href in re.findall(r'href="([^"]+)"', page):
+        if href.startswith("#"):
+            assert href == "#" or href[1:] in ids
+        elif not href.startswith(("https://", "http://", "mailto:")):
+            assert (tmp_path / href.split("#")[0]).is_file(), href

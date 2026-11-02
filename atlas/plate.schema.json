@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AtlasPlateManifest",
+  "type": "object",
+  "properties": {
+    "schema": { "type": "integer", "enum": [1] },
+    "kind": { "type": "string", "enum": ["plate", "idea"] },
+    "id": { "type": "string", "pattern": "^c-[a-z0-9]+(-[a-z0-9]+)*$" },
+    "title": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string", "minLength": 1 },
+    "authors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "github": { "type": "string", "minLength": 1 }
+        },
+        "required": ["name", "github"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "license": { "type": "string", "enum": ["MIT"] },
+    "data": { "type": "string", "enum": ["teaching-js", "recorded-run", "illustrative"] },
+    "renderer": {
+      "type": ["object", "null"],
+      "properties": {
+        "core_plate": { "type": "string" }
+      },
+      "required": ["core_plate"],
+      "additionalProperties": false
+    },
+    "covers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "citation": { "type": "string", "minLength": 1 },
+          "doi": { "type": "string" }
+        },
+        "required": ["citation"],
+        "additionalProperties": false
+      }
+    },
+    "equations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "js": { "type": "string", "minLength": 1 },
+          "python_ref": { "type": "string", "minLength": 1 },
+          "cases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "args": { "type": "array" },
+                "kwargs": { "type": "object" }
+              },
+              "required": ["args", "kwargs"],
+              "additionalProperties": false
+            }
+          },
+          "abs": { "type": "number" },
+          "rel": { "type": "number" }
+        },
+        "required": ["js", "python_ref", "cases", "abs", "rel"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["schema", "kind", "id", "title", "summary", "authors", "license", "data", "covers"],
+  "additionalProperties": false
+}

@@ -95,3 +95,44 @@ Memory through Generalization in the Hippocampal Formation*, Cell 183, 1249–12
 Kawahara & Fujisawa (2025), *The Spiking Tolman-Eichenbaum Machine: Emergent Spatial and
 Temporal Coding through Spiking Network Dynamics*, bioRxiv preprint,
 [doi:10.1101/2025.10.16.682754](https://doi.org/10.1101/2025.10.16.682754).
+
+## Spatial tuning probe
+
+Training runners now save portable weights and configuration every 500 updates and at
+completion in `experiments/results/checkpoints/<variant>-s<seed>.pt`; override the interval
+with `--checkpoint-every`. These snapshots omit optimizer and transient memory state.
+Load with `neurosush.tem.checkpoint.load_checkpoint` (restricted `weights_only=True`).
+
+Run `PYTHONPATH=src python experiments/tem_spatial_probe.py --checkpoint PATH --out PREFIX`
+or `PYTHON=python sh experiments/run_spatial_probe.sh` for every saved checkpoint.
+Omit `--checkpoint` for the random-init control. JSON and Markdown share the reference
+analysis table columns: occupancy-weighted spatial information, permutation and circular
+shift null means, active-unit fractions above each unit's null p95, split-half Pearson r,
+five-block nearest-template accuracy (25-sample gap) and fixed-prediction shift-null p95,
+cross-world per-unit map correlation, population-distance RSA with node-permutation null,
+and distance correlations against Manhattan grid distance and sensory mismatch.
+
+Defaults use four new 8x8 worlds, seed 1000000, 3000 transitions, 300 burn-in samples,
+32 SI shuffles and 100 decoder/RSA null samples. Each world starts with empty memory;
+slow weights are frozen. Position and sensory metadata are aligned with the current
+inferred g, prior g_gen, and bound p_inf. The coordinate ridge probe in the earlier
+report is a different metric. World sizes, sensory vocabulary, walks, and random-number
+streams differ from the reference experiment; matching metrics alone is not a matched
+training comparison. Use evaluation seeds disjoint from training world seeds.
+
+The reference SI formula accepts signed activations and clamps the mean at 1e-12.
+Our latent activations can be signed: this can produce enormous values even at random
+initialization, so those entries are reference-formula diagnostics, **not interpretable
+bits/spike**. No rectification or baseline subtraction is silently applied. Random-init
+controls can also decode position because fast memory binds observations within a world.
+High within-world tuning alone therefore does not establish learned spatial geometry.
+Missing/constant correlations are JSON null (Markdown nan). Unvisited decoder templates
+retain the reference's zero-distance nansum behavior; inspect occupancy metadata.
+Gridness and hex-versus-square classification are unresolvable at 8x8 (`resolvable=False`).
+The rotation variant has imposed structure; none of these measurements demonstrates that
+grid cells emerged or that this implementation beats the paper.
+
+Completed smoke measurements are in `experiments/results/tem-spatial-random.{json,md}`.
+The completed 500-update v2 seed-1 pipeline check is in
+`experiments/results/tem-spatial-500.{json,md}` (three worlds, 1800 transitions).
+Full retraining spatial results are pending.

@@ -22,6 +22,8 @@ _NON_BEHAVIOR_MODULES = (
 )
 _NAMED_CLASSES = frozenset(
     {
+        "neurosush.memory.hebbian.HebbianMemory",
+        "neurosush.tem.model.TEM",
         "neurosush.core.network.Network",
         "neurosush.core.network.NeuronGroup",
         "neurosush.core.network.SynapseGroup",
@@ -52,6 +54,13 @@ class PlateSpec:
 
 
 PLATES: dict[str, PlateSpec] = {
+    "T01": PlateSpec(
+        id="T01",
+        title_en="TEM: binding structure and sensation in a Hebbian memory",
+        wave=4,
+        flagship=False,
+        covers=("neurosush.memory.hebbian.HebbianMemory", "neurosush.tem.model.TEM"),
+    ),
     "N01": PlateSpec(
         id="N01",
         title_en="LIF: the leaky bucket",

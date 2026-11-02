@@ -40,7 +40,13 @@ def spec(tau=20.0):
 
 
 def test_health_and_schema():
-    assert client.get("/api/health").json() == {"status": "ok"}
+    health = client.get("/api/health").json()
+    assert health["status"] == "ok"
+    assert "studio" in health
+    assert "library" in health
+    assert "torch" in health
+    assert "cuda" in health
+    assert "devices" in health
     response = client.get("/api/schema")
     assert response.status_code == 200
     assert any(b["name"] == "LIF" for b in response.json()["behaviors"])

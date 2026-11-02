@@ -1,0 +1,173 @@
+{
+  "checkpoint": "None",
+  "training_seed": 0,
+  "updates": 0,
+  "probe_seed": 1000000,
+  "worlds": 3,
+  "steps": 1800,
+  "burn": 300,
+  "gridness": {
+    "resolvable": false,
+    "reason": "8x8 is too small"
+  },
+  "results": {
+    "g": {
+      "si": 561849720.3654174,
+      "perm_null": 72448959.8622726,
+      "circ_null": 97186331.23145483,
+      "frac_perm": 0.84375,
+      "frac_circ": 0.84375,
+      "splithalf": 0.7577427304648957,
+      "dec": 0.11547856984232734,
+      "dec_null": 0.021130357539418165,
+      "map_corr": 0.04148372339895564,
+      "rsa": 0.07245600851595514,
+      "rsa_null_p95": 0.16081259972710618,
+      "rsa_grid": 0.1094509853460337,
+      "rsa_sensory": 0.16087122554085576
+    },
+    "g_gen": {
+      "si": 371596874.66032666,
+      "perm_null": 130703610.81698968,
+      "circ_null": 167056715.56082967,
+      "frac_perm": 0.7604166666666666,
+      "frac_circ": 0.75,
+      "splithalf": 0.5343982328690359,
+      "dec": 0.04308238951809904,
+      "dec_null": 0.02154119475904952,
+      "map_corr": 0.07255243741805652,
+      "rsa": 0.1567728150353675,
+      "rsa_null_p95": 0.11617002674842904,
+      "rsa_grid": 0.2668845449690132,
+      "rsa_sensory": 0.011929173901536553
+    },
+    "p": {
+      "si": 1121158.9591085173,
+      "perm_null": 731655.8579701534,
+      "circ_null": 772073.084103837,
+      "frac_perm": 0.8510416666666667,
+      "frac_circ": 0.8458333333333333,
+      "splithalf": 0.8132928320951578,
+      "dec": 0.5414168332222963,
+      "dec_null": 0.026004885631801023,
+      "map_corr": 0.021629914081027293,
+      "rsa": 0.03399820934990184,
+      "rsa_null_p95": 0.07372514906665378,
+      "rsa_grid": 0.1397795407555477,
+      "rsa_sensory": 0.6214576771953292
+    }
+  },
+  "diagnostics": {
+    "g": [
+      {
+        "negative_fraction": 0.38730429713524317,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 1501
+      },
+      {
+        "negative_fraction": 0.38266155896069287,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 1501
+      },
+      {
+        "negative_fraction": 0.37943454363757495,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 1501
+      }
+    ],
+    "g_gen": [
+      {
+        "negative_fraction": 0.38730429713524317,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 1501
+      },
+      {
+        "negative_fraction": 0.38257828114590275,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 1501
+      },
+      {
+        "negative_fraction": 0.37943454363757495,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 1501
+      }
+    ],
+    "p": [
+      {
+        "negative_fraction": 0.12528314457028647,
+        "active_units": 320,
+        "visited_nodes": 64,
+        "retained_samples": 1501
+      },
+      {
+        "negative_fraction": 0.1224704363757495,
+        "active_units": 320,
+        "visited_nodes": 64,
+        "retained_samples": 1501
+      },
+      {
+        "negative_fraction": 0.12270569620253165,
+        "active_units": 320,
+        "visited_nodes": 64,
+        "retained_samples": 1501
+      }
+    ]
+  },
+  "config": {
+    "sensory": 20,
+    "compressed": 10,
+    "modules": [
+      12,
+      12,
+      8
+    ],
+    "hidden": 20,
+    "batch": 16,
+    "bptt": 20,
+    "walk_len": 200,
+    "widths": [
+      5,
+      6,
+      7,
+      8
+    ],
+    "lr_max": 0.00094,
+    "lr_min": 8e-05,
+    "lr_decay": 0.5,
+    "lr_every": 4000,
+    "memory_decay": 0.9999,
+    "memory_rate": 0.5,
+    "decay_ramp": 200,
+    "rate_ramp": 16000,
+    "latent_ramp": 2000,
+    "iterations": 5,
+    "retention": 0.8,
+    "clip": 1.0,
+    "initial_std": 0.5,
+    "weight_x_gen": 1.0,
+    "weight_x_g": 1.0,
+    "weight_x_p": 1.0,
+    "weight_p": 1.0,
+    "weight_g": 1.0,
+    "reg_g": 0.01,
+    "reg_p": 0.02,
+    "transition": "matrix",
+    "inference_memory_loss": false,
+    "calibrated_reductions": false,
+    "bounded_attractor_activation": false,
+    "reliable_fusion": false,
+    "correction_ramp": 2000,
+    "reg_p_horizon": 4000,
+    "reg_g_horizon": 40000000,
+    "sigma_floor": 0.001
+  },
+  "si_repeats": 32,
+  "decoder_rsa_repeats": 100,
+  "si_signed_warning": "Signed activations invalidate bits/spike interpretation"
+}
