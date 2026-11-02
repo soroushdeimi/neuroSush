@@ -61,7 +61,9 @@ def main():
         check.feed(page)
         check.close()
         assert not check.stack, f"Unclosed tags in {path.relative_to(args.out)}: {check.stack}"
-        assert all(fragment in check.ids for fragment in check.fragments), f"Broken fragment in {path.relative_to(args.out)}"
+        assert all(fragment in check.ids for fragment in check.fragments), (
+            f"Broken fragment in {path.relative_to(args.out)}"
+        )
         assert "{{" not in page, f"Unrendered template token in {path.relative_to(args.out)}"
     for name in ("site.css", "site.js"):
         text = (args.out / "assets" / name).read_text(encoding="utf-8")
