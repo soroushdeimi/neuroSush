@@ -39,6 +39,33 @@ def _information(a: Tensor, pos: Tensor, size: int) -> Tensor:
     return (p[:, None] * terms).sum(0)
 
 
+def format_probe(probe_data: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Format spatial probe results into the shared contract stream layout."""
+    if not probe_data:
+        return None
+    res = probe_data.get("results", probe_data)
+    stream_out: dict[str, Any] = {}
+    for key in ("g", "p"):
+        if key in res:
+            r = res[key]
+            stream_out[key] = {
+                "spatial_info": r.get("si"),
+                "null": r.get("circ_null", r.get("perm_null")),
+                "cross_world_corr": r.get("map_corr"),
+                "rsa": r.get("rsa"),
+                "rsa_null_p95": r.get("rsa_null_p95"),
+                "decoder_acc": r.get("dec"),
+                "shift_null_p95": r.get("dec_null"),
+                "rsa_vs_grid": r.get("rsa_grid"),
+                "rsa_vs_sensory": r.get("rsa_sensory"),
+            }
+            if key == "g":
+                stream_out[key]["spatial_info_note"] = (
+                    "reference-formula diagnostic, not bits/spike"
+                )
+    return {"stream": stream_out}
+
+
 def record_run(
     checkpoint_path: str | Path | None = None,
     *,
@@ -53,16 +80,18 @@ def record_run(
     label: str = "learned structure",
     note: str = "one seed; no claim of grid cells",
     probe: dict[str, Any] | None = None,
+    probe_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """Record random walks, predictions, and top-unit rate maps across worlds."""
     if worlds < 1 or size < 2 or steps < 1 or units < 1:
         raise ValueError("worlds, size, steps, and units must be positive")
 
     variant = "v2"
+    loaded_train_seed = train_seed
     if model is None:
         if checkpoint_path is not None:
             path_str = str(checkpoint_path)
-            model, _train_seed, updates = load_checkpoint(checkpoint_path)
+            model, loaded_train_seed, updates = load_checkpoint(checkpoint_path)
             if "v1" in path_str:
                 variant = "v1"
             elif "v3" in path_str:
@@ -70,6 +99,14 @@ def record_run(
         else:
             config = TEMConfig(widths=(5, 6, 7, 8))
             model = TEM(config, generator=torch.Generator().manual_seed(seed))
+
+    probe_dict = probe
+    if probe_path is not None:
+        try:
+            probe_data = json.loads(Path(probe_path).read_text())
+            probe_dict = format_probe(probe_data)
+        except Exception:
+            pass
 
     model.eval()
     worlds_list: list[dict[str, Any]] = []
@@ -143,17 +180,21 @@ def record_run(
                 }
             )
 
+    ckpt_name = Path(checkpoint_path).name if checkpoint_path else None
     return {
         "version": 1,
         "meta": {
             "variant": variant,
-            "seed": seed,
+            "seed": loaded_train_seed,
+            "record_seed": seed,
             "updates": updates,
+            "checkpoint": ckpt_name,
+            "worlds_note": "new worlds, empty memory, frozen weights",
             "label": label,
             "note": note,
         },
         "worlds": worlds_list,
-        "probe": probe,
+        "probe": probe_dict,
     }
 
 
