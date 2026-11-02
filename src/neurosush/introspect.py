@@ -9,6 +9,7 @@ import json
 import types
 from typing import Any, Literal, Union, get_args, get_origin, get_type_hints
 
+from neurosush._catalog_meta import META
 from neurosush.core.behavior import Behavior
 from neurosush.structure.spec import _REGISTRY
 
@@ -175,6 +176,7 @@ def describe(cls: type[Behavior]) -> dict[str, Any]:
         "graph_safe": cls.graph_safe,
         "independent_ok": cls.independent_ok,
         "supported": list(getattr(cls, "supported", ())),
+        "meta": META.get(cls.__name__, {}),
     }
 
 
