@@ -195,3 +195,4 @@ def test_grid_lattice_is_explicit_and_separate(tmp_path, monkeypatch):
     assert "Math.sqrt(3)/2" in module
     assert "Math.pow(1.4,module)" in module
     assert "not learned" in module
+    assert "Illustration. This lattice is imposed by the scene code, not learned." in module
