@@ -1,0 +1,191 @@
+{
+  "checkpoint": "experiments/results/checkpoints/v1-s0.pt",
+  "training_seed": 0,
+  "updates": 16000,
+  "probe_seed": 1000000,
+  "worlds": 4,
+  "steps": 3000,
+  "burn": 300,
+  "gridness": {
+    "resolvable": false,
+    "reason": "8x8 is too small"
+  },
+  "results": {
+    "g": {
+      "si": 999746277881.9932,
+      "perm_null": 20355558349.958195,
+      "circ_null": 26260212298.82538,
+      "frac_perm": 1.0,
+      "frac_circ": 1.0,
+      "splithalf": 0.6625544657810245,
+      "dec": 0.3221954831543873,
+      "dec_null": 0.023991114402073306,
+      "map_corr": -0.028761372782248263,
+      "rsa": 0.8334652608072267,
+      "rsa_null_p95": 0.04248074815589602,
+      "rsa_grid": -0.04473545523833233,
+      "rsa_sensory": 0.07313502342102478
+    },
+    "g_gen": {
+      "si": 1394716669289.9678,
+      "perm_null": 63560178792.25207,
+      "circ_null": 80062389970.99785,
+      "frac_perm": 1.0,
+      "frac_circ": 1.0,
+      "splithalf": 0.6516755025234393,
+      "dec": 0.21279155868196964,
+      "dec_null": 0.023033135875601622,
+      "map_corr": 0.013937814576250408,
+      "rsa": 0.8654249895890697,
+      "rsa_null_p95": 0.04022651200649832,
+      "rsa_grid": -0.044242761000527216,
+      "rsa_sensory": 0.020707983098758317
+    },
+    "p": {
+      "si": 8770474.482203709,
+      "perm_null": 8603713.653630415,
+      "circ_null": 8946638.049482554,
+      "frac_perm": 0.99921875,
+      "frac_circ": 0.99921875,
+      "splithalf": 0.7971782125843365,
+      "dec": 0.8059977786005184,
+      "dec_null": 0.030146242132543497,
+      "map_corr": 0.02430419370587722,
+      "rsa": 0.034777814436155165,
+      "rsa_null_p95": 0.043245439120221524,
+      "rsa_grid": 0.024509083557786856,
+      "rsa_sensory": 0.7303800091354573
+    }
+  },
+  "diagnostics": {
+    "g": [
+      {
+        "negative_fraction": 0.33042160310995927,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 2701
+      },
+      {
+        "negative_fraction": 0.3201823398741207,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 2701
+      },
+      {
+        "negative_fraction": 0.3296232876712329,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 2701
+      },
+      {
+        "negative_fraction": 0.31966169937060346,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 2701
+      }
+    ],
+    "g_gen": [
+      {
+        "negative_fraction": 0.30460940392447244,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 2701
+      },
+      {
+        "negative_fraction": 0.30604405775638654,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 2701
+      },
+      {
+        "negative_fraction": 0.2998773602369493,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 2701
+      },
+      {
+        "negative_fraction": 0.3059052202887819,
+        "active_units": 32,
+        "visited_nodes": 64,
+        "retained_samples": 2701
+      }
+    ],
+    "p": [
+      {
+        "negative_fraction": 0.06608432062199185,
+        "active_units": 320,
+        "visited_nodes": 64,
+        "retained_samples": 2701
+      },
+      {
+        "negative_fraction": 0.06403646797482414,
+        "active_units": 320,
+        "visited_nodes": 64,
+        "retained_samples": 2701
+      },
+      {
+        "negative_fraction": 0.06592465753424658,
+        "active_units": 320,
+        "visited_nodes": 64,
+        "retained_samples": 2701
+      },
+      {
+        "negative_fraction": 0.0639323398741207,
+        "active_units": 320,
+        "visited_nodes": 64,
+        "retained_samples": 2701
+      }
+    ]
+  },
+  "config": {
+    "sensory": 20,
+    "compressed": 10,
+    "modules": [
+      12,
+      12,
+      8
+    ],
+    "hidden": 20,
+    "batch": 16,
+    "bptt": 20,
+    "walk_len": 200,
+    "widths": [
+      5,
+      6,
+      7,
+      8
+    ],
+    "lr_max": 0.00094,
+    "lr_min": 8e-05,
+    "lr_decay": 0.5,
+    "lr_every": 4000,
+    "memory_decay": 0.9999,
+    "memory_rate": 0.5,
+    "decay_ramp": 200,
+    "rate_ramp": 16000,
+    "latent_ramp": 2000,
+    "iterations": 5,
+    "retention": 0.8,
+    "clip": 1.0,
+    "initial_std": 0.5,
+    "weight_x_gen": 1.0,
+    "weight_x_g": 1.0,
+    "weight_x_p": 1.0,
+    "weight_p": 1.0,
+    "weight_g": 1.0,
+    "reg_g": 0.01,
+    "reg_p": 0.02,
+    "transition": "matrix",
+    "inference_memory_loss": true,
+    "calibrated_reductions": true,
+    "bounded_attractor_activation": true,
+    "reliable_fusion": false,
+    "correction_ramp": 2000,
+    "reg_p_horizon": 4000,
+    "reg_g_horizon": 40000000,
+    "sigma_floor": 0.001
+  },
+  "si_repeats": 32,
+  "decoder_rsa_repeats": 100,
+  "si_signed_warning": "Signed activations invalidate bits/spike interpretation"
+}
