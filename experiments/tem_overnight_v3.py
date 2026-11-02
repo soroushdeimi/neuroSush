@@ -40,6 +40,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--updates", type=int, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--checkpoint-every", type=int, default=500)
     args = parser.parse_args()
     if args.updates < 1:
         parser.error("--updates must be positive")
@@ -76,6 +77,10 @@ def main() -> None:
         log_every=100,
         on_update=progress,
         log_grads=True,
+        checkpoint_path=str(
+            Path("experiments/results/checkpoints") / f"{'v3' + args.base}-s{args.seed}.pt"
+        ),
+        checkpoint_every=args.checkpoint_every,
     )
     payload.update(
         history=result.history,

@@ -20,3 +20,5 @@ graphify-out/
 CLAUDE.md
 AGENTS.md
 site/
+
+experiments/results/checkpoints/

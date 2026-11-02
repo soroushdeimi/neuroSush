@@ -16,6 +16,7 @@ from neurosush.spatial.batch import BatchedWalk, batched_random_walks, make_worl
 from neurosush.spatial.controls import seen_targets, sensory_count_predictions
 from neurosush.spatial.probe import position_probe
 
+from .checkpoint import save_checkpoint
 from .config import TEMConfig
 from .diagnostics import saturation
 from .loss import loss_weights, total_loss
@@ -133,6 +134,8 @@ def train(
     diagnostics: bool = False,
     log_grads: bool = False,
     grad_every: int = 100,
+    checkpoint_path: str | None = None,
+    checkpoint_every: int = 500,
     on_update: Callable[[list[dict[str, float]]], None] | None = None,
 ) -> TrainResult:
     """Fit slow weights with Adam and truncated BPTT through fast memory.
@@ -146,6 +149,8 @@ def train(
     saturation fractions without changing optimization. Per-term gradient norms
     are sampled every grad_every updates (including zero) when log_grads is set.
     """
+    if checkpoint_every < 1:
+        raise ValueError("checkpoint_every must be positive")
     if grad_every < 1:
         raise ValueError(f"grad_every must be positive, got {grad_every}")
     if steps < 1 or log_every < 0:
@@ -251,12 +256,16 @@ def train(
             record.update({name: transferred[name] for name in gradients})
             record.update({name: transferred[name] for name in term_norms})
             history.append(record)
+            if checkpoint_path and len(history) % checkpoint_every == 0:
+                save_checkpoint(checkpoint_path, model, seed=seed, updates=len(history))
             if on_update is not None:
                 on_update(history)
             if log_every and len(history) % log_every == 0:
                 print(f"update={len(history)} loss={record['loss']:.5f}", flush=True)
         completed += length
         walk_number += 1
+    if checkpoint_path:
+        save_checkpoint(checkpoint_path, model, seed=seed, updates=len(history))
     return TrainResult(model, history, config, monotonic() - start)
 
 
