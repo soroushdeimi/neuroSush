@@ -61,6 +61,13 @@ PLATES: dict[str, PlateSpec] = {
         flagship=False,
         covers=("neurosush.memory.hebbian.HebbianMemory", "neurosush.tem.model.TEM"),
     ),
+    "T02": PlateSpec(
+        id="T02",
+        title_en="Same map, new world: remapping with an imposed structure",
+        wave=4,
+        flagship=False,
+        covers=("neurosush.memory.hebbian.HebbianMemory", "neurosush.tem.model.TEM"),
+    ),
     "N01": PlateSpec(
         id="N01",
         title_en="LIF: the leaky bucket",

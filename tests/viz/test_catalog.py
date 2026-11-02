@@ -11,6 +11,7 @@ from neurosush.viz.catalog import EXEMPT, PLANNED, PLATES, public_models, uncove
 # The contract: every plate id of PLAN.md section 3, with its wave and flagship flag.
 EXPECTED_IDS = (
     "T01",
+    "T02",
     "N01",
     "N02",
     "N03",
@@ -60,6 +61,7 @@ EXPECTED_IDS = (
 )
 EXPECTED_WAVES = {
     "T01": 4,
+    "T02": 4,
     "N01": 2,
     "N02": 2,
     "N03": 2,
