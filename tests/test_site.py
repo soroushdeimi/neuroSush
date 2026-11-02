@@ -139,3 +139,19 @@ def test_results_report_page(tmp_path, monkeypatch):
             assert href == "#" or href[1:] in ids
         elif not href.startswith(("https://", "http://", "mailto:")):
             assert (tmp_path / href).is_file(), href
+
+
+def test_research_report_page(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    research_path = tmp_path / "research.html"
+    assert research_path.exists()
+    page = research_path.read_text(encoding="utf-8")
+    assert "structure imposed" in page
+    assert "not a paper reproduction" in page.lower()
+    assert "grid-cell emergence not shown" in page.lower()
+    ids = set(re.findall(r'id="([^"]+)"', page))
+    for href in re.findall(r'href="([^"]+)"', page):
+        if href.startswith("#"):
+            assert href == "#" or href[1:] in ids
+        elif not href.startswith(("https://", "http://", "mailto:")):
+            assert (tmp_path / href).is_file(), href

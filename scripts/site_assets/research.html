@@ -53,3 +53,88 @@ Why they matter: they suggest that the brain computes spatial relationships and 
   <p><strong>Limits:</strong> In our public code audit (one run, 40k iterations, 8x8 worlds), prediction loss remained near chance (2.1-2.5); spatial probes show strong within-world position tuning (CA1 spatial info 2.614) but no evidence of shared cross-world structure (map corr near zero, RSA near zero), population distances follow sensory identity rather than grid distance, gridness is unresolvable at 8x8, and no phase precession machinery is present.</p>
 </div>
 </section>
+
+<section id="what-we-did" style="margin-bottom: 50px;">
+<p class="eyebrow">03 / OUR IMPLEMENTATION & AUDIT</p>
+<h2>What We Did with Them</h2>
+<p>
+We ran the authors' public Spiking TEM code (one run) and audited its checkpoints (<a href="results.html">see findings table in Results report ↗</a>). In parallel, we built a clean, modular re-implementation of rate-coded and spiking TEM in PyTorch (<code>src/neurosush/tem/</code>).
+</p>
+<p>
+<strong>The Four Stability Fixes:</strong> Training TEM from scratch at reference scale required four key stability innovations:
+</p>
+<ol style="padding-left: 20px; line-height: 1.8;">
+  <li><strong>Missing L_p_x term and mis-scaled objective:</strong> Supervise sensory-cued memory and calibrate loss reductions.</li>
+  <li><strong>Reliability-blind fusion -> <code>reliable_fusion</code>:</strong> Weight memory correction by retrieval reliability.</li>
+  <li><strong>Unbounded attractor activation -> bounded activation:</strong> Prevents exploding gradients.</li>
+  <li><strong>Compressed memory curriculum:</strong> Gradual memory introduction.</li>
+</ol>
+<p>
+<strong>Spatial Evaluation Toolkit:</strong> We developed a rigorous evaluation suite in <code>src/neurosush/spatial/</code> implementing rate maps, spatial information with shuffle nulls, gridness scoring (evaluating hexagonal and square periodicities separately), theta-phase regression, position probes, and rigorous control models.
+</p>
+</section>
+
+<section id="tests-rigour" style="margin-bottom: 50px;">
+<p class="eyebrow">04 / VERIFICATION & RIGOUR</p>
+<h2>Tests and Rigour</h2>
+<p>
+neuroSush maintains rigorous testing across the codebase:
+</p>
+<ul style="padding-left: 20px; line-height: 1.8;">
+  <li><strong>Total test suite:</strong> 1,629 tests passing.</li>
+  <li><strong>TEM tests:</strong> 120 tests in <code>tests/tem/</code>.</li>
+  <li><strong>Spatial evaluation tests:</strong> 77 tests in <code>tests/spatial/</code>.</li>
+  <li><strong>Golden fixtures:</strong> Compared against measured tolerances (maximum float noise 1.2e-7 on tensor outputs).</li>
+  <li><strong>JS parity:</strong> Interactive Atlas teaching plates verified against Python models.</li>
+  <li><strong>PASS rule:</strong> Strict validation criteria (n &gt;= 3, mean &gt;= best baseline + 0.05, every seed &gt; frequency, CI lower bound &gt; mean frequency).</li>
+</ul>
+</section>
+
+<section id="demos" style="margin-bottom: 50px;">
+<p class="eyebrow">05 / VISUALISATIONS & DEMOS</p>
+<h2>What We Can Show You</h2>
+<p>
+Explore the live models and interactive visualisations across the repository:
+</p>
+<ul style="padding-left: 20px; line-height: 1.8;">
+  <li><strong>Atlas Gallery:</strong> <a href="gallery.html">Open Atlas ↗</a> featuring <strong>47 plates</strong> covering spiking neurons, dendrites, STDP, connectivity, waves, encoding, memory, HTM/Thousand Brains, recording, transforms, and TEM teaching models.</li>
+  <li><strong>TEM Teaching Plate:</strong> <a href="plates/T01.html">Plate T01: TEACHING: position imposed ↗</a>.</li>
+  <li><strong>Results Report:</strong> <a href="results.html">Results & Reproducibility ↗</a> with variant comparison chart and tables.</li>
+  <li><strong>neuroSush Studio:</strong> Project persistence, revisions, and simulation runs (preview, in development).</li>
+</ul>
+<p>
+<strong>Live demos next (not yet available):</strong> Recorded run of the trained model and spatial-probe rate maps of our own retrained checkpoints.
+</p>
+</section>
+
+<section id="honest-status" style="margin-bottom: 50px;">
+<p class="eyebrow">06 / HONEST STATUS</p>
+<h2>What We May and May Not Claim</h2>
+<p style="font-size: 0.9rem; color: var(--ink-muted); margin-bottom: 20px;">
+Not a paper reproduction. Grid-cell emergence not shown. Structure imposed.
+</p>
+<div class="claims-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
+  <div style="background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;">
+    <h3 style="color: var(--exc); margin-top: 0; font-size: 16px;">May Say</h3>
+    <ul style="padding-left: 20px; font-size: 14px; line-height: 1.6;">
+      <li>A clean, tested TEM implementation that trains stably at reference-scale and clearly beats baselines on our internal metric.</li>
+      <li>Better than our earlier model (v0).</li>
+      <li>Their public-default run stayed near chance in prediction loss; ours does not (different code/worlds, one seed).</li>
+    </ul>
+  </div>
+  <div style="background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;">
+    <h3 style="color: var(--inh); margin-top: 0; font-size: 16px;">May NOT Say</h3>
+    <ul style="padding-left: 20px; font-size: 14px; line-height: 1.6;">
+      <li>"Better than the paper" (we never scored their model on our metric; no remapping/gridness comparison).</li>
+      <li>"Grid cells emerged" (periodicity in v3 is structure imposed; gridness is unresolved at 8x8; grid-cell emergence not shown).</li>
+      <li>Theta phase precession as emergent (theta is imposed).</li>
+      <li>Any number not in section 2 or 3 of the results report.</li>
+    </ul>
+  </div>
+</div>
+</section>
+</div>
+</main>
+{{FOOTER}}
+</body>
+</html>

@@ -15,6 +15,7 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         + prefix
         + 'index.html">neuroSush<small>PYTORCH / ATLAS</small></a>'
         '<nav aria-label="Main"><a href="' + prefix + 'gallery.html">Atlas</a>'
+        '<a href="' + prefix + 'research.html">Research</a>'
         '<a href="' + prefix + 'results.html">Results</a>'
         '<a class="repo" href="https://github.com/soroushdeimi/neuroSush">GitHub ↗</a>'
         '<button id="theme" aria-label="Switch to light theme">◐ Theme</button></nav></header>'
@@ -26,6 +27,8 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         + 'index.html">Home</a><a href="'
         + prefix
         + 'gallery.html">Atlas</a><a href="'
+        + prefix
+        + 'research.html">Research</a><a href="'
         + prefix
         + 'results.html">Results</a>'
         '<a href="https://github.com/soroushdeimi/neuroSush/tree/main/docs">Docs ↗</a>'
@@ -131,8 +134,9 @@ def main():
     shutil.copytree(_ASSETS, out_dir / "assets", dirs_exist_ok=True)
     (out_dir / "assets" / "index.html").unlink(missing_ok=True)
     (out_dir / "assets" / "results.html").unlink(missing_ok=True)
+    (out_dir / "assets" / "research.html").unlink(missing_ok=True)
 
-    # 6. Index & Results
+    # 6. Index, Results & Research
     index_content = build_index(
         [(p, PLATES[p].title_en if p in PLATES else p) for p in all_plates if p != "demo"],
         __version__,
@@ -153,6 +157,15 @@ def main():
         .replace("{{FOOTER}}", r_footer)
     )
     (out_dir / "results.html").write_text(results_content, encoding="utf-8")
+
+    research_template = (_ASSETS / "research.html").read_text(encoding="utf-8")
+    rs_header, rs_footer = chrome("")
+    research_content = (
+        research_template.replace("{{VERSION}}", html.escape(__version__))
+        .replace("{{HEADER}}", rs_header)
+        .replace("{{FOOTER}}", rs_footer)
+    )
+    (out_dir / "research.html").write_text(research_content, encoding="utf-8")
 
 
 if __name__ == "__main__":
