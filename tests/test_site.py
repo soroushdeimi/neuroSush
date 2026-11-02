@@ -114,3 +114,15 @@ def test_shared_shell_and_scroll_story(tmp_path, monkeypatch):
     assert "webgl2" in script
     assert "visibilitychange" in script
     assert "prefers-reduced-motion" in script
+
+
+def test_neuron_module_is_shipped(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    page = (tmp_path / "index.html").read_text()
+    assert page.index("assets/neuron.js") < page.index("assets/site.js")
+    module = (tmp_path / "assets/neuron.js").read_text()
+    assert "NeuroShapes.neuron" in module
+    assert "function branch" in module
+    script = (tmp_path / "assets/site.js").read_text()
+    assert "advanceLIF(dt)" in script
+    assert "uniform.spikeAge" in script

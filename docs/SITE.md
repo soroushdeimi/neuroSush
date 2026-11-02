@@ -25,11 +25,14 @@ It checks themes, search, local requests, console errors, reduced motion and ove
 at 390, 1440 and 1920 pixels. It captures six story positions in both themes on desktop
 and mobile, plus the gallery and two teaching plates.
 
+The seeded `neuron.js` module samples a pyramidal soma, recursive dendritic tubes
+with spines, apical tuft, basal arbor, myelinated axon and terminal boutons.
+Its action-potential wave is triggered by the same live Euler LIF update as the trace.
 Original WebGL2 art morphs between six seeded point clouds, with native scrolling,
 a sticky viewport and eased scene interpolation. Desktop starts with 32,000 points;
 mobile starts with 9,000. Sustained slow frames reduce the draw count. Device pixels
 are capped at two; off-screen and hidden-tab animation pauses. Reduced motion or
-missing WebGL renders a static Canvas2D orb. No third-party assets or libraries load.
+missing WebGL renders a static Canvas2D neuron. No third-party assets or libraries load.
 `window.neurosushScene.stats` reports recent animation frame cadence and point count.
 This measures browser frame callbacks, not GPU execution time.
 
