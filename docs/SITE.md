@@ -62,3 +62,8 @@ with tau 20 ms and soft-bound weight 0.5, not a measurement from the morphology.
 a 4:1 ratio of pyramidal triangles to inhibitory circles, apical dendrites, local
 connections and a seeded generated raster. Activity waves illustrate E/I populations;
 this is explicitly schematic rather than a balanced-network measurement.
+
+`sparse.js` creates 1,024 minicolumns with stacked cells on a hexagonal sheet.
+Exactly 20 columns (1.953%, rounded to 2%) are active per illustrative A/B/C step.
+Predicted cells carry trace-coloured rings; three candidate sets narrow through
+schematic lateral voting. These are explanatory encodings, not an HTM execution.

@@ -163,3 +163,11 @@ def test_microcircuit_has_layers_and_cell_types(tmp_path, monkeypatch):
     assert "triangle" in module
     for layer in range(1, 7):
         assert f"'L{layer}'" in module
+
+
+def test_sparse_geometry_uses_1024_minicolumns(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    module = (tmp_path / "assets/sparse.js").read_text()
+    assert "row<32" in module
+    assert "col<32" in module
+    assert "Lateral voting" in module
