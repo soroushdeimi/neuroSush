@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from functools import lru_cache
 
 import torch
 import torch.nn.functional as F
@@ -23,19 +24,21 @@ def spatial_autocorrelogram(rate: torch.Tensor) -> torch.Tensor:
     h, w = r.shape
     shape = (2 * h - 1, 2 * w - 1)
 
+    mask_spectrum = torch.fft.rfft2(mask, s=shape)
+    rate_spectrum = torch.fft.rfft2(r, s=shape)
+    square_spectrum = torch.fft.rfft2(r.square(), s=shape)
+
     def correlate(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
-        result = torch.fft.irfft2(
-            torch.fft.rfft2(a, s=shape) * torch.fft.rfft2(b, s=shape).conj(), s=shape
-        )
+        result = torch.fft.irfft2(a * b.conj(), s=shape)
         return torch.roll(result, (h - 1, w - 1), (0, 1))
 
-    count = correlate(mask, mask).round().clamp_min(0)
+    count = correlate(mask_spectrum, mask_spectrum).round().clamp_min(0)
     n = count.clamp_min(1)
-    sx, sy = correlate(r, mask), correlate(mask, r)
-    vx = (correlate(r.square(), mask) - sx.square() / n).clamp_min(0)
-    vy = (correlate(mask, r.square()) - sy.square() / n).clamp_min(0)
+    sx, sy = correlate(rate_spectrum, mask_spectrum), correlate(mask_spectrum, rate_spectrum)
+    vx = (correlate(square_spectrum, mask_spectrum) - sx.square() / n).clamp_min(0)
+    vy = (correlate(mask_spectrum, square_spectrum) - sy.square() / n).clamp_min(0)
     denominator = (vx * vy).sqrt()
-    result = (correlate(r, r) - sx * sy / n) / denominator.clamp_min(1e-12)
+    result = (correlate(rate_spectrum, rate_spectrum) - sx * sy / n) / denominator.clamp_min(1e-12)
     result[(count < 3) | (denominator < 1e-10)] = float("nan")
     return result.clamp(-1, 1)
 
@@ -54,6 +57,32 @@ class Gridness:
     resolvable: bool
 
 
+@lru_cache(maxsize=32)
+def _rotation_geometry(
+    shape: tuple[int, int], annulus: tuple[float, float]
+) -> tuple[torch.Tensor, tuple[tuple[int, torch.Tensor], ...]]:
+    """Reuse private CPU geometry; callers must never mutate these tensors."""
+    h, w = shape
+    inner, outer = annulus
+    y, x = torch.meshgrid(
+        torch.arange(h, device="cpu"), torch.arange(w, device="cpu"), indexing="ij"
+    )
+    x, y = (x.double() - (w - 1) / 2), (y.double() - (h - 1) / 2)
+    ring = (x.square() + y.square() >= inner**2) & (x.square() + y.square() <= outer**2)
+    grids: list[tuple[int, torch.Tensor]] = []
+    for angle in (30, 45, 60, 90, 120, 135, 150):
+        a = math.radians(angle)
+        grid = torch.stack(
+            (
+                (x * math.cos(a) - y * math.sin(a)) / ((w - 1) / 2),
+                (x * math.sin(a) + y * math.cos(a)) / ((h - 1) / 2),
+            ),
+            -1,
+        )[None]
+        grids.append((angle, grid))
+    return ring, tuple(grids)
+
+
 def gridness(rate: torch.Tensor, *, annulus: tuple[float, float] | None = None) -> Gridness:
     """Score SAC rotations: min(r60,r120)-max(r30,r90,r150), r90-max(r45,r135).
 
@@ -68,22 +97,11 @@ def gridness(rate: torch.Tensor, *, annulus: tuple[float, float] | None = None) 
         raise ValueError(
             f"annulus must satisfy 0 <= inner < outer <= {extent}, got {(inner, outer)}"
         )
-    h, w = sac.shape
-    y, x = torch.meshgrid(torch.arange(h), torch.arange(w), indexing="ij")
-    x, y = (x.double() - (w - 1) / 2), (y.double() - (h - 1) / 2)
-    ring = (x.square() + y.square() >= inner**2) & (x.square() + y.square() <= outer**2)
+    ring, grids = _rotation_geometry((sac.shape[0], sac.shape[1]), (inner, outer))
     valid = torch.isfinite(sac)
     values = torch.nan_to_num(sac)[None, None]
     correlations: dict[int, float] = {}
-    for angle in (30, 45, 60, 90, 120, 135, 150):
-        a = math.radians(angle)
-        grid = torch.stack(
-            (
-                (x * math.cos(a) - y * math.sin(a)) / ((w - 1) / 2),
-                (x * math.sin(a) + y * math.cos(a)) / ((h - 1) / 2),
-            ),
-            -1,
-        )[None]
+    for angle, grid in grids:
         rotated = F.grid_sample(values, grid, align_corners=True)[0, 0]
         support = F.grid_sample(valid.double()[None, None], grid, align_corners=True)[0, 0]
         use = ring & valid & (support > 1 - 1e-8)

@@ -23,7 +23,12 @@ def grid_fraction(
     *,
     threshold: float = 0.8,
 ) -> dict[str, float | int | str | bool]:
-    """Compute fraction of units exceeding hexagonal or square grid score thresholds."""
+    """Compute fraction of units exceeding hexagonal or square grid score thresholds.
+
+    Shapes/Units:
+        activity: tensor of shape (T, units); nodes: tensor of shape (T,);
+        denominator in fraction calculation excludes undefined/NaN maps (n_units - undefined_count).
+    """
     maps, _occupancy = rate_maps(activity, nodes, shape)
     n_units = maps.shape[0]
     hex_scores = []
@@ -78,7 +83,12 @@ def spatial_information_vs_shuffle(
     n_shuffles: int = 100,
     seed: int = 0,
 ) -> dict[str, float]:
-    """Compare unit spatial information against time-shuffled position nulls."""
+    """Compare unit spatial information against time-shuffled position nulls.
+
+    Shapes/Units:
+        activity: tensor of shape (T, units); nodes: tensor of shape (T,);
+        returns dict of metrics in bits per spike.
+    """
     maps, occupancy = rate_maps(activity, nodes, shape)
     info = spatial_information(maps, occupancy)
     mean_info = float(info.mean().item())

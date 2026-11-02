@@ -30,6 +30,10 @@ def hexagonal_rate(
 
     ``(1 + 2 / 3 * sum_i cos(k_i . (x - offset))) / 3`` with ``|k_i| = 4 pi / (sqrt(3) scale)``
     peaks (value 1) on a hexagonal lattice with spacing ``scale`` (Solstad et al. 2006).
+
+    Shapes/Units:
+        position: tensor of shape (..., 2); orientation: radians;
+        output: tensor of shape (...) with values in [0, 1].
     """
     k = 4 * math.pi / (math.sqrt(3) * scale)
     angles = torch.tensor(

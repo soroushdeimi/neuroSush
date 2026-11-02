@@ -119,7 +119,11 @@ class HistoryBuffer(_Buffer):
         super().__init__(depth, size, dtype=dtype, device=device, batch=batch)
 
     def push(self, value: Tensor) -> None:
-        """Store a copy of ``value`` as the newest entry, overwriting the oldest."""
+        """Store a copy of ``value`` as the newest entry, overwriting the oldest.
+
+        Shapes/Units:
+            value: tensor of shape (size,) or (batch, size) matching buffer configuration.
+        """
         self._check_value(value)
         self._head = (self._head - 1) % self.depth
         self._storage[self._head].copy_(value)

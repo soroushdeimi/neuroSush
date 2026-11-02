@@ -7,6 +7,9 @@ All notable changes to neuroSush are documented here, following the
 
 ### Added
 - Cinematic product landing page with original canvas artwork, a live LIF tuner, dark/light themes, reduced-motion support, and a labeled GUI concept. The Atlas gallery and talk demo remain directly reachable.
+- Experimental rate and spiking TEM models, training, diagnostics, regression fixtures, benchmarks, and runnable examples.
+- Overnight TEM experiment records and aggregation, with teaching notes in `docs/TEM.md` distinguishing internal prediction scores from paper spatial analyses.
+- Top-level `Network`, `NeuronGroup`, and `SynapseGroup` exports.
 - Static demo site (gallery, all shipped plates, the talk demo, GitHub Pages workflow, `scripts/build_site.py`).
 - `neurosush.neurons.surrogate`: `SurrogateSpike`, `spike`, and `lif_step` for differentiable surrogate gradient spikes and Leaky Integrate-and-Fire steps.
 - `neurosush.neurons.oscillation`: `theta_current` for imposed theta-band inhibitory modulation.
@@ -22,6 +25,10 @@ All notable changes to neuroSush are documented here, following the
 - `neurosush.spatial.fields`: `grid_fraction`, `spatial_information_vs_shuffle`, `track_phase_slopes`, and `summarize_classes` for evaluation metrics on grid and phase fields.
 - `neurosush.spatial.probe`: `coordinates` and `position_probe` for ridge coordinate decoding and shift controls.
 - `neurosush.spatial.controls`: `seen_targets` and `sensory_count_predictions` for behavioral and sensory baselines.
+
+### Fixed
+- Spatial evaluation reuses FFT spectra, rotation geometry and shuffle occupancy without changing reference results.
+- Invalid neuron thresholds, behavior order, failed initialization, and unknown column-spec keys now report actionable errors.
 
 ### Notes
 - Spatial gridness scores report hexagonal and square values separately and mark small maps as not resolvable.

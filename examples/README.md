@@ -5,6 +5,8 @@ numbers and the deviations from the paper.
 
 | example | what it shows | paper | runtime |
 |---|---|---|---|
+| `tem_whittington.py --steps 400` | rate TEM smoke run; see [TEM notes](../docs/TEM.md) | Whittington et al. 2020 | 9.07 s on this Mac |
+| `spiking_tem_kawahara.py` | spiking TEM with imposed theta; default small run | Kawahara & Fujisawa 2025 | 57.69 s on this Mac |
 | `two_patterns.py` | two LIF output neurons learn to tell two Poisson input patterns apart with STDP, k-winners-take-all and homeostasis | none | seconds |
 | `sequence_prediction.py` | spatial pooler, temporal memory and classifier learn `ABCDE` and `XBCDY`; anomaly drops to 0 after the first symbol and both endings are predicted | none | seconds |
 | `object_recognition.py` | columns that vote recognize random objects in fewer touches; mean touches for 1 to 8 columns | Lewis et al. 2019, Fig. 5 | seconds |

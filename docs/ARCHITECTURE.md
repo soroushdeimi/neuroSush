@@ -145,6 +145,18 @@ Synaptic input at step t uses spikes gathered at step t-1 (one step of transmiss
   whole weight tensor each step, so cost grows with `B` once the GPU is memory-bound:
   `benchmarks/independent.py`.
 
+## Naming Map
+
+Documentation of existing domain and API naming variations across modules (no renames):
+
+| Concept / Domain | Name in Module A | Name in Module B |
+|---|---|---|
+| Reset voltage | `v_reset` (`neurons/models.py`) | `reset` (`neurons/surrogate.py`, `tem/spiking.py`) |
+| State initialization | `reset(batch, *, generator=...)` (`tem/model.py`) | `initial_state(batch_size=1, ...)` (`tem/spiking.py`) |
+| Gradient detachment | `detach()` (`tem/model.py`) | `detached()` (`tem/spiking.py`) |
+| Shuffle count | `repeats=32` (`spatial/rate_maps.py`) | `n_shuffles=100` (`spatial/fields.py`) |
+| Source rate argument | `PoissonInput(rates)` (`neurons/inputs.py`) | `PoissonDrive(rate)` / `CorrelatedPoissonInput(rate)` (`neurons/inputs.py`) |
+
 ## Performance
 
 - Delay buffers are rings: a step moves a head index instead of copying `depth` rows, and a

@@ -33,11 +33,19 @@ class SDRClassifier:
         return torch.softmax(sdr.to(self.weights.dtype) @ self.weights.T, dim=-1)
 
     def predict(self, sdr: torch.Tensor) -> torch.Tensor:
-        """Most likely class of every SDR."""
+        """Most likely class of every SDR.
+
+        Shapes/Units:
+            sdr: tensor of shape (..., n); output: tensor of shape (...) with class indices.
+        """
         return self.probabilities(sdr).argmax(-1)
 
     def learn(self, sdr: torch.Tensor, label: torch.Tensor | int) -> None:
-        """One gradient step on the cross-entropy of a batch of SDRs and labels."""
+        """One gradient step on the cross-entropy of a batch of SDRs and labels.
+
+        Shapes/Units:
+            sdr: tensor of shape (..., n); label: tensor of shape (...) or scalar int.
+        """
         x = sdr.to(self.weights.dtype).reshape(-1, self.weights.shape[1])
         y = torch.as_tensor(label, device=x.device).reshape(-1)
         target = torch.nn.functional.one_hot(y, self.weights.shape[0]).to(x.dtype)

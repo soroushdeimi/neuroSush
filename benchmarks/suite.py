@@ -26,6 +26,9 @@ from neurosush.core.network import Network
 from neurosush.htm.sdr import random_sdr
 from neurosush.htm.spatial_pooler import SpatialPooler
 from neurosush.htm.temporal_memory import TemporalMemory
+from neurosush.spatial.gridness import spatial_autocorrelogram
+from neurosush.tem import TEM, TEMConfig
+from neurosush.tem.model import TEMState
 
 Case = tuple[Callable[[], Any], Callable[[Any], int]]
 
@@ -77,8 +80,40 @@ def _sdrs(n: int, w: int, count: int) -> torch.Tensor:
     return random_sdr(n, w, batch=(count,), generator=torch.Generator().manual_seed(0))
 
 
+def _tem_setup() -> tuple[TEM, TEMState]:
+    model = TEM(
+        TEMConfig(batch=2, modules=(4, 2), iterations=2),
+        generator=torch.Generator().manual_seed(0),
+    )
+    return model, model.reset(2)
+
+
+def _tem_forward(state: tuple[TEM, TEMState]) -> int:
+    model, latent = state
+    with torch.no_grad():
+        for _ in range(2):
+            _, latent = model(torch.tensor([0, 1]), torch.tensor([4, 0]), latent)
+    return 4
+
+
+def _spatial_sac(rate: torch.Tensor) -> int:
+    spatial_autocorrelogram(rate)
+    return 1
+
+
+CASE_METADATA = {
+    "tem_forward": {"device": "cpu", "units": "sample-steps", "batch": 2, "steps": 2},
+    "spatial_autocorrelogram": {"device": "cpu", "units": "maps", "shape": [16, 16]},
+}
+
+
 CALIBRATION: Case = (lambda: None, _calibrate)
 CASES: dict[str, Case] = {
+    "tem_forward": (_tem_setup, _tem_forward),
+    "spatial_autocorrelogram": (
+        lambda: torch.rand(16, 16, dtype=torch.float64, generator=torch.Generator().manual_seed(0)),
+        _spatial_sac,
+    ),
     "dense_stdp": (lambda: build("cpu"), _run_network),
     "dense_stdp_batch32": (lambda: build("cpu", 32), _run_network),
     "spatial_pooler_learn": (
@@ -105,7 +140,7 @@ def run(repeats: int) -> dict[str, object]:
     cases = {}
     for name, case in CASES.items():
         rate = timed(case, repeats)
-        cases[name] = {"rate": rate, "normalized": rate / reference}
+        cases[name] = {"rate": rate, "normalized": rate / reference, **CASE_METADATA.get(name, {})}
     return {
         "calibration": reference,
         "cases": cases,

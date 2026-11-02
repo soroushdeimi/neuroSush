@@ -80,6 +80,9 @@ class Traces(Behavior):
         interaction: ``"all"`` adds ``scale`` at every spike, so every earlier spike counts
             (all-to-all STDP); ``"nearest"`` sets the trace to ``scale``, so only the latest
             spike counts (nearest-spike STDP, Masquelier et al. 2008, Diehl and Cook 2015).
+
+    Shapes/Units:
+        tau_pre and tau_post time constant units are relative to network.dt.
     """
 
     order = Order.TRACE
