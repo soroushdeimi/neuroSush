@@ -104,3 +104,11 @@ def test_seeded_determinism():
     torch.testing.assert_close(p1, p2)
     torch.testing.assert_close(ph1, ph2)
     torch.testing.assert_close(d1, d2)
+
+
+def test_summarize_classes_non_string_values():
+    records = [{"class": value} for value in (1.5, (1.0, 2.0), None, "unknown", "locked")]
+    assert summarize_classes(records) == {
+        "counts": {"locked": 1, "precession": 0, "independent": 0, "None": 4},
+        "fractions": {"locked": 0.2, "precession": 0.0, "independent": 0.0, "None": 0.8},
+    }
