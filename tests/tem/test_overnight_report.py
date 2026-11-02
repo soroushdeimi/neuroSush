@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
+import pytest
 from experiments.tem_overnight_report import analyze_variant, generate_report, load_results
 
 
@@ -47,6 +50,9 @@ def test_pass_synthetic(tmp_path: Path) -> None:
     res = analyze_variant(aggregated["v0"])
     assert res["n"] == 3
     assert "PASS" in res["verdict"]
+    assert res["accuracy_mean"] == pytest.approx(0.46)
+    assert res["accuracy_sd"] == pytest.approx(0.01)
+    assert res["accuracy_ci"] == "[0.4352, 0.4848]"
 
 
 def test_fail_seed_below_frequency(tmp_path: Path) -> None:
@@ -76,6 +82,7 @@ def test_n1_inconclusive(tmp_path: Path) -> None:
     assert res["n"] == 1
     assert res["verdict"] == "INCONCLUSIVE (n=1 seeds, need 3)"
     assert res["accuracy_ci"] == "n=1, no CI"
+    assert res["accuracy_sd"] == 0.0
 
 
 def test_incomplete_file_skipped(tmp_path: Path) -> None:
@@ -97,3 +104,22 @@ def test_incomplete_file_skipped(tmp_path: Path) -> None:
     report = generate_report(tmp_path)
     assert "v0-s1.json" in report
     assert "running" in report
+
+
+def test_report_without_numpy(tmp_path: Path) -> None:
+    script = """
+import importlib.abc
+import sys
+from pathlib import Path
+
+class NoNumpy(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == "numpy" or fullname.startswith("numpy."):
+            raise ModuleNotFoundError("numpy is unavailable")
+
+sys.meta_path.insert(0, NoNumpy())
+from experiments.tem_overnight_report import generate_report
+assert "NO DATA" in generate_report(Path(sys.argv[1]))
+assert "numpy" not in sys.modules
+"""
+    subprocess.run([sys.executable, "-c", script, str(tmp_path)], check=True)

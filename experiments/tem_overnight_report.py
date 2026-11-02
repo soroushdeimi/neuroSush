@@ -6,9 +6,8 @@ import argparse
 import json
 import math
 from pathlib import Path
+from statistics import fmean, stdev
 from typing import Any, cast
-
-import numpy as np
 
 # t-distribution critical values for 95% CI (two-tailed alpha=0.05)
 # by degrees of freedom (df = n - 1)
@@ -110,12 +109,12 @@ def analyze_variant(runs: list[dict[str, Any]]) -> dict[str, Any]:
         seed_metrics.append(
             {
                 "seed": seed,
-                "accuracy": float(np.mean(accs)),
-                "frequency": float(np.mean(freqs)),
-                "best_baseline": float(np.mean(best_bases)),
-                "generative_ce": float(np.mean(ces)),
-                "position_r2": float(np.mean(r2s)),
-                "shift_null_p95": float(np.mean(nulls)),
+                "accuracy": fmean(accs),
+                "frequency": fmean(freqs),
+                "best_baseline": fmean(best_bases),
+                "generative_ce": fmean(ces),
+                "position_r2": fmean(r2s),
+                "shift_null_p95": fmean(nulls),
                 "max_grad": float(run.get("max_grad", 0.0) or 0.0),
                 "p95_grad": float(run.get("p95_grad", 0.0) or 0.0),
             }
@@ -134,8 +133,8 @@ def analyze_variant(runs: list[dict[str, Any]]) -> dict[str, Any]:
     grad_vals: list[float] = [float(cast(float, m["max_grad"])) for m in seed_metrics]
     p95_grad_vals: list[float] = [float(cast(float, m["p95_grad"])) for m in seed_metrics]
 
-    acc_mean = float(np.mean(acc_vals))
-    acc_sd = float(np.std(acc_vals, ddof=1)) if n > 1 else 0.0
+    acc_mean = fmean(acc_vals)
+    acc_sd = stdev(acc_vals) if n > 1 else 0.0
     if n < 2:
         acc_ci = "n=1, no CI"
         acc_ci_lower = acc_mean
@@ -146,14 +145,14 @@ def analyze_variant(runs: list[dict[str, Any]]) -> dict[str, Any]:
         acc_ci = f"[{acc_mean - me:.4f}, {acc_mean + me:.4f}]"
         acc_ci_lower = acc_mean - me
 
-    base_mean = float(np.mean(base_vals))
-    freq_mean = float(np.mean(freq_vals))
+    base_mean = fmean(base_vals)
+    freq_mean = fmean(freq_vals)
     gap_mean = acc_mean - base_mean
-    ce_mean = float(np.mean(ce_vals))
-    r2_mean = float(np.mean(r2_vals))
-    null_mean = float(np.mean(null_vals))
-    grad_mean = float(np.mean(grad_vals))
-    p95_grad_mean = float(np.mean(p95_grad_vals))
+    ce_mean = fmean(ce_vals)
+    r2_mean = fmean(r2_vals)
+    null_mean = fmean(null_vals)
+    grad_mean = fmean(grad_vals)
+    p95_grad_mean = fmean(p95_grad_vals)
 
     # PASS rule check:
     # 1. mean accuracy >= best_baseline + 0.05

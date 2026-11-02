@@ -16,7 +16,7 @@ This lets a model predict a previously seen observation through a new route in a
 ## Run and inspect
 
 From the repository root, with the package and development dependencies installed,
-run these three commands (the report also needs NumPy):
+run these three commands:
 
 ```bash
 python -m pytest tests/tem -q
