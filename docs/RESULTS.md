@@ -70,17 +70,41 @@ May NOT say
 
 | Item | Status | Owner / branch |
 |---|---|---|
-| Save weights, probe our models with the same metrics as section 3 (spatial info, decoder, cross-world corr/RSA, distance structure) | in progress | `tem/spatial-probe` |
-| Retrain v2 s0 and v1 s0 with checkpoints (about 2.3 h each) | running in the background | background nohup |
-| Live teaching plate T01 in the Atlas (Hebbian memory, new-route prediction vs baselines; g imposed, labelled) | done, live in the Atlas (PR #26) | `tem/atlas-plate` |
+| Save weights, probe our models with the same metrics as section 3 (spatial info, decoder, cross-world corr/RSA, distance structure) | done for v2 s0 and v1 s0 (6.1); seeds 1-2 and 16x16 pending | `tem/spatial-probe` |
+| Retrain v2 s0 and v1 s0 with checkpoints (about 2.3 h each) | completed | background |
+| Live teaching plate T01 in the Atlas (Hebbian memory, new-route prediction vs baselines; g imposed, labelled) | in progress | `tem/atlas-plate` |
 | Site: grid-cell chapter + results table with these caveats | waiting for site redesign | `feat/landing-neuro` |
 | Real recorded-run demo of the trained model | blocked on checkpoints | after probe |
 
-Results of the probe will be added to section 6 as soon as they exist.
+Probe results are in section 6.1.
 
 ## 6. New results (append here)
 
-_(none yet)_
+### 6.1 Spatial probe of our own trained models (2026-11-02, one seed each)
+
+Same metric definitions as section 3, applied to our frozen checkpoints (v2 s0 and v1 s0, 16,000 updates, 8x8 worlds, new worlds with empty memory).
+Source: `experiments/results/tem-spatial-v2-s0.{json,md}`, `tem-spatial-v1-s0.{json,md}`, random-init control `tem-spatial-random.{json,md}` (PR #35).
+
+| Stream | Model | Decoder acc (shift null p95) | Cross-world map corr | Cross-world RSA (null p95) | RSA vs grid / vs sensory |
+|---|---|---|---|---|---|
+| g | v2 s0 | 0.246 (0.025) | 0.217 | 0.742 (0.039) | 0.009 / 0.020 |
+| g | v1 s0 | 0.322 (0.024) | -0.029 | 0.833 (0.042) | -0.045 / 0.073 |
+| g | random init | 0.115 (0.021) | 0.041 | 0.072 (0.161) | 0.109 / 0.161 |
+| g | authors' run (section 3) | 0.163 (0.021) | -0.008 | 0.003 (0.064) | 0.018 / 0.415 |
+| p | v2 s0 | 0.766 (0.030) | 0.037 | 0.066 (0.043) | 0.082 / 0.630 |
+| p | v1 s0 | 0.806 (0.030) | 0.024 | 0.035 (0.043) | 0.025 / 0.730 |
+| p | random init | 0.541 (0.026) | 0.022 | 0.034 (0.074) | 0.140 / 0.621 |
+| p | authors' run (section 3) | 0.266 (0.021) | 0.000 | 0.000 (0.040) | 0.018 / 0.959 |
+
+Reading:
+- Position can be decoded within a world from g and from p (well above the shift null).
+- **g carries a representational geometry shared across worlds**: cross-world RSA 0.74 (v2) and 0.83 (v1) against a null p95 of about 0.04, while the random-init control (0.07) stays inside its null. The authors' public run showed about 0 on this measure. Different code, worlds and training, so this is not a ranking against the paper.
+- That shared geometry does **not** follow Manhattan grid distance (RSA vs grid about 0) nor sensory identity, so it is not a metric, grid-like code. It means g is a consistent, world-independent code for position; it does not show grid cells.
+- p mainly follows sensory identity (RSA vs sensory 0.63 and 0.73), as in the authors' run, and its map correlation across worlds is near zero.
+- Random-init p also decodes position (0.54) because the fast memory binds observations within a world: high within-world decoding alone is not evidence of learned geometry.
+- Spatial information of g and g_gen is about 1e12 because the reference formula accepts signed activations: a diagnostic, not bits per spike. Only p (3.1 and 8.8e6 for v2/v1, the latter also not interpretable) has a usable-looking value for v2.
+- One seed per model, 8x8 worlds: gridness is not resolvable. Needs seeds 1-2 and 16x16 worlds before any stronger statement.
+
 
 ## 7. Supporting facts
 
