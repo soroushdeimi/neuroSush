@@ -159,7 +159,7 @@ def summarize_classes(
         c = rec.get("class")
         if c is None:
             counts["None"] += 1
-        elif c in counts:
+        elif isinstance(c, str) and c in counts:
             counts[c] += 1
         else:
             counts["None"] += 1

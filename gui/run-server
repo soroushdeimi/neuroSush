@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+export OMP_NUM_THREADS=1
+export PYTHONPATH="src:gui/server${PYTHONPATH:+:$PYTHONPATH}"
+if [ -n "${NS_PYTHON:-}" ]; then
+    exec "$NS_PYTHON" -m uvicorn studio.app:app --host 127.0.0.1 "$@"
+fi
+if [ -x gui/.venv/bin/uv ]; then
+    studio_uv=gui/.venv/bin/uv
+else
+    studio_uv=uv
+fi
+exec "$studio_uv" run --project gui/server uvicorn studio.app:app --host 127.0.0.1 "$@"

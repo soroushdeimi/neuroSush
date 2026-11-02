@@ -1,0 +1,29 @@
+services:
+  studio:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: cpu
+    ports:
+      - "127.0.0.1:${NS_PORT:-8765}:8000"
+    environment:
+      NS_DATA_DIR: /data
+      OMP_NUM_THREADS: "1"
+    volumes:
+      - studio-data:/data
+    tmpfs:
+      - /tmp:rw,nosuid,size=256m
+    read_only: true
+    user: "10001:10001"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: "${NS_CPUS:-2}"
+    mem_limit: ${NS_MEMORY:-8g}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+volumes:
+  studio-data:

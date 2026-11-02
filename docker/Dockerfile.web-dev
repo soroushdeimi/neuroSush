@@ -1,0 +1,12 @@
+FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS dependencies
+WORKDIR /web
+COPY gui/web/package*.json ./
+RUN npm ci
+
+FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c
+WORKDIR /web
+COPY --from=dependencies --chown=node:node /web/node_modules ./node_modules
+COPY --chown=node:node gui/web/ ./
+USER node
+EXPOSE 5173
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

@@ -1,0 +1,8 @@
+node_modules/
+.venv/
+dist/
+test-results/
+playwright-report/
+.browsers/
+.uv-cache/
+.build/

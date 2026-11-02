@@ -1,0 +1,13 @@
+services:
+  studio:
+    build:
+      target: gpu
+      args:
+        TORCH_INDEX: https://download.pytorch.org/whl/cu130
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
