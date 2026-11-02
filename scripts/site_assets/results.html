@@ -285,7 +285,7 @@ Same metric definitions as section 4, applied to our frozen checkpoints (v2 s0 a
   <rect x="120" y="120" width="1" height="18" fill="var(--ink-muted)" rx="1" />
   <text x="130" y="133" font-size="11" fill="var(--ink)" font-family="var(--font-mono)">0.003</text>
 </svg>
-<figcaption style="font-size: 12px; color: var(--ink-muted); margin-top: 8px;">Cross-world RSA for g stream: v1 (0.833) and v2 (0.742) exceed the permutation null p95 (~0.04), but that null is weak: untrained path integrators score 0.13-0.20 (see audit note below).</figcaption>
+<figcaption style="font-size: 12px; color: var(--ink-muted); margin-top: 8px;">Cross-world RSA for g stream: v1 (0.833) and v2 (0.742) exceed the permutation null p95 (~0.04), but path-integration controls score as high (see the controls note below).</figcaption>
 </div>
 
 <p>
@@ -293,8 +293,8 @@ Same metric definitions as section 4, applied to our frozen checkpoints (v2 s0 a
 </p>
 <ul style="padding-left: 20px; line-height: 1.8;">
   <li>Position can be decoded within a world from g and from p (well above the shift null).</li>
-  <li><strong>Audit note (2026-11-02): this is not evidence of a world-independent position code.</strong> Cross-world RSA of g is 0.74 (v2) and 0.83 (v1), but the null (p95 about 0.04) is weak: an untrained path integrator with random transition weights already scores 0.13-0.20, and trained transitions without memory score 0.17 (v1) and 0.49 (v2). Displacement alone explains 91-95% of within-world distance variance, so g mostly path-integrates coherently with a world-specific phase. The margin of the full model over path integration alone is real but smaller (about 0.25 for v2). The earlier random-init control (0.07) was degenerate. The authors' public run showed about 0 on this measure; different code, worlds and training, so not a ranking against the paper.</li>
-  <li>It does <strong>not</strong> follow Manhattan grid distance (RSA vs grid about 0) nor sensory identity, and it does not show grid cells. Control experiments and metric tests are planned before any stronger statement.</li>
+  <li><strong>Controls added (2026-11-02, probe seeds 1e6, 2e6, 3e6; same checkpoints, one training seed each).</strong> Cross-world RSA of g is 0.779 (v2 s0) and 0.850 (v1 s0) averaged over 3 probe seeds; probe seed 1e6 reproduces the earlier 0.742 and 0.833. But coherent path integration alone reaches the same values: trained transitions without memory 0.585 (v2) / 0.638 (v1); with a random start per world 0.668 / 0.650; random non-zero transition weights at three scales 0.513, 0.613, 0.365 (v2) and 0.292, 0.798, 0.815 (v1), spread 0.18-0.89 across probe seeds; full model with a random start per world 0.781 / 0.770. Margin of the full model over the 95th percentile of those controls: <strong>-0.103 (v2), +0.010 (v1)</strong>, so no evidence that training or memory adds anything on this measure. A position-label shuffle gives 0.099 / 0.030 (inside its null). About 0.88-0.92 of within-world distance variance is explained by displacement alone.</li>
+  <li><strong>Reading:</strong> the cross-world RSA of g is what a coherent path integrator produces, with a world-specific phase. It is not a world-independent position code and not evidence of learning, and it does not show grid cells. In the trained models it does <strong>not</strong> follow Manhattan grid distance (RSA vs grid 0.011 v2, -0.045 v1), while random-weight path integrators score 0.3-0.7 on it. Seeds 1-2 and 16x16 worlds are not run.</li>
   <li>p mainly follows sensory identity (RSA vs sensory 0.63 and 0.73), as in the authors' run, and its map correlation across worlds is near zero.</li>
   <li>Random-init p also decodes position (0.54) because the fast memory binds observations within a world: high within-world decoding alone is not evidence of learned geometry.</li>
   <li>Spatial information of g and g_gen is about 1e12 because the reference formula accepts signed activations: a diagnostic, not bits per spike. Only p has a usable-looking value.</li>
@@ -333,7 +333,7 @@ Same metric definitions as section 4, applied to our frozen checkpoints (v2 s0 a
 <strong>Live now:</strong> <a href="plates/T01.html">TEACHING: position imposed (Plate T01) ↗</a>, the <a href="gallery.html">Atlas gallery ↗</a>, and spatial probe results of our trained models (v2 s0 and v1 s0, Section 6.1).
 </p>
 <p>
-<strong>In progress:</strong> Spatial probe done for v2 s0 / v1 s0; next: seeds 1-2, 16x16 worlds, recorded-run demo.
+<strong>In progress:</strong> Spatial probe with path-integration controls done for v2 s0 / v1 s0; seeds 1-2 and 16x16 worlds are not run yet.
 </p>
 <p>
 <strong>Sources:</strong> Paper DOIs (Whittington et al. 2020 Cell, doi:10.1016/j.cell.2020.10.024; Kawahara & Fujisawa 2025, bioRxiv doi:10.1101/2025.10.16.682754), <a href="https://github.com/soroushdeimi/neuroSush/blob/main/docs/TEM.md" target="_blank">docs/TEM.md ↗</a>, and <a href="https://github.com/soroushdeimi/neuroSush" target="_blank">GitHub repository ↗</a>.
