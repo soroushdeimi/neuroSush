@@ -289,6 +289,7 @@ def test_all_built_pages_default_to_dark_theme(tmp_path, monkeypatch):
         content = path.read_text(encoding="utf-8")
         assert 'data-theme="dark"' in content, f"{path} missing data-theme=dark"
 
+
 def test_workflow_section_six_stages_and_api(tmp_path, monkeypatch):
     _build(tmp_path, monkeypatch)
     page = (tmp_path / "index.html").read_text(encoding="utf-8")
