@@ -154,3 +154,12 @@ def test_synapse_geometry_is_shipped(tmp_path, monkeypatch):
     assert "NeuroShapes.synapse" in module
     assert "Presynaptic bouton" in module
     assert "Spine head" in module
+
+
+def test_microcircuit_has_layers_and_cell_types(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    module = (tmp_path / "assets/microcircuit.js").read_text()
+    assert "inhibitory=i%5===0" in module
+    assert "triangle" in module
+    for layer in range(1, 7):
+        assert f"'L{layer}'" in module

@@ -24,6 +24,7 @@
  const tau=Math.PI*2;
  for(let i=0;i<6;i++)shapes[i]=window.NeuroShapes.neuron(count);
  shapes[1]=window.NeuroShapes.synapse(count);
+ shapes[2]=window.NeuroShapes.microcircuit(count);
  function mobileFigures(){
   if(innerWidth>=1024)return;
   document.querySelectorAll('.chapter').forEach((chapter,index)=>{
@@ -46,7 +47,7 @@
  void main(){float q=clamp(progress,0.,1.)*5.;int k=min(4,int(floor(q)));float u=q>=5.?1.:smoothstep(.05,.25,fract(q));q=float(k)+u;vec3 p=k==0?mix(a,b,u):k==1?mix(b,c,u):k==2?mix(c,d,u):k==3?mix(d,e,u):mix(e,f,u);
  float tag=k==0?mix(ta,tb,u):k==1?mix(tb,tc,u):k==2?mix(tc,td,u):k==3?mix(td,te,u):mix(te,tf,u);
  if(q>.8&&q<1.2&&lineMode<.5){if(abs(tag-6.)<.1){float weight=.5+.2*sin(time*.7);p.x*=.8+weight*.4;p.y=(p.y+.4)*(.8+weight*.4)-.4;}if(abs(tag-7.)<.1)p.y=.1-fract(time*1.4+float(gl_VertexID)*.13)*.16;}
- float turn=.18*sin(time*.12)+0.;mat2 rot=mat2(cos(turn),-sin(turn),sin(turn),cos(turn));p.xz=rot*p.xz;float perspective=3.8/(3.8+p.z);vec2 xy=p.xy*perspective*mix(1.,.55,mobile);xy.x=xy.x/aspect*.9+mix(.43*cos(q*3.14159),.02,mobile);xy.y=xy.y*.7-mix(0.,.44,mobile);gl_Position=vec4(xy,0.,1.);gl_PointSize=(1.6+1.1*sin(float(gl_VertexID)*1.8+time*2.-length(p)*8.))*min(2.,mobile+1.);glow=.25;float travel=abs(a.y+.0864);float wave=exp(-pow((travel-spikeAge*25.)*18.,2.));glow+=wave*(a.y<-.144?1.8:.55)*(1.-smoothstep(0.,.15,progress));region=tag;}`;
+ float turn=.18*sin(time*.12)+0.;mat2 rot=mat2(cos(turn),-sin(turn),sin(turn),cos(turn));p.xz=rot*p.xz;float perspective=3.8/(3.8+p.z);vec2 xy=p.xy*perspective*mix(1.,.55,mobile);xy.x=xy.x/aspect*.9+mix(.43*cos(q*3.14159),.02,mobile);xy.y=xy.y*.7-mix(0.,.44,mobile);gl_Position=vec4(xy,0.,1.);gl_PointSize=(1.6+1.1*sin(float(gl_VertexID)*1.8+time*2.-length(p)*8.))*min(2.,mobile+1.);glow=.25;float travel=abs(a.y+.0864);float wave=exp(-pow((travel-spikeAge*25.)*18.,2.));glow+=wave*(a.y<-.144?1.8:.55)*(1.-smoothstep(0.,.15,progress));if(q>1.8&&q<2.2){float wave=abs(p.x-sin(time*1.1));glow+=step(wave,.05)*.9;if(abs(tag-8.)<.1)glow=1.;}region=tag;}`;
  const fragment=`#version 300 es
  precision highp float;uniform float light,lineMode;uniform vec3 inkColor,spikeColor,excColor,inhColor,traceColor;uniform float time;in float glow;in float region;out vec4 color;
  void main(){if(lineMode>.5){color=vec4(inkColor,.6);return;}float r=length(gl_PointCoord-.5);if(r>.5)discard;vec3 ink=inkColor;
@@ -66,7 +67,7 @@
  function labels(w,h){annotation.width=w;annotation.height=h;const c=annotation.getContext('2d'),d=Math.min(devicePixelRatio,2);c.font=(13*d)+'px '+css().getPropertyValue('--font-sans');c.fillStyle=color('--text-2');const raw=progress*5,base=Math.floor(raw),u=Math.max(0,Math.min(1,(raw-base-.05)/.2)),q=base+u*u*(3-2*u),k=Math.min(5,Math.round(q)),offset=.43*Math.cos(q*Math.PI);(shapes[k].labels||[]).forEach(([label,x,y])=>c.fillText(label,(x/(w/h)*.9+offset+1)*w/2,(1-y*.7)*h/2));}
  function render(ms){const [w,h]=size();labels(w,h);if(gl){gl.viewport(0,0,w,h);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.uniform1f(uniform.progress,progress);gl.uniform1f(uniform.spikeAge,window.NeuroInstruments.spikeAge);gl.uniform1f(uniform.time,reduced()?0:ms/1000);gl.uniform1f(uniform.aspect,w/h);gl.uniform1f(uniform.mobile,innerWidth<650?1:0);gl.uniform1f(uniform.light,light?1:0);gl.uniform3fv(uniform.inkColor,rgb('--text'));gl.uniform3fv(uniform.spikeColor,rgb('--spike'));gl.uniform3fv(uniform.excColor,rgb('--exc-mark'));gl.uniform3fv(uniform.inhColor,rgb('--inh-mark'));gl.uniform3fv(uniform.traceColor,rgb('--trace-mark'));gl.uniform2f(uniform.pointer,px,py);gl.drawArrays(gl.POINTS,0,quality);
  const raw=progress*5,k=Math.floor(raw),u=Math.max(0,Math.min(1,(raw-k-.05)/.2)),scene=Math.min(5,Math.round(k+u*u*(3-2*u)));
- if(shapes[scene].lines?.length){gl.uniform1f(uniform.lineMode,1);for(let i=0;i<6;i++){gl.bindBuffer(gl.ARRAY_BUFFER,buffers.lines[scene]);gl.vertexAttribPointer(gl.getAttribLocation(program,'abcdef'[i]),3,gl.FLOAT,false,0,0);}gl.drawArrays(gl.LINES,0,shapes[scene].lines.length/3);gl.uniform1f(uniform.lineMode,0);for(let i=0;i<6;i++){gl.bindBuffer(gl.ARRAY_BUFFER,buffers[i]);gl.vertexAttribPointer(gl.getAttribLocation(program,'abcdef'[i]),3,gl.FLOAT,false,0,0);}}
+ if(shapes[scene].lines?.length){gl.uniform1f(uniform.lineMode,1);for(let i=0;i<6;i++){gl.bindBuffer(gl.ARRAY_BUFFER,buffers.lines[scene]);gl.vertexAttribPointer(gl.getAttribLocation(program,'abcdef'[i]),3,gl.FLOAT,false,0,0);}gl.drawArrays(gl.LINES,0,Math.min(count,shapes[scene].lines.length/3));gl.uniform1f(uniform.lineMode,0);for(let i=0;i<6;i++){gl.bindBuffer(gl.ARRAY_BUFFER,buffers[i]);gl.vertexAttribPointer(gl.getAttribLocation(program,'abcdef'[i]),3,gl.FLOAT,false,0,0);}}
 
 
  }else if(ctx){ctx.clearRect(0,0,w,h);ctx.fillStyle=color('--text');for(let i=0;i<5000;i++){const p=shapes[0],x=w*(innerWidth<650?.55:.73)+p[i*3]*h*.31,y=h*(innerWidth<650?.73:.5)-p[i*3+1]*h*.31;ctx.globalAlpha=.3+(.7*i/5000);ctx.fillRect(x,y,1.5,1.5);}}

@@ -57,3 +57,8 @@ the sampled tube surfaces. The spike propagation speed is a visual encoding.
 vesicles, receptors, cleft and dendritic spine. Transmitter motion and spine size
 are schematic; the inset STDP curve computes the signed exponential window
 with tau 20 ms and soft-bound weight 0.5, not a measurement from the morphology.
+
+`microcircuit.js` draws six cortical density bands with 3,200 cells (1,200 mobile),
+a 4:1 ratio of pyramidal triangles to inhibitory circles, apical dendrites, local
+connections and a seeded generated raster. Activity waves illustrate E/I populations;
+this is explicitly schematic rather than a balanced-network measurement.
