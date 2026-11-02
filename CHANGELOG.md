@@ -6,6 +6,7 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- Portable TEM training checkpoints and frozen spatial probes with reference-matched nulls, decoding, cross-world geometry, and random-init controls.
 - Cinematic product landing page with original canvas artwork, a live LIF tuner, dark/light themes, reduced-motion support, and a labeled GUI concept. The Atlas gallery and talk demo remain directly reachable.
 - Experimental rate and spiking TEM models, training, diagnostics, regression fixtures, benchmarks, and runnable examples.
 - Overnight TEM experiment records and aggregation, with teaching notes in `docs/TEM.md` distinguishing internal prediction scores from paper spatial analyses.
