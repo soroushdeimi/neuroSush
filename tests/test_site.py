@@ -32,6 +32,7 @@ def test_build_writes_every_plate_and_support_files(tmp_path, monkeypatch):
         "gallery.html",
         "results.html",
         "research.html",
+        "tem.html",
         "assets/site.css",
         "assets/site.js",
         "404.html",
@@ -112,6 +113,7 @@ def test_shared_shell_and_scroll_story(tmp_path, monkeypatch):
         "gallery.html",
         "results.html",
         "research.html",
+        "tem.html",
         "plates/N01.html",
         "plates/Y01.html",
     ):
@@ -205,6 +207,32 @@ def test_grid_lattice_is_explicit_and_separate(tmp_path, monkeypatch):
     assert "Math.pow(1.4,module)" in module
     assert "not learned" in module
     assert "Illustration. This lattice is imposed by the scene code, not learned." in module
+
+
+def test_build_data_copy_only_json_under_300kb(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    data_out = tmp_path / "data"
+    if data_out.exists():
+        for p in data_out.rglob("*"):
+            if p.is_file():
+                assert p.stat().st_size <= 300 * 1024
+                assert "MNIST" not in p.parts
+                assert not p.name.endswith(".gz")
+
+    site_data = Path(__file__).resolve().parents[1] / "scripts" / "site_assets" / "data"
+    site_data.mkdir(parents=True, exist_ok=True)
+    fixture_file = site_data / "tem-run-v2-s0.json"
+    try:
+        fixture_file.write_text('{"version": 1}', encoding="utf-8")
+        out_temp = tmp_path / "temp_site"
+        monkeypatch.setattr(sys, "argv", ["build_site.py", "--out", str(out_temp)])
+        main()
+        assert (out_temp / "data" / "tem-run-v2-s0.json").is_file()
+    finally:
+        if fixture_file.exists():
+            fixture_file.unlink()
+        if site_data.exists() and not any(site_data.iterdir()):
+            site_data.rmdir()
 
 
 def test_tem_teaching_plate_is_published(tmp_path, monkeypatch):

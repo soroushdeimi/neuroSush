@@ -20,6 +20,7 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         '<a href="' + prefix + 'gallery.html">Atlas</a>'
         '<a href="' + prefix + 'research.html">Research</a>'
         '<a href="' + prefix + 'results.html">Results</a>'
+        '<a href="' + prefix + 'tem.html">Live TEM</a>'
         '<a href="' + home + '#studio">Studio <span class="chip">preview</span></a>'
         '<a href="' + home + '#evidence">Benchmarks</a>'
         '<a href="' + repo + '/tree/main/docs">Docs ↗</a></nav>'
@@ -62,6 +63,7 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         + 'gallery.html">All plates</a>'
         '<a href="' + prefix + 'research.html">Research</a>'
         '<a href="' + prefix + 'results.html">Results</a>'
+        '<a href="' + prefix + 'tem.html">Live TEM</a>'
         '<a href="'
         + prefix
         + 'gallery.html#neurons">Neurons</a><a href="'
@@ -183,8 +185,18 @@ def main():
     (out_dir / "assets" / "index.html").unlink(missing_ok=True)
     (out_dir / "assets" / "results.html").unlink(missing_ok=True)
     (out_dir / "assets" / "research.html").unlink(missing_ok=True)
+    (out_dir / "assets" / "tem.html").unlink(missing_ok=True)
 
-    # 6. Index, Results & Research
+    # 6. Data copy
+    site_data_dir = _ASSETS / "data"
+    if site_data_dir.exists():
+        data_dir = out_dir / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        for json_file in site_data_dir.glob("*.json"):
+            if json_file.is_file():
+                shutil.copy(json_file, data_dir / json_file.name)
+
+    # 7. Index, Results, Research & Live TEM
     index_content = build_index(
         [(p, PLATES[p].title_en if p in PLATES else p) for p in all_plates if p != "demo"],
         __version__,
@@ -214,6 +226,15 @@ def main():
         .replace("{{FOOTER}}", rs_footer)
     )
     (out_dir / "research.html").write_text(research_content, encoding="utf-8")
+
+    tem_template = (_ASSETS / "tem.html").read_text(encoding="utf-8")
+    t_header, t_footer = chrome("")
+    tem_content = (
+        tem_template.replace("{{VERSION}}", html.escape(__version__))
+        .replace("{{HEADER}}", t_header)
+        .replace("{{FOOTER}}", t_footer)
+    )
+    (out_dir / "tem.html").write_text(tem_content, encoding="utf-8")
 
 
 if __name__ == "__main__":
