@@ -188,10 +188,13 @@ def main():
     (out_dir / "assets" / "tem.html").unlink(missing_ok=True)
 
     # 6. Data copy
-    data_dir = out_dir / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    if Path("data").exists():
-        shutil.copytree("data", data_dir, dirs_exist_ok=True)
+    site_data_dir = _ASSETS / "data"
+    if site_data_dir.exists():
+        data_dir = out_dir / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        for json_file in site_data_dir.glob("*.json"):
+            if json_file.is_file():
+                shutil.copy(json_file, data_dir / json_file.name)
 
     # 7. Index, Results, Research & Live TEM
     index_content = build_index(
