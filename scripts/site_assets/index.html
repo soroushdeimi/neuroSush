@@ -9,7 +9,140 @@
 <section class="chapter" id="columns"><div class="chapter-copy"><p class="eyebrow">HTM / Thousand Brains</p><h2>Sparse codes, columns that vote.</h2><p class="lead">Spatial pooler, temporal memory with active dendrites, and Thousand Brains columns that settle on one object by lateral voting, alongside the spiking models.</p><figure><figcaption><span class="figure-label">Figure 4 · Sparse distributed representation.</span> 2% active bits of 1,024; overlap between two SDRs counts shared active bits. Predicted cells precede the next sequence step.<br><span class="chip schematic">▲ schematic</span></figcaption></figure><a href="plates/H01.html">Plate H01 · Sparse distributed representations</a></div></section>
 <section class="chapter" id="hierarchy"><div class="chapter-copy"><p class="eyebrow">Predictive coding</p><h2>Predictions down, errors up.</h2><p class="lead">Hierarchical predictive coding in which each level predicts the one below and learns from the residual. Tests check the update equations, not biological equivalence.</p><figure><canvas class="miniature" data-model="error" aria-label="Schematic prediction error versus iteration"></canvas><figcaption><span class="figure-label">Figure 5 · Three-level predictive coding.</span> Error magnitude is drawn schematically; the example trains the library model.<br><span class="chip schematic">▲ schematic</span></figcaption></figure><a href="https://github.com/soroushdeimi/neuroSush/blob/main/examples/predictive_coding_mnist.py">Predictive coding example ↗</a></div></section>
 <section class="chapter" id="space"><div class="chapter-copy"><p class="eyebrow">Space and memory</p><h2>Grid cells and relational memory.</h2><p class="lead">neuroSush v{{VERSION}} includes experimental TEM models and the spatial toolkit. The Atlas features live teaching plate T01 (position imposed). Results and reproducibility are detailed in the <a href="results.html">Results report ↗</a> and <a href="research.html">Research story ↗</a>.</p><p class="micro">Grid-cell emergence is not shown; structure is imposed. No live trained-model demo yet.</p><figure><figcaption><span class="figure-label">Figure 6 · Grid-cell firing fields.</span> Illustrative grid-cell lattice (imposed, not learned). Three modules with spacing ratio 1.4. Brain outline is schematic; procedural study, not a reconstruction.<br><span class="chip schematic">▲ schematic</span></figcaption></figure><a href="https://github.com/soroushdeimi/neuroSush/blob/main/docs/TEM.md">TEM notes and limits ↗</a></div></section></div>
-<section class="section band" id="workflow"><p class="eyebrow">Library</p><h2>Six decisions make a network.</h2><p>Populations → Model → Learning → Inputs → Record → Run.</p><p>The same six stages structure the Studio.</p></section>
+<section class="section band" id="workflow">
+<p class="eyebrow">Library</p>
+<h2>Six decisions make a network.</h2>
+<p class="lead">Populations → Model → Learning → Inputs → Record → Run. The same six stages structure the Studio.</p>
+<div class="workflow-tabs" role="tablist" aria-label="Network construction workflow stages">
+<button role="tab" id="wf-tab-1" aria-selected="true" aria-controls="wf-panel-1" tabindex="0">1. Populations</button>
+<button role="tab" id="wf-tab-2" aria-selected="false" aria-controls="wf-panel-2" tabindex="-1">2. Model</button>
+<button role="tab" id="wf-tab-3" aria-selected="false" aria-controls="wf-panel-3" tabindex="-1">3. Learning</button>
+<button role="tab" id="wf-tab-4" aria-selected="false" aria-controls="wf-panel-4" tabindex="-1">4. Inputs</button>
+<button role="tab" id="wf-tab-5" aria-selected="false" aria-controls="wf-panel-5" tabindex="-1">5. Record</button>
+<button role="tab" id="wf-tab-6" aria-selected="false" aria-controls="wf-panel-6" tabindex="-1">6. Run</button>
+</div>
+<div class="workflow-panels">
+<div class="workflow-panel" role="tabpanel" id="wf-panel-1" aria-labelledby="wf-tab-1">
+<div class="workflow-content">
+<p>Define neuron groups and input sources with shape and configuration.</p>
+<div class="code-block">
+<div class="code-header">Python <button class="icon-button" data-copy="net = Network(seed=0)
+source = NeuronGroup(net, 20, [SpikeInput(...), Axon()])
+target = NeuronGroup(net, 2, [DendriteStructure(), LIF(...), Fire(), Axon()])" aria-label="Copy code">⧉</button></div>
+<pre><code>net = Network(seed=0)
+source = NeuronGroup(net, 20, [SpikeInput(...), Axon()])
+target = NeuronGroup(net, 2, [DendriteStructure(), LIF(...), Fire(), Axon()])</code></pre>
+</div>
+</div>
+<div class="workflow-illustration" aria-hidden="true">
+<svg viewBox="0 0 200 120" width="100%" height="100%">
+<rect x="20" y="30" width="60" height="60" rx="6" fill="var(--surface-2)" stroke="var(--rule-strong)" stroke-width="1.5"/>
+<circle cx="50" cy="60" r="14" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+<text x="50" y="64" font-size="12" font-family="var(--font-mono)" text-anchor="middle" fill="var(--text)">G1</text>
+<line x1="80" y1="60" x2="120" y2="60" stroke="var(--rule-strong)" stroke-width="2" stroke-dasharray="4"/>
+<rect x="120" y="30" width="60" height="60" rx="6" fill="var(--surface-2)" stroke="var(--rule-strong)" stroke-width="1.5"/>
+<circle cx="150" cy="60" r="14" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+<text x="150" y="64" font-size="12" font-family="var(--font-mono)" text-anchor="middle" fill="var(--text)">G2</text>
+</svg>
+</div>
+</div>
+<div class="workflow-panel" role="tabpanel" id="wf-panel-2" aria-labelledby="wf-tab-2" hidden>
+<div class="workflow-content">
+<p>Choose neuron membrane dynamics and parameters (e.g. LIF, ELIF, AdEx, Izhikevich).</p>
+<div class="code-block">
+<div class="code-header">Python <button class="icon-button" data-copy="LIF(tau=10.0, threshold=-55.0, v_reset=-70.0, v_rest=-65.0, resistance=1.0)" aria-label="Copy code">⧉</button></div>
+<pre><code>LIF(tau=10.0, threshold=-55.0, v_reset=-70.0, v_rest=-65.0, resistance=1.0)</code></pre>
+</div>
+</div>
+<div class="workflow-illustration" aria-hidden="true">
+<svg viewBox="0 0 200 120" width="100%" height="100%">
+<path d="M 20 90 L 50 90 L 60 40 L 70 100 L 90 90 L 180 90" fill="none" stroke="var(--spike)" stroke-width="2"/>
+<line x1="20" y1="70" x2="180" y2="70" stroke="var(--rule)" stroke-width="1" stroke-dasharray="2"/>
+</svg>
+</div>
+</div>
+<div class="workflow-panel" role="tabpanel" id="wf-panel-3" aria-labelledby="wf-tab-3" hidden>
+<div class="workflow-content">
+<p>Connect groups with synapses and add plasticity rules like STDP and weight clipping.</p>
+<div class="code-block">
+<div class="code-header">Python <button class="icon-button" data-copy="synapse = SynapseGroup(
+    net, source, target,
+    [WeightInit(mode='uniform', scale=0.5), DenseInput(coef=5.0), SpikeGather(), Traces(tau_pre=10.0), STDP(a_plus=0.02, a_minus=0.01, bound='soft'), WeightClip(w_min=0.0, w_max=1.0)]
+)" aria-label="Copy code">⧉</button></div>
+<pre><code>synapse = SynapseGroup(
+    net, source, target,
+    [WeightInit(mode="uniform", scale=0.5), DenseInput(coef=5.0), SpikeGather(), Traces(tau_pre=10.0), STDP(a_plus=0.02, a_minus=0.01, bound="soft"), WeightClip(w_min=0.0, w_max=1.0)]
+)</code></pre>
+</div>
+</div>
+<div class="workflow-illustration" aria-hidden="true">
+<svg viewBox="0 0 200 120" width="100%" height="100%">
+<circle cx="50" cy="60" r="16" fill="var(--surface-2)" stroke="var(--exc)" stroke-width="2"/>
+<circle cx="150" cy="60" r="16" fill="var(--surface-2)" stroke="var(--exc)" stroke-width="2"/>
+<path d="M 66 60 Q 100 30 134 60" fill="none" stroke="var(--trace)" stroke-width="2"/>
+</svg>
+</div>
+</div>
+<div class="workflow-panel" role="tabpanel" id="wf-panel-4" aria-labelledby="wf-tab-4" hidden>
+<div class="workflow-content">
+<p>Feed spike trains, Poisson rates, or sensory patterns into input groups.</p>
+<div class="code-block">
+<div class="code-header">Python <button class="icon-button" data-copy="train = rate_poisson(torch.full((20,), 0.3), 100, generator=net.generator)" aria-label="Copy code">⧉</button></div>
+<pre><code>train = rate_poisson(torch.full((20,), 0.3), 100, generator=net.generator)</code></pre>
+</div>
+</div>
+<div class="workflow-illustration" aria-hidden="true">
+<svg viewBox="0 0 200 120" width="100%" height="100%">
+<line x1="20" y1="40" x2="180" y2="40" stroke="var(--rule)" stroke-width="1"/>
+<line x1="20" y1="80" x2="180" y2="80" stroke="var(--rule)" stroke-width="1"/>
+<line x1="50" y1="35" x2="50" y2="45" stroke="var(--spike)" stroke-width="2"/>
+<line x1="90" y1="35" x2="90" y2="45" stroke="var(--spike)" stroke-width="2"/>
+<line x1="140" y1="35" x2="140" y2="45" stroke="var(--spike)" stroke-width="2"/>
+<line x1="70" y1="75" x2="70" y2="85" stroke="var(--spike)" stroke-width="2"/>
+<line x1="120" y1="75" x2="120" y2="85" stroke="var(--spike)" stroke-width="2"/>
+</svg>
+</div>
+</div>
+<div class="workflow-panel" role="tabpanel" id="wf-panel-5" aria-labelledby="wf-tab-5" hidden>
+<div class="workflow-content">
+<p>Attach recorders to monitor spikes, voltages, weights, or traces during execution.</p>
+<div class="code-block">
+<div class="code-header">Python <button class="icon-button" data-copy="rec = Recorder('spikes')" aria-label="Copy code">⧉</button></div>
+<pre><code>rec = Recorder("spikes")</code></pre>
+</div>
+</div>
+<div class="workflow-illustration" aria-hidden="true">
+<svg viewBox="0 0 200 120" width="100%" height="100%">
+<path d="M 20 60 Q 60 20 100 60 T 180 60" fill="none" stroke="var(--trace)" stroke-width="2"/>
+<circle cx="100" cy="60" r="4" fill="var(--spike)"/>
+</svg>
+</div>
+</div>
+<div class="workflow-panel" role="tabpanel" id="wf-panel-6" aria-labelledby="wf-tab-6" hidden>
+<div class="workflow-content">
+<p>Step through time or run batch simulations and inspect outputs.</p>
+<div class="code-block">
+<div class="code-header">Python <button class="icon-button" data-copy="for _ in range(200):
+    net.step()
+print(f&quot;output spikes: {target.spikes.sum()}&quot;)" aria-label="Copy code">⧉</button></div>
+<pre><code>for _ in range(200):
+    net.step()
+print(f"output spikes: {target.spikes.sum()}")</code></pre>
+</div>
+</div>
+<div class="workflow-illustration" aria-hidden="true">
+<svg viewBox="0 0 200 120" width="100%" height="100%">
+<rect x="40" y="40" width="120" height="40" rx="4" fill="var(--surface-2)" stroke="var(--rule-strong)" stroke-width="1.5"/>
+<text x="100" y="65" font-size="13" font-family="var(--font-mono)" text-anchor="middle" fill="var(--text)">net.step()</text>
+</svg>
+</div>
+</div>
+</div>
+<div class="workflow-links">
+<a class="button primary" href="#studio">Try it in the browser: Studio Live</a>
+<a class="button" href="https://github.com/soroushdeimi/neuroSush/tree/main/docs">Full API docs ↗</a>
+</div>
+</section>
 <section class="section" id="evidence"><p class="eyebrow">Evidence</p><h2>Measured, with the method attached.</h2><p>Performance depends on hardware and workload.</p><a href="https://github.com/soroushdeimi/neuroSush/blob/main/docs/BENCHMARKS.md">Benchmark method and pitfalls ↗</a></section>
 <section class="catalog band" id="library"><p class="eyebrow">Atlas · v{{VERSION}}</p><h2>Teaching plates you can perturb.</h2><p>Each plate pairs an equation with a live simulation. Change a parameter and watch the variable it governs.</p><p><a href="research.html">Read the research story and literature review ↗</a> · <a href="results.html">Results report ↗</a></p><label for="plate-search">Find a plate by title or ID</label><input id="plate-search" type="search" placeholder="LIF, STDP, N05…"><p id="search-status" role="status"></p><ul class="plate-list">{{PLATES}}</ul><a class="button" href="demos/the-neuron/index.html">The neuron / talk demo</a></section>
 <section class="section" id="studio"><p class="eyebrow">Studio · preview</p><h2>Compose a network without writing the boilerplate.</h2><p>A local app that builds the same six stages as forms and exports runnable neuroSush code. In development; not part of the released package.</p><div class="actions"><a class="button primary" href="studio-live.html">Launch Studio Live ↗</a><a href="https://github.com/soroushdeimi/neuroSush/tree/main/gui">Studio source ↗</a></div></section>

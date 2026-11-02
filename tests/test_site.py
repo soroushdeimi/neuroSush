@@ -288,3 +288,25 @@ def test_all_built_pages_default_to_dark_theme(tmp_path, monkeypatch):
             continue
         content = path.read_text(encoding="utf-8")
         assert 'data-theme="dark"' in content, f"{path} missing data-theme=dark"
+
+
+def test_workflow_section_six_stages_and_api(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    page = (tmp_path / "index.html").read_text(encoding="utf-8")
+    assert 'id="workflow"' in page
+    for stage in ("Populations", "Model", "Learning", "Inputs", "Record", "Run"):
+        assert stage in page
+    for code_snippet in (
+        "NeuronGroup",
+        "LIF",
+        "SynapseGroup",
+        "rate_poisson",
+        "Recorder",
+        "net.step",
+    ):
+        assert code_snippet in page
+    assert "Try it in the browser: Studio Live" in page
+    assert "Full API docs" in page
+    assert 'role="tablist"' in page
+    assert 'role="tabpanel"' in page
+    assert "<svg" in page
