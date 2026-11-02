@@ -17,6 +17,9 @@ dependencies = [
   "websockets",
 ]
 
+[project.scripts]
+neurosush-studio = "studio.cli:main"
+
 [dependency-groups]
 dev = ["pytest==9.0.2", "httpx2==2.16.0", "mypy==1.19.1", "ruff==0.15.0", "hypothesis"]
 
