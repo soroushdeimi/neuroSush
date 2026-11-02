@@ -11,6 +11,8 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
       - id: check-added-large-files
+        # Preserve raw TEM training records used by the reproducible report.
+        exclude: ^experiments/results/(overnight/v(?:[012]|3v[01])-s[012]\.json|tem_c3\.json)$
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.8
     hooks:
