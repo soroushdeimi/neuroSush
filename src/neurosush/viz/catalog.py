@@ -68,6 +68,13 @@ PLATES: dict[str, PlateSpec] = {
         flagship=False,
         covers=("neurosush.memory.hebbian.HebbianMemory", "neurosush.tem.model.TEM"),
     ),
+    "T03": PlateSpec(
+        id="T03",
+        title_en="Recall from a partial cue: fast Hebbian attractor memory",
+        wave=4,
+        flagship=False,
+        covers=("neurosush.memory.hebbian.HebbianMemory",),
+    ),
     "N01": PlateSpec(
         id="N01",
         title_en="LIF: the leaky bucket",

@@ -12,6 +12,7 @@ from neurosush.viz.catalog import EXEMPT, PLANNED, PLATES, public_models, uncove
 EXPECTED_IDS = (
     "T01",
     "T02",
+    "T03",
     "N01",
     "N02",
     "N03",
@@ -62,6 +63,7 @@ EXPECTED_IDS = (
 EXPECTED_WAVES = {
     "T01": 4,
     "T02": 4,
+    "T03": 4,
     "N01": 2,
     "N02": 2,
     "N03": 2,
