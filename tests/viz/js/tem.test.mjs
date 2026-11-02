@@ -12,9 +12,6 @@ test('TEM module exports expected methods', () => {
 
 test('computeNewEdgeAccuracy calculates correct ratio on fixture', () => {
   const world = fixture.worlds[0];
-  // walk has 4 steps. first_visit_new_edge: [0, 1, 0, 1], pred_correct: [1, 0, 1, 1]
-  // new edge visits at step 1 (first_visit=1, pred=0 -> incorrect) and step 3 (first_visit=1, pred=1 -> correct).
-  // Total new edge visits = 2, correct = 1 -> accuracy = 0.5
   const acc = TEM.computeNewEdgeAccuracy(world, 3);
   assert.equal(acc, 0.5);
 
@@ -22,7 +19,7 @@ test('computeNewEdgeAccuracy calculates correct ratio on fixture', () => {
   assert.equal(accStep0, 0);
 });
 
-test('missing-file path calls showFriendlyMessage', () => {
+test('missing-file path shows "No recorded run published yet"', () => {
   const oldDocument = globalThis.document;
   try {
     let messageShown = '';
@@ -31,16 +28,43 @@ test('missing-file path calls showFriendlyMessage', () => {
         if (id === 'tem-message') {
           return {
             set textContent(v) { messageShown = v; },
-            set style(s) {}
+            style: {}
           };
         }
         return null;
       }
     };
-    TEM.showFriendlyMessage('Test missing file warning');
-    assert.equal(messageShown, 'Test missing file warning');
+    TEM.showFriendlyMessage('No recorded run published yet');
+    assert.equal(messageShown, 'No recorded run published yet');
   } finally {
     globalThis.document = oldDocument;
+  }
+});
+
+test('refuses to present run with FIXTURE label as model result and shows test fixture banner', () => {
+  const oldDocument = globalThis.document;
+  try {
+    let bannerDisplay = '';
+    let messageShown = '';
+    globalThis.document = {
+      getElementById: (id) => {
+        if (id === 'tem-fixture-banner') {
+          return { style: { set display(v) { bannerDisplay = v; } } };
+        }
+        if (id === 'tem-message') {
+          return { set textContent(v) { messageShown = v; }, style: {} };
+        }
+        return null;
+      }
+    };
+    TEM.runs['v2'] = fixture;
+    TEM.currentVariant = 'v2';
+    TEM.updateFromVariant();
+    assert.equal(bannerDisplay, 'block');
+    assert.equal(messageShown, 'Test fixture detected; not a real model run.');
+  } finally {
+    globalThis.document = oldDocument;
+    delete TEM.runs['v2'];
   }
 });
 

@@ -33,8 +33,6 @@ def test_build_writes_every_plate_and_support_files(tmp_path, monkeypatch):
         "results.html",
         "research.html",
         "tem.html",
-        "data/tem-run-v2-s0.json",
-        "data/tem-run-v1-s0.json",
         "assets/site.css",
         "assets/site.js",
         "404.html",
