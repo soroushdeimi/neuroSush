@@ -4,7 +4,7 @@ import {writeFile,mkdir} from 'node:fs/promises';
 const shots=process.argv[2];
 if(!shots) throw Error('Usage: node scripts/check_site_browser.mjs SCREENSHOT_DIRECTORY');
 await mkdir(shots,{recursive:true});
-const chrome=spawn(process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',['--headless=new','--disable-gpu','--no-first-run','--no-default-browser-check','--disable-background-networking','--disable-component-update','--disable-sync','--disable-extensions','--metrics-recording-only','--disable-features=MediaRouter,OptimizationHints','--remote-debugging-port=9229','--user-data-dir=/tmp/neurosush-chrome-check','about:blank'],{stdio:'ignore'});
+const chrome=spawn(process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',['--headless=new','--enable-unsafe-swiftshader','--no-first-run','--no-default-browser-check','--disable-background-networking','--disable-component-update','--disable-sync','--disable-extensions','--metrics-recording-only','--disable-features=MediaRouter,OptimizationHints','--remote-debugging-port=9229','--user-data-dir=/tmp/neurosush-chrome-check','about:blank'],{stdio:'ignore'});
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 let ws;
 try{
@@ -20,24 +20,27 @@ await send('Page.enable');await send('Page.addScriptToEvaluateOnNewDocument',{so
 for(const [label,width,height] of [['desktop',1440,900],['mobile',390,844]]){
  await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
  await send('Page.navigate',{url:'http://127.0.0.1:8765/'});await delay(900);
- for(const [name,selector] of [['hero','.hero'],['library','#library'],['workflow','#workflow'],['gui','#gui']]){
-  await evaluate(`document.querySelector('${selector}').scrollIntoView({behavior:'instant',block:'start'})`);await delay(600);
-  const snap=await send('Page.captureScreenshot',{format:'png'});await writeFile(`${shots}/${label}-${name}.png`,Buffer.from(snap.data,'base64'));
+ for(const theme of ['dark','light']){
+  await evaluate(`document.documentElement.dataset.theme==='${theme}' || document.querySelector('#theme').click()`);
+  for(const progress of [0,.2,.4,.6,.8,1]){
+   await evaluate(`scrollTo({top:${progress}*(document.querySelector('#story').offsetHeight-innerHeight),behavior:'instant'})`);await delay(700);
+   if(await evaluate('document.documentElement.scrollWidth')>width)throw Error('Horizontal overflow '+label);
+   const snap=await send('Page.captureScreenshot',{format:'png'});await writeFile(`${shots}/${label}-${theme}-${progress}.png`,Buffer.from(snap.data,'base64'));
+  }
  }
- const layout=await evaluate('({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,canvases:document.querySelectorAll("canvas").length,theme:document.documentElement.dataset.theme})');
- if(layout.scrollWidth>width)throw Error('Horizontal overflow '+JSON.stringify(layout));
- console.log(label,JSON.stringify(layout));
- await evaluate('document.querySelector("#open-search").click();document.querySelector("#plate-search").value="N05";document.querySelector("#plate-search").dispatchEvent(new Event("input"))');
- if(await evaluate('document.querySelectorAll(".plate-list li:not([hidden])").length')!==1)throw Error('Atlas search failed');
- await evaluate('document.querySelector("#plate-search").value="";document.querySelector("#plate-search").dispatchEvent(new Event("input"))');
- await evaluate('document.querySelector("#theme").click()');await delay(400);
- if(await evaluate('document.documentElement.dataset.theme')!=='light')throw Error('Theme toggle failed');
- await evaluate('document.querySelector(".hero").scrollIntoView({behavior:"instant"})');await delay(250);
- const lightSnap=await send('Page.captureScreenshot',{format:'png'});await writeFile(`${shots}/${label}-light-hero.png`,Buffer.from(lightSnap.data,'base64'));
- await evaluate('document.querySelector("#drive").value="4";document.querySelector("#drive").dispatchEvent(new Event("input"))');
- if(await evaluate('document.querySelector("#drive-value").textContent')!=='4.0 nA')throw Error('Tuner failed');
- await evaluate('document.querySelector("#theme").click()');await delay(300);
+ console.log(label,'scene',await evaluate('JSON.stringify(neurosushScene.stats)'));
+ await evaluate('document.querySelector("#plate-search").value="N05";document.querySelector("#plate-search").dispatchEvent(new Event("input"))');
+ if(await evaluate('document.querySelectorAll(".plate-list li:not([hidden])").length')!==1)throw Error('Search failed');
+ for(const page of ['gallery.html','plates/N01.html','plates/Y01.html']){
+  await send('Page.navigate',{url:'http://127.0.0.1:8765/'+page});await delay(800);
+  if(await evaluate('document.documentElement.scrollWidth')>width)throw Error('Overflow '+page+' '+label);
+  for(const theme of ['dark','light']){
+   await evaluate(`document.documentElement.dataset.theme==='${theme}' || document.querySelector('#theme').click()`);await delay(150);
+   const snap=await send('Page.captureScreenshot',{format:'png'});await writeFile(`${shots}/${label}-${theme}-${page.replaceAll('/','-')}.png`,Buffer.from(snap.data,'base64'));
+  }
+ }
 }
+await send('Page.navigate',{url:'http://127.0.0.1:8765/'});await delay(700);
 await send('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false});
 await delay(150);
 if(await evaluate('document.documentElement.scrollWidth')>1920)throw Error('1920px overflow');
