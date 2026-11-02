@@ -23,7 +23,7 @@ for(const [label,width,height] of [['desktop',1440,900],['mobile',390,844]]){
  await send('Page.navigate',{url:'http://127.0.0.1:8765/'});await ready();await delay(300);
  for(const theme of ['dark','light']){
   await evaluate(`document.documentElement.dataset.theme==='${theme}' || document.querySelector('#theme').click()`);
-  for(const progress of [0,.15,.3,.45,.6,.75,.9,1]){
+  for(const progress of [0,.15,.2,.3,.4,.45,.6,.75,.8,.9,1]){
    await evaluate(`scrollTo({top:${progress}*(document.querySelector('#story').offsetHeight-innerHeight),behavior:'instant'})`);await delay(700);
    if(await evaluate('document.documentElement.scrollWidth')>width)throw Error('Horizontal overflow '+label);
    const snap=await send('Page.captureScreenshot',{format:'png'});await writeFile(`${shots}/${label}-${theme}-${progress}.png`,Buffer.from(snap.data,'base64'));

@@ -52,3 +52,8 @@ separate figures above prose; final scene modules are being integrated individua
 `instruments.js` advances the LIF model at 1 ms simulated per 1 ms displayed,
 with fixed Euler dt 0.5 ms and a 200 ms labelled window. Neuron centre-lines supplement
 the sampled tube surfaces. The spike propagation speed is a visual encoding.
+
+`synapse.js` uses the seeded surface sampler in `shape-kit.js` for bouton,
+vesicles, receptors, cleft and dendritic spine. Transmitter motion and spine size
+are schematic; the inset STDP curve computes the signed exponential window
+with tau 20 ms and soft-bound weight 0.5, not a measurement from the morphology.

@@ -23,6 +23,7 @@
  const count=innerWidth<650?9000:32000, shapes=Array.from({length:6},()=>new Float32Array(count*3));
  const tau=Math.PI*2;
  for(let i=0;i<6;i++)shapes[i]=window.NeuroShapes.neuron(count);
+ shapes[1]=window.NeuroShapes.synapse(count);
  function mobileFigures(){
   if(innerWidth>=1024)return;
   document.querySelectorAll('.chapter').forEach((chapter,index)=>{
@@ -31,6 +32,7 @@
    const w=figure.clientWidth,h=figure.clientHeight,d=Math.min(devicePixelRatio,1.5);figure.width=w*d;figure.height=h*d;
    const context=figure.getContext('2d');context.scale(d,d);context.fillStyle=color('--text-2');context.globalAlpha=.6;
    const data=shapes[index];for(let i=0;i<count;i++){context.fillRect(w*.5+data[i*3]*w*.4,h*.48-data[i*3+1]*w*.4,1.5,1.5);}
+   context.globalAlpha=1;context.font='13px '+css().getPropertyValue('--font-sans');context.fillStyle=color('--text');(data.labels||[]).forEach(([label,x,y])=>context.fillText(label,w*.5+x*w*.4,h*.48-y*w*.4));
   });
  }
  let gl=null,ctx=null,program,uniform={},buffers=[],quality=count,progress=0,target=0,px=0,py=0,frame=0,visible=true,last=0,slow=0;
@@ -39,24 +41,33 @@
  const vertex=`#version 300 es
  precision highp float;
  in vec3 a;in vec3 b;in vec3 c;in vec3 d;in vec3 e;in vec3 f;
- uniform float progress,time,aspect,mobile,spikeAge;uniform vec2 pointer;out float glow;out float region;
- void main(){float q=clamp(progress,0.,1.)*5.;int k=int(floor(q));float u=fract(q);u=u*u*(3.-2.*u);vec3 p=k==0?mix(a,b,u):k==1?mix(b,c,u):k==2?mix(c,d,u):k==3?mix(d,e,u):mix(e,f,u);
- float turn=.18*sin(time*.12)+0.;mat2 rot=mat2(cos(turn),-sin(turn),sin(turn),cos(turn));p.xz=rot*p.xz;float perspective=3.8/(3.8+p.z);vec2 xy=p.xy*perspective*mix(1.,.55,mobile);xy.x=xy.x/aspect*.9+mix(.43*cos(progress*5.*3.14159),.02,mobile);xy.y=xy.y*.7-mix(0.,.44,mobile);gl_Position=vec4(xy,0.,1.);gl_PointSize=(1.6+1.1*sin(float(gl_VertexID)*1.8+time*2.-length(p)*8.))*min(2.,mobile+1.);glow=.25;float travel=abs(a.y+.0864);float wave=exp(-pow((travel-spikeAge*25.)*18.,2.));glow+=wave*(a.y<-.144?1.8:.55)*(1.-smoothstep(0.,.15,progress));region=step(.4,progress)*step(progress,.78)*step(d.y,-.15)*step(abs(d.x),.65);}`;
+ in float ta,tb,tc,td,te,tf;
+ uniform float progress,time,aspect,mobile,spikeAge,lineMode;uniform vec2 pointer;out float glow;out float region;
+ void main(){float q=clamp(progress,0.,1.)*5.;int k=min(4,int(floor(q)));float u=q>=5.?1.:smoothstep(.05,.25,fract(q));q=float(k)+u;vec3 p=k==0?mix(a,b,u):k==1?mix(b,c,u):k==2?mix(c,d,u):k==3?mix(d,e,u):mix(e,f,u);
+ float tag=k==0?mix(ta,tb,u):k==1?mix(tb,tc,u):k==2?mix(tc,td,u):k==3?mix(td,te,u):mix(te,tf,u);
+ if(q>.8&&q<1.2&&lineMode<.5){if(abs(tag-6.)<.1){float weight=.5+.2*sin(time*.7);p.x*=.8+weight*.4;p.y=(p.y+.4)*(.8+weight*.4)-.4;}if(abs(tag-7.)<.1)p.y=.1-fract(time*1.4+float(gl_VertexID)*.13)*.16;}
+ float turn=.18*sin(time*.12)+0.;mat2 rot=mat2(cos(turn),-sin(turn),sin(turn),cos(turn));p.xz=rot*p.xz;float perspective=3.8/(3.8+p.z);vec2 xy=p.xy*perspective*mix(1.,.55,mobile);xy.x=xy.x/aspect*.9+mix(.43*cos(q*3.14159),.02,mobile);xy.y=xy.y*.7-mix(0.,.44,mobile);gl_Position=vec4(xy,0.,1.);gl_PointSize=(1.6+1.1*sin(float(gl_VertexID)*1.8+time*2.-length(p)*8.))*min(2.,mobile+1.);glow=.25;float travel=abs(a.y+.0864);float wave=exp(-pow((travel-spikeAge*25.)*18.,2.));glow+=wave*(a.y<-.144?1.8:.55)*(1.-smoothstep(0.,.15,progress));region=tag;}`;
  const fragment=`#version 300 es
- precision highp float;uniform float light,lineMode;uniform vec3 inkColor,spikeColor;in float glow;in float region;out vec4 color;
- void main(){if(lineMode>.5){color=vec4(inkColor,.6);return;}float r=length(gl_PointCoord-.5);if(r>.5)discard;vec3 ink=mix(inkColor,spikeColor,step(.7,glow));color=vec4(ink,(1.-r*2.)*(.6+glow*.3));}`;
+ precision highp float;uniform float light,lineMode;uniform vec3 inkColor,spikeColor,excColor,inhColor,traceColor;uniform float time;in float glow;in float region;out vec4 color;
+ void main(){if(lineMode>.5){color=vec4(inkColor,.6);return;}float r=length(gl_PointCoord-.5);if(r>.5)discard;vec3 ink=inkColor;
+ if(mod(gl_FragCoord.x+gl_FragCoord.y,13.)<1.){if(abs(region-1.)<.1)ink=excColor;if(abs(region-2.)<.1)ink=inhColor;if(abs(region-3.)<.1||abs(region-4.)<.1||abs(region-5.)<.1)ink=traceColor;if(abs(region-6.)<.1)ink=sin(time*.7)>0.?excColor:inhColor;}
+ if(abs(region-7.)<.1||glow>.7)ink=spikeColor;color=vec4(ink,(1.-r*2.)*(.6+glow*.3));}`;
  function shader(type,source){const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
  program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,vertex));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,fragment));gl.linkProgram(program);gl.useProgram(program);
- shapes.forEach((data,i)=>{const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);buffers.push(buffer);const loc=gl.getAttribLocation(program,'abcdef'[i]);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,3,gl.FLOAT,false,0,0);});
- for(const key of ['inkColor','spikeColor','lineMode','progress','time','aspect','mobile','pointer','light','spikeAge'])uniform[key]=gl.getUniformLocation(program,key);
- const lines=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,lines);gl.bufferData(gl.ARRAY_BUFFER,shapes[0].lines,gl.STATIC_DRAW);buffers.lines=lines;
+ shapes.forEach((data,i)=>{const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);buffers.push(buffer);const loc=gl.getAttribLocation(program,'abcdef'[i]);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,3,gl.FLOAT,false,0,0);const tags=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,tags);gl.bufferData(gl.ARRAY_BUFFER,data.tags||new Float32Array(count),gl.STATIC_DRAW);const tagLoc=gl.getAttribLocation(program,'t'+'abcdef'[i]);gl.enableVertexAttribArray(tagLoc);gl.vertexAttribPointer(tagLoc,1,gl.FLOAT,false,0,0);});
+ for(const key of ['excColor','inhColor','traceColor','inkColor','spikeColor','lineMode','progress','time','aspect','mobile','pointer','light','spikeAge'])uniform[key]=gl.getUniformLocation(program,key);
+ buffers.lines=shapes.map(shape=>{const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,shape.lines||new Float32Array(0),gl.STATIC_DRAW);return buffer;});
  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
  }else{ctx=canvas.getContext('2d');document.documentElement.classList.add('static-scene');}
  function advanceLIF(dt){window.NeuroInstruments.advance(dt);}
  function trace(ms=0){window.NeuroInstruments.draw(ms/1000);}
  function size(){const d=Math.min(devicePixelRatio,2),w=Math.round(canvas.clientWidth*d),h=Math.round(canvas.clientHeight*d);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}return [w,h];}
- function render(ms){const [w,h]=size();if(gl){gl.viewport(0,0,w,h);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.uniform1f(uniform.progress,progress);gl.uniform1f(uniform.spikeAge,window.NeuroInstruments.spikeAge);gl.uniform1f(uniform.time,reduced()?0:ms/1000);gl.uniform1f(uniform.aspect,w/h);gl.uniform1f(uniform.mobile,innerWidth<650?1:0);gl.uniform1f(uniform.light,light?1:0);gl.uniform3fv(uniform.inkColor,rgb('--text'));gl.uniform3fv(uniform.spikeColor,rgb('--spike'));gl.uniform2f(uniform.pointer,px,py);gl.drawArrays(gl.POINTS,0,quality);
- if(progress<.005){const loc=gl.getAttribLocation(program,'a');gl.bindBuffer(gl.ARRAY_BUFFER,buffers.lines);gl.vertexAttribPointer(loc,3,gl.FLOAT,false,0,0);gl.uniform1f(uniform.lineMode,1);gl.drawArrays(gl.LINES,0,shapes[0].lines.length/3);gl.uniform1f(uniform.lineMode,0);gl.bindBuffer(gl.ARRAY_BUFFER,buffers[0]);gl.vertexAttribPointer(loc,3,gl.FLOAT,false,0,0);}
+ const annotation=document.createElement('canvas');annotation.className='scene-annotations';canvas.after(annotation);
+ function labels(w,h){annotation.width=w;annotation.height=h;const c=annotation.getContext('2d'),d=Math.min(devicePixelRatio,2);c.font=(13*d)+'px '+css().getPropertyValue('--font-sans');c.fillStyle=color('--text-2');const raw=progress*5,base=Math.floor(raw),u=Math.max(0,Math.min(1,(raw-base-.05)/.2)),q=base+u*u*(3-2*u),k=Math.min(5,Math.round(q)),offset=.43*Math.cos(q*Math.PI);(shapes[k].labels||[]).forEach(([label,x,y])=>c.fillText(label,(x/(w/h)*.9+offset+1)*w/2,(1-y*.7)*h/2));}
+ function render(ms){const [w,h]=size();labels(w,h);if(gl){gl.viewport(0,0,w,h);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.uniform1f(uniform.progress,progress);gl.uniform1f(uniform.spikeAge,window.NeuroInstruments.spikeAge);gl.uniform1f(uniform.time,reduced()?0:ms/1000);gl.uniform1f(uniform.aspect,w/h);gl.uniform1f(uniform.mobile,innerWidth<650?1:0);gl.uniform1f(uniform.light,light?1:0);gl.uniform3fv(uniform.inkColor,rgb('--text'));gl.uniform3fv(uniform.spikeColor,rgb('--spike'));gl.uniform3fv(uniform.excColor,rgb('--exc-mark'));gl.uniform3fv(uniform.inhColor,rgb('--inh-mark'));gl.uniform3fv(uniform.traceColor,rgb('--trace-mark'));gl.uniform2f(uniform.pointer,px,py);gl.drawArrays(gl.POINTS,0,quality);
+ const raw=progress*5,k=Math.floor(raw),u=Math.max(0,Math.min(1,(raw-k-.05)/.2)),scene=Math.min(5,Math.round(k+u*u*(3-2*u)));
+ if(shapes[scene].lines?.length){gl.uniform1f(uniform.lineMode,1);for(let i=0;i<6;i++){gl.bindBuffer(gl.ARRAY_BUFFER,buffers.lines[scene]);gl.vertexAttribPointer(gl.getAttribLocation(program,'abcdef'[i]),3,gl.FLOAT,false,0,0);}gl.drawArrays(gl.LINES,0,shapes[scene].lines.length/3);gl.uniform1f(uniform.lineMode,0);for(let i=0;i<6;i++){gl.bindBuffer(gl.ARRAY_BUFFER,buffers[i]);gl.vertexAttribPointer(gl.getAttribLocation(program,'abcdef'[i]),3,gl.FLOAT,false,0,0);}}
+
 
  }else if(ctx){ctx.clearRect(0,0,w,h);ctx.fillStyle=color('--text');for(let i=0;i<5000;i++){const p=shapes[0],x=w*(innerWidth<650?.55:.73)+p[i*3]*h*.31,y=h*(innerWidth<650?.73:.5)-p[i*3+1]*h*.31;ctx.globalAlpha=.3+(.7*i/5000);ctx.fillRect(x,y,1.5,1.5);}}
  }

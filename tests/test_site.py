@@ -144,3 +144,13 @@ def test_foundation_and_instrument_assets(tmp_path, monkeypatch):
     assert "stage-number" not in page
     assert "01 /" not in page
     assert 'id="motion"' in page
+
+
+def test_synapse_geometry_is_shipped(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    page = (tmp_path / "index.html").read_text()
+    assert page.index("assets/shape-kit.js") < page.index("assets/synapse.js")
+    module = (tmp_path / "assets/synapse.js").read_text()
+    assert "NeuroShapes.synapse" in module
+    assert "Presynaptic bouton" in module
+    assert "Spine head" in module
