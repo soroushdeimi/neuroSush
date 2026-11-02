@@ -269,7 +269,7 @@ class TestTrace:
         assert meta["library"] == neurosush.__version__
         assert meta["torch"] == torch.__version__
         assert meta["dt"] == 0.5
-        assert meta["seed"] is None  # Network does not store seed as an attribute
+        assert meta["seed"] == 42
         assert meta["device"] == "cpu"
         assert meta["run_name"] == "test_run"
 

@@ -18,11 +18,16 @@ from neurosush.modulation import Dopamine
 from neurosush.neurons.adaptation import SpikeTriggeredCurrent
 from neurosush.neurons.axon import Axon
 from neurosush.neurons.competition import KWTA, InherentNoise, MinicolumnInhibition
-from neurosush.neurons.dendrite import DendriteIntegration, DendriteStructure
+from neurosush.neurons.dendrite import (
+    ConductanceIntegration,
+    DendriteIntegration,
+    DendriteStructure,
+)
 from neurosush.neurons.hodgkin_huxley import HodgkinHuxley
-from neurosush.neurons.homeostasis import ActivityHomeostasis, VoltageHomeostasis
-from neurosush.neurons.inputs import CorrelatedPoissonInput, PoissonDrive
-from neurosush.neurons.models import ELIF, LIF, AdaptiveELIF, Fire, Izhikevich
+from neurosush.neurons.homeostasis import ActivityHomeostasis, AdaptiveThreshold, VoltageHomeostasis
+from neurosush.neurons.inputs import CorrelatedPoissonInput, PoissonDrive, PoissonInput
+from neurosush.neurons.models import ELIF, LIF, AdaptiveELIF, Fire, Izhikevich, Refractory
+from neurosush.recording import SpikeCounter
 from neurosush.structure.column import CorticalColumn
 from neurosush.structure.connect import connect
 from neurosush.structure.layer import Layer
@@ -39,8 +44,10 @@ from neurosush.synapses.currents import (
 )
 from neurosush.synapses.init import DelayInit, WeightInit
 from neurosush.synapses.plasticity import ISTDP, RSTDP, STDP
+from neurosush.synapses.segment_learning import SegmentLearning
 from neurosush.synapses.segments import ActiveSegments
 from neurosush.synapses.traces import SpikeGather, Traces
+from neurosush.synapses.triplet import TripletSTDP
 
 _REGISTRY: dict[str, type[Behavior]] = {}
 
@@ -97,6 +104,13 @@ for _cls in (
     WeightNormalization,
     CurrentNormalization,
     Dopamine,
+    ConductanceIntegration,
+    AdaptiveThreshold,
+    Refractory,
+    SegmentLearning,
+    TripletSTDP,
+    SpikeCounter,
+    PoissonInput,
 ):
     register(_cls)
 
