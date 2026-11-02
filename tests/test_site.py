@@ -95,7 +95,7 @@ def test_landing_links_resolve_and_template_is_complete(tmp_path, monkeypatch):
         elif not href.startswith("https://"):
             assert (tmp_path / href).is_file(), href
     assert 'data-theme="dark"' in page
-    assert "TEM planned" in page
+    assert "TEM teaching plate" in page
     assert "ILLUSTRATIVE ART" in page
 
 
@@ -114,3 +114,11 @@ def test_shared_shell_and_scroll_story(tmp_path, monkeypatch):
     assert "webgl2" in script
     assert "visibilitychange" in script
     assert "prefers-reduced-motion" in script
+
+
+def test_tem_teaching_plate_is_published(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    page = (tmp_path / "plates/T01.html").read_text(encoding="utf-8")
+    assert "TEACHING" in page
+    assert "GIVEN / imposed" in page
+    assert 'plates/T01.html"' in (tmp_path / "gallery.html").read_text(encoding="utf-8")
