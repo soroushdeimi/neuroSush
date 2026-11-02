@@ -87,8 +87,8 @@ def build_index(plates: list[tuple[str, str]], version: str) -> str:
     previews = "\n".join(
         f'<a class="preview" href="plates/{html.escape(pid, quote=True)}.html">'
         f'<canvas data-art="{featured[pid]}" aria-label="Illustrative plate preview"></canvas>'
-        f'<div><small>{html.escape(pid)} / LIVE PLATE ↗</small>'
-        f'<h3>{html.escape(title)}</h3></div></a>'
+        f"<div><small>{html.escape(pid)} / LIVE PLATE ↗</small>"
+        f"<h3>{html.escape(title)}</h3></div></a>"
         for pid, title in plates
         if pid in featured
     )
