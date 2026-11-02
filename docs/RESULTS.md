@@ -70,9 +70,9 @@ May NOT say
 
 | Item | Status | Owner / branch |
 |---|---|---|
-| Save weights, probe our models with the same metrics as section 3 (spatial info, decoder, cross-world corr/RSA, distance structure) | in progress | `tem/spatial-probe` (worker codex-tg) |
-| Retrain v2 s0 and v1 s0 with checkpoints (about 2.3 h each) | to be launched by the same worker | background nohup |
-| Live teaching plate T01 in the Atlas (Hebbian memory, new-route prediction vs baselines; g imposed, labelled) | in progress | `tem/atlas-plate` (worker codex-tp) |
+| Save weights, probe our models with the same metrics as section 3 (spatial info, decoder, cross-world corr/RSA, distance structure) | in progress | `tem/spatial-probe` |
+| Retrain v2 s0 and v1 s0 with checkpoints (about 2.3 h each) | running in the background | background nohup |
+| Live teaching plate T01 in the Atlas (Hebbian memory, new-route prediction vs baselines; g imposed, labelled) | done, live in the Atlas (PR #26) | `tem/atlas-plate` |
 | Site: grid-cell chapter + results table with these caveats | waiting for site redesign | `feat/landing-neuro` |
 | Real recorded-run demo of the trained model | blocked on checkpoints | after probe |
 
