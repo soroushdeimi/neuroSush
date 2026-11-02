@@ -65,9 +65,12 @@ The spread is sample standard deviation across training seeds.
 
 ## What this does and does not show
 
-- Better than our earlier model and than baselines, and better than the authors'
-  public-default run on our internal metric — NOT shown better than the paper.
-  The v0 comparison is our reference-schedule implementation, not an authors' checkpoint.
+- Better than our earlier model (v0) and than the sensory-only/frequency baselines on our
+  internal metric. NOT shown better than the paper: we did not score the authors' model on
+  this metric. Their public-default code, run once for 40k iterations, stayed near chance
+  in next-observation loss (about 2.1-2.5 against ln 10 = 2.30); ours reaches 1.0-1.15.
+  Different code and worlds, one seed: indicative only. v0 is our reference-schedule
+  implementation, not an authors' checkpoint.
 - This metric is not comparable to the paper's gridness/remapping analyses.
 - Gridness is not measurable at 8×8 under the library's resolution criterion.
 - v3 builds in group structure, so periodicity there is imposed, not learned.
