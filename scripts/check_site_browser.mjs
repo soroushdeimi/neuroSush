@@ -17,25 +17,72 @@ ws.addEventListener('message',({data})=>{const m=JSON.parse(data);if(m.id){const
 function send(method,params={}){return new Promise((resolve,reject)=>{const id=++next;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}));});}
 async function ready(path='/'){for(let i=0;i<80;i++){if(await evaluate(`document.readyState==='complete' && location.pathname==='${path}' && !!document.querySelector('#theme')`))return;await delay(100);}throw Error('Page did not become ready');}
 async function evaluate(expression){const result=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(result.exceptionDetails)throw Error(JSON.stringify(result.exceptionDetails));return result.result.value;}
-await send('Page.enable');await send('Page.addScriptToEvaluateOnNewDocument',{source:'try { localStorage.removeItem("neurosush-theme"); } catch {}'});await send('Runtime.enable');await send('Log.enable');await send('Fetch.enable',{patterns:[{urlPattern:'*'}]});
-for(const [label,width,height] of [['desktop',1440,900],['tablet',768,1024],['mobile',390,844]]){
- await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
+
+async function checkElementOverflow(label, context) {
+  const overflows = await evaluate(`(() => {
+    const bad = [];
+    const innerW = window.innerWidth;
+    const all = document.querySelectorAll('*');
+    for (const el of all) {
+      let parent = el.parentElement;
+      let insideScrollable = false;
+      while (parent && parent !== document.body && parent !== document.documentElement) {
+        const style = getComputedStyle(parent);
+        if (['auto', 'scroll'].includes(style.overflowX) || ['auto', 'scroll'].includes(style.overflow) || style.overflowX === 'hidden' || style.overflowY === 'hidden') {
+          insideScrollable = true;
+          break;
+        }
+        parent = parent.parentElement;
+      }
+      if (insideScrollable) continue;
+
+      const rect = el.getBoundingClientRect();
+      if (rect.right > innerW + 1.5) {
+        bad.push({
+          tag: el.tagName,
+          id: el.id,
+          class: el.className,
+          right: Math.round(rect.right),
+          innerW,
+          text: (el.textContent || '').slice(0, 30).trim()
+        });
+      }
+    }
+    return bad;
+  })()`);
+  if (overflows.length > 0) {
+    throw Error(`Element overflow on ${context} (${label}): ` + JSON.stringify(overflows[0]));
+  }
+}
+
+await send('Page.enable');
+await send('Network.enable');
+await send('Network.setCacheDisabled',{cacheDisabled:true});
+await send('Page.addScriptToEvaluateOnNewDocument',{source:'try { localStorage.removeItem("neurosush-theme"); } catch {}'});
+await send('Runtime.enable');
+await send('Log.enable');
+await send('Fetch.enable',{patterns:[{urlPattern:'*'}]});
+
+for(const [label,width,height] of [['desktop',1440,900],['tablet',768,1024],['mobile',390,844],['mobile-wide',414,896]]){
+ await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:width<=768});
  await send('Page.navigate',{url:'http://127.0.0.1:8765/'});await ready();await delay(300);
  for(const theme of ['dark','light']){
   await evaluate(`document.documentElement.dataset.theme==='${theme}' || document.querySelector('#theme').click()`);
   for(const progress of [0,.15,.2,.3,.4,.45,.6,.75,.8,.9,1]){
    await evaluate(`scrollTo({top:document.querySelector('#story').offsetTop+${progress}*(document.querySelector('#story').offsetHeight-innerHeight),behavior:'instant'})`);await delay(700);
-   if(await evaluate('document.documentElement.scrollWidth')>width)throw Error('Horizontal overflow index '+label+' progress '+progress);
-   const snap=await send('Page.captureScreenshot',{format:'png'});await writeFile(`${shots}/${label}-${theme}-${progress}.png`,Buffer.from(snap.data,'base64'));
+   await checkElementOverflow(label, 'index progress ' + progress);
+   const snap=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});await writeFile(`${shots}/${label}-${theme}-${progress}.png`,Buffer.from(snap.data,'base64'));
   }
  }
  console.log(label,'scene',await evaluate('JSON.stringify(neurosushScene.stats)'));
  for(const theme of ['dark','light']){
   await evaluate(`document.documentElement.dataset.theme==='${theme}' || document.querySelector('#theme').click()`);
-  for(const section of ['workflow','evidence','studio']){
+  for(const section of ['workflow','evidence','studio','library','install']){
+   const exists = await evaluate(`!!document.querySelector('#${section}')`);
+   if(!exists) continue;
    await evaluate(`document.querySelector('#${section}').scrollIntoView({behavior:'instant'})`);await delay(200);
-   if(await evaluate('document.documentElement.scrollWidth')>width)throw Error('Section overflow '+section+' '+label);
-   const snap=await send('Page.captureScreenshot',{format:'png'});await writeFile(`${shots}/${label}-${theme}-${section}.png`,Buffer.from(snap.data,'base64'));
+   await checkElementOverflow(label, 'section ' + section);
+   const snap=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});await writeFile(`${shots}/${label}-${theme}-${section}.png`,Buffer.from(snap.data,'base64'));
   }
  }
 
@@ -43,17 +90,17 @@ for(const [label,width,height] of [['desktop',1440,900],['tablet',768,1024],['mo
  if(await evaluate('document.querySelectorAll(".plate-list li:not([hidden])").length')!==1)throw Error('Search failed');
  for(const page of ['gallery.html','results.html','research.html','studio-live.html','plates/N01.html','plates/Y01.html']){
   await send('Page.navigate',{url:'http://127.0.0.1:8765/'+page});await ready('/'+page);await delay(300);
-  if(await evaluate('document.documentElement.scrollWidth')>width)throw Error('Overflow '+page+' '+label);
+  await checkElementOverflow(label, page);
   for(const theme of ['dark','light']){
    await evaluate(`document.documentElement.dataset.theme==='${theme}' || document.querySelector('#theme').click()`);await delay(150);
-   const snap=await send('Page.captureScreenshot',{format:'png'});await writeFile(`${shots}/${label}-${theme}-${page.replaceAll('/','-')}.png`,Buffer.from(snap.data,'base64'));
+   const snap=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});await writeFile(`${shots}/${label}-${theme}-${page.replaceAll('/','-')}.png`,Buffer.from(snap.data,'base64'));
   }
  }
 }
 await send('Page.navigate',{url:'http://127.0.0.1:8765/'});await ready();await delay(300);
 await send('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false});
 await delay(150);
-if(await evaluate('document.documentElement.scrollWidth')>1920)throw Error('1920px overflow');
+await checkElementOverflow('1920px', 'landing 1920');
 console.log('1920px layout passed');
 await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
 await evaluate('scrollTo({top:0,behavior:"instant"})');await delay(200);
