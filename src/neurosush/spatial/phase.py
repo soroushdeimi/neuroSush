@@ -34,6 +34,11 @@ def circular_linear_regression(
     Pass one direction and one field segment at a time. A negative fitted slope
     means earlier theta phases along travel. Search bounds limit aliasing; boundary
     optima and low concentration need caution. No p-value or field detection is inferred.
+
+    Shapes/Units:
+        position: 1D tensor of positions in spatial units;
+        theta_phase: 1D tensor of phases in radians [0, 2pi);
+        slope: radians per position unit.
     """
     x, phase = position.detach().double().cpu(), theta_phase.detach().double().cpu()
     if (
