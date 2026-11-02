@@ -41,7 +41,7 @@ for(const [label,width,height] of [['desktop',1440,900],['tablet',768,1024],['mo
 
  await evaluate('document.querySelector("#plate-search").value="N05";document.querySelector("#plate-search").dispatchEvent(new Event("input"))');
  if(await evaluate('document.querySelectorAll(".plate-list li:not([hidden])").length')!==1)throw Error('Search failed');
- for(const page of ['gallery.html','results.html','research.html','plates/N01.html','plates/Y01.html']){
+ for(const page of ['gallery.html','results.html','research.html','studio-live.html','plates/N01.html','plates/Y01.html']){
   await send('Page.navigate',{url:'http://127.0.0.1:8765/'+page});await ready('/'+page);await delay(300);
   if(await evaluate('document.documentElement.scrollWidth')>width)throw Error('Overflow '+page+' '+label);
   for(const theme of ['dark','light']){

@@ -221,13 +221,13 @@ def test_build_data_copy_only_json_under_300kb(tmp_path, monkeypatch):
 
     site_data = Path(__file__).resolve().parents[1] / "scripts" / "site_assets" / "data"
     site_data.mkdir(parents=True, exist_ok=True)
-    fixture_file = site_data / "tem-run-v2-s0.json"
+    fixture_file = site_data / "zz-test-only.json"
     try:
         fixture_file.write_text('{"version": 1}', encoding="utf-8")
         out_temp = tmp_path / "temp_site"
         monkeypatch.setattr(sys, "argv", ["build_site.py", "--out", str(out_temp)])
         main()
-        assert (out_temp / "data" / "tem-run-v2-s0.json").is_file()
+        assert (out_temp / "data" / "zz-test-only.json").is_file()
     finally:
         if fixture_file.exists():
             fixture_file.unlink()
