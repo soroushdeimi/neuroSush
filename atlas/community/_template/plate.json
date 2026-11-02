@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "kind": "plate",
+  "id": "c-template",
+  "title": "Template LIF Neuron",
+  "summary": "An illustrative teaching-js plate implementing Leaky Integrate-and-Fire dynamics.",
+  "authors": [{"name": "NeuroSush Contributors", "github": "soroushdeimi"}],
+  "license": "MIT",
+  "data": "teaching-js",
+  "renderer": null,
+  "covers": ["neurosush.neurons.models.LIF"],
+  "references": [{"citation": "Gerstner & Kistler, Spiking Neuron Models, 2002."}],
+  "equations": [
+    {
+      "js": "core.lif_derivative",
+      "python_ref": "neurosush.neurons.dynamics.lif_derivative",
+      "cases": [
+        {"args": [-70.0, 5.0], "kwargs": {"v_rest": -70.0, "resistance": 10.0}}
+      ],
+      "abs": 1e-9,
+      "rel": 1e-9
+    }
+  ]
+}
