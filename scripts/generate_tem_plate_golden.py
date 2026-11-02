@@ -9,7 +9,10 @@ from neurosush.memory.hebbian import attractor, hebbian_update
 
 
 def generate() -> dict:
-    """Exercise signed asymmetric weights, clipping, masks and zero iterations, plus T03 recall cases."""
+    """Exercise signed asymmetric weights, clipping, masks and
+
+    zero iterations, plus T03 recall cases.
+    """
     memory = torch.tensor([[0.9, -0.7], [0.2, -0.4]], dtype=torch.float64)
     pattern = torch.tensor([0.8, -0.6], dtype=torch.float64)
     predicted = torch.tensor([-0.3, 0.5], dtype=torch.float64)
@@ -38,7 +41,7 @@ def generate() -> dict:
     n = 16
     torch.manual_seed(42)
     patterns = []
-    for i in range(4):
+    for _i in range(4):
         p = torch.zeros(n, dtype=torch.float64)
         indices = torch.randperm(n)[:4]
         p[indices] = 1.0
