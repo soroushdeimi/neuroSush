@@ -44,6 +44,8 @@ test('no wrapping, prediction precedes observation, eligibility uses directed ed
   assert.deepEqual(core.step(a,{target:1}).guesses,core.step(b,{target:1}).guesses);
 });
 test('memory ablation freezes M; a new world resets bindings and retains structure',()=>{
+  const disabled=core.createWorld(()=>.6,{memory:false});
+  assert.ok(disabled.m.every(row=>row.every(v=>v===0)));
   const w=core.createWorld(()=>.6),before=JSON.stringify(w.m);
   core.step(w,{target:1,memory:false});
   assert.equal(JSON.stringify(w.m),before);

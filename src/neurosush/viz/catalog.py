@@ -246,9 +246,7 @@ PLATES: dict[str, PlateSpec] = {
         wave=3,
         flagship=False,
         covers=(
-            "neurosush.memory.hebbian.HebbianMemory",
-        "neurosush.tem.model.TEM",
-        "neurosush.core.network.Network",
+            "neurosush.core.network.Network",
             "neurosush.core.network.NeuronGroup",
             "neurosush.core.network.SynapseGroup",
         ),

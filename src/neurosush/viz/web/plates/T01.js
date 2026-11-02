@@ -29,11 +29,11 @@
   function neighbors(n) {
     return [n - 4, n + 4, n % 4 ? n - 1 : -1, n % 4 < 3 ? n + 1 : -1].filter(v => v >= 0 && v < 16);
   }
-  function createWorld(random = Math.random) {
+  function createWorld(random = Math.random, {memory = true, iterations = 5} = {}) {
     const world = {symbols: Array.from({length: 16}, () => Math.floor(random() * 4)),
       pos: 0, seen: new Set(), edges: new Set(), counts: zeros(4), sensory: Array.from({length: 4}, () => zeros(4)),
       m: Array.from({length: 64}, () => zeros(64)), filtered: zeros(4), scores: zeros(3), trials: 0, steps: 0};
-    observe(world, true, 5);
+    observe(world, memory, iterations);
     return world;
   }
   function cueAt(pos) { return Array.from({length: 64}, (_, i) => Math.floor(i / 4) === pos ? .25 : 0); }
@@ -61,10 +61,14 @@
   const core = {hebbianUpdate, attractor, neighbors, createWorld, step, cueAt};
   function mount(el, ctx) {
     const doc = el.ownerDocument;
+    el.closest(".atlas-plate").classList.add("t01-shell");
     el.style.aspectRatio = 'auto';
     el.style.maxHeight = 'none';
     el.style.overflow = 'visible';
     el.innerHTML = `<style>
+      .atlas-plate.t01-shell{height:auto;max-height:none}
+      .t01-shell .atlas-main{flex:none}
+      .t01 canvas[data-p]{width:60px;height:240px}
       .t01{padding:20px;color:var(--ink);font-family:var(--font-sans)}
       .t01 h2{font:24px var(--font-serif);margin:0 0 12px}.t01 h3{font-size:14px;margin:0 0 10px}
       .t01-controls{display:flex;flex-wrap:wrap;gap:12px;margin:18px 0;align-items:center}
@@ -135,7 +139,7 @@
     q('[data-step]').onclick=advance;
     q('[data-run]').onclick=()=>timer?stop():run();
     q('[data-speed]').onchange=()=>{if(timer){stop();run();}};
-    q('[data-reset]').onclick=()=>{stop();w=createWorld();render();};
+    q('[data-reset]').onclick=()=>{stop();w=createWorld(Math.random,opts());render();};
     for(const s of ['[data-memory]','[data-iterations]']) q(s).onchange=()=>{w.trials=0;w.scores=zeros(3);w.last=null;render();};
     doc.addEventListener('visibilitychange',()=>{if(doc.hidden)stop();});
     new MutationObserver(render).observe(doc.documentElement,{attributes:true,attributeFilter:['data-theme']});

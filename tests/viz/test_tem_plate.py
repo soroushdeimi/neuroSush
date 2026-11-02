@@ -12,7 +12,7 @@ from neurosush.viz.export import available_plates, render_plate
 def test_tem_catalog_and_export():
     spec = PLATES["T01"]
     assert spec.covers == ("neurosush.memory.hebbian.HebbianMemory", "neurosush.tem.model.TEM")
-    assert set(spec.covers) <= public_models()
+    assert set(spec.covers) <= set(public_models())
     assert "T01" in available_plates()
     page = render_plate("T01", source="live")
     for text in ("TEACHING", "GIVEN / imposed", "not the trained TEM", "docs/TEM.md"):
