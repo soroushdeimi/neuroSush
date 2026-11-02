@@ -8,6 +8,7 @@ replication; loading JSON only looks names up in the registry and never runs cod
 from __future__ import annotations
 
 import dataclasses
+import difflib
 import json
 from dataclasses import dataclass, field
 from typing import Any, TypedDict
@@ -249,9 +250,44 @@ def _ports(value: dict[str, list[str]] | None) -> dict[str, tuple[str, ...]] | N
     return None if value is None else {k: tuple(v) for k, v in value.items()}
 
 
+def _check_keys(data: dict[str, Any], cls: type[Any], path: str) -> None:
+    allowed = [field.name for field in dataclasses.fields(cls)]
+    for key in data:
+        if key not in allowed:
+            matches = difflib.get_close_matches(key, allowed, n=1)
+            fix = f"did you mean {matches[0]}?" if matches else f"remove {key!r}"
+            raise ValueError(f"{path}.{key}: unknown key; {fix}")
+
+
+def _check_behaviors(items: list[dict[str, Any]], path: str) -> None:
+    for index, item in enumerate(items):
+        _check_keys(item, BehaviorSpec, f"{path}[{index}]")
+
+
+def _check_synapses(items: list[dict[str, Any]], path: str) -> None:
+    for index, item in enumerate(items):
+        location = f"{path}[{index}]"
+        _check_keys(item, SynapseSpec, location)
+        _check_behaviors(item["behaviors"], f"{location}.behaviors")
+
+
+def _check_column(data: dict[str, Any]) -> None:
+    _check_keys(data, ColumnSpec, "$")
+    _check_synapses(data["synapses"], "$.synapses")
+    for name, layer in data["layers"].items():
+        path = f"$.layers.{name}"
+        _check_keys(layer, LayerSpec, path)
+        _check_synapses(layer["synapses"], f"{path}.synapses")
+        for name, group in layer["groups"].items():
+            location = f"{path}.groups.{name}"
+            _check_keys(group, GroupSpec, location)
+            _check_behaviors(group["behaviors"], f"{location}.behaviors")
+
+
 def from_json(text: str) -> ColumnSpec:
     """Parse a column spec written by :func:`to_json`."""
     data = json.loads(text)
+    _check_column(data)
     layers = {
         name: LayerSpec(
             groups={

@@ -108,6 +108,7 @@ class Network:
         self.synapses: list[SynapseGroup] = []
         self.iteration = 0
         self.initialized = False
+        self._initialization_error: Exception | None = None
         self.schedule: list[tuple[Network | NeuronGroup | SynapseGroup, Behavior]] = []
         self._preparing: list[tuple[Network | NeuronGroup | SynapseGroup, Behavior]] = []
         self._registrations: list[tuple[Network | NeuronGroup | SynapseGroup, Behavior]] = []
@@ -135,7 +136,8 @@ class Network:
         return attached
 
     def initialize(self) -> None:
-        """Initialize all behaviors in execution order once."""
+        """Initialize once; rebuild the network after an initialization failure."""
+        self._raise_initialization_error()
         if self.initialized:
             raise RuntimeError("network is already initialized")
         # Stable sorting preserves registration order for ties.
@@ -159,8 +161,17 @@ class Network:
             if type(behavior).prepare is not Behavior.prepare
         ]
         self.initialized = True
-        for host, behavior in self.schedule:
-            behavior.initialize(host)
+        try:
+            for host, behavior in self.schedule:
+                behavior.initialize(host)
+        except Exception as error:
+            self._initialization_error = error
+            raise
+
+    def _raise_initialization_error(self) -> None:
+        if self._initialization_error is not None:
+            error = self._initialization_error
+            raise type(error)(*error.args) from error
 
     def reset_state(self) -> None:
         """Clear the per-sample dynamic state of every behavior, in place.
@@ -180,6 +191,7 @@ class Network:
 
     def step(self) -> None:
         """Advance one iteration, running each enabled behavior."""
+        self._raise_initialization_error()
         if not self.initialized:
             self.initialize()
         self.iteration += 1

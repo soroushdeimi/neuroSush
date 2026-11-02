@@ -97,6 +97,11 @@ class LIF(Behavior):
                 )
             group.threshold = threshold.expand(group.state_shape).clone()
         elif isinstance(self.threshold, torch.Tensor):
+            if self.threshold.shape not in ((), (group.size,)):
+                raise ValueError(
+                    f"threshold must be scalar or have shape ({group.size},), "
+                    f"got {tuple(self.threshold.shape)}; reshape threshold to ({group.size},)"
+                )
             group.threshold = self.threshold.to(group.net.dtype).to(group.net.device)
         else:
             group.threshold = group.vector(self.threshold)
@@ -388,6 +393,12 @@ class Fire(Behavior):
     def initialize(self, group: NeuronGroup) -> None:
         """Check that the group has a neuron model."""
         if not hasattr(group, "model") or group.model is None or not hasattr(group.model, "fire"):
+            for behavior in group.behaviors:
+                if callable(getattr(behavior, "fire", None)) and behavior.order > self.order:
+                    raise RuntimeError(
+                        f"{type(behavior).__name__} on {group.name} runs after Fire; "
+                        f"set order below {self.order} for the neuron model"
+                    )
             raise RuntimeError(f"Fire on {group.name} needs a neuron model such as LIF")
 
     def forward(self, group: NeuronGroup) -> None:
