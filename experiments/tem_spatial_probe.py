@@ -4,26 +4,28 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
+from time import monotonic
 
 import torch
 from torch import Tensor
 
-from neurosush.spatial import GraphWorld
+from neurosush.spatial import GraphWorld, gridness
 from neurosush.spatial.rate_maps import rate_maps
 from neurosush.tem import TEM, TEMConfig
 from neurosush.tem.checkpoint import load_checkpoint
 
 
-def maps(a: Tensor, pos: Tensor) -> tuple[Tensor, Tensor]:
-    """Return node-first 8x8 means and occupancy."""
-    m, c = rate_maps(a, pos, (8, 8))
-    return m.reshape(a.shape[1], 64).T, c.flatten()
+def maps(a: Tensor, pos: Tensor, size: int = 8) -> tuple[Tensor, Tensor]:
+    """Return node-first size x size means and occupancy."""
+    m, c = rate_maps(a, pos, (size, size))
+    return m.reshape(a.shape[1], size * size).T, c.flatten()
 
 
-def information(a: Tensor, pos: Tensor) -> Tensor:
+def information(a: Tensor, pos: Tensor, size: int = 8) -> Tensor:
     """Match reference SI, including its signed-activation convention."""
-    m, c = maps(a, pos)
+    m, c = maps(a, pos, size)
     p = c[c > 0].double() / c.sum()
     r = m[c > 0]
     ratio = r / (r * p[:, None]).sum(0).clamp_min(1e-12)
@@ -51,14 +53,16 @@ def shifted(pos: Tensor, rng: torch.Generator) -> Tensor:
     return pos.roll(int(torch.randint(100, len(pos) - 100, (), generator=rng)))
 
 
-def decoder(a: Tensor, pos: Tensor, rng: torch.Generator, repeats: int) -> tuple[float, float]:
+def decoder(
+    a: Tensor, pos: Tensor, rng: torch.Generator, repeats: int, size: int = 8
+) -> tuple[float, float]:
     """Five contiguous test folds, 25-sample exclusion gap, fixed-prediction null."""
     edges = torch.linspace(0, len(pos), 6).long()
     pred = torch.full_like(pos, -1)
     for start, end in zip(edges[:-1].tolist(), edges[1:].tolist(), strict=True):
         train_mask = torch.ones(len(pos), dtype=torch.bool)
         train_mask[max(0, start - 25) : min(len(pos), end + 25)] = False
-        template, _ = maps(a[train_mask], pos[train_mask])
+        template, _ = maps(a[train_mask], pos[train_mask], size)
         # Reference nansum assigns zero distance to unvisited templates.
         distance = (a[start:end, None] - template[None]).square().nansum(-1)
         pred[start:end] = distance.argmin(-1)
@@ -75,11 +79,13 @@ def measure(
     seed: int = 42,
     si_repeats: int = 32,
     repeats: int = 100,
+    size: int = 8,
 ) -> dict[str, float]:
     """Average within-world scores and pairwise cross-world geometry."""
     if len(worlds) < 2 or min(si_repeats, repeats) < 1:
         raise ValueError("need at least two worlds and positive null repeats")
     rng = torch.Generator().manual_seed(seed)
+    num_nodes = size * size
     rows: dict[str, list[float]] = {
         k: []
         for k in (
@@ -99,11 +105,11 @@ def measure(
         )
     }
     templates = []
-    iu = torch.triu_indices(64, 64, 1)
-    nodes = torch.arange(64)
+    iu = torch.triu_indices(num_nodes, num_nodes, 1)
+    nodes = torch.arange(num_nodes)
     grid = (
-        (nodes[:, None] // 8 - nodes[None] // 8).abs()
-        + (nodes[:, None] % 8 - nodes[None] % 8).abs()
+        (nodes[:, None] // size - nodes[None] // size).abs()
+        + (nodes[:, None] % size - nodes[None] % size).abs()
     )[iu[0], iu[1]]
 
     def dm(t: Tensor) -> Tensor:
@@ -112,14 +118,14 @@ def measure(
     for a, pos, sensory in worlds:
         a = a.double()
         active = a.std(0) > 1e-9
-        si = information(a, pos)
+        si = information(a, pos, size)
         perm = torch.stack(
             [
-                information(a, pos[torch.randperm(len(pos), generator=rng)])
+                information(a, pos[torch.randperm(len(pos), generator=rng)], size)
                 for _ in range(si_repeats)
             ]
         )
-        circ = torch.stack([information(a, shifted(pos, rng)) for _ in range(si_repeats)])
+        circ = torch.stack([information(a, shifted(pos, rng), size) for _ in range(si_repeats)])
         for key, value in (
             ("si", si[active].mean()),
             ("perm_null", perm[:, active].mean()),
@@ -129,21 +135,21 @@ def measure(
         ):
             rows[key].append(float(value))
         h = len(pos) // 2
-        m1, c1 = maps(a[:h], pos[:h])
-        m2, c2 = maps(a[h:], pos[h:])
+        m1, c1 = maps(a[:h], pos[:h], size)
+        m2, c2 = maps(a[h:], pos[h:], size)
         ok = (c1 > 0) & (c2 > 0)
         rows["splithalf"].append(
             mean([corr(m1[ok, u], m2[ok, u]) for u in active.nonzero().flatten().tolist()])
         )
-        acc, null = decoder(a, pos, rng, repeats)
+        acc, null = decoder(a, pos, rng, repeats, size)
         rows["dec"].append(acc)
         rows["dec_null"].append(null)
-        template, counts = maps(a, pos)
+        template, counts = maps(a, pos, size)
         templates.append((template, counts))
         sx = torch.tensor(
             [
                 int(sensory[pos == q].bincount().argmax()) if (pos == q).any() else 0
-                for q in range(64)
+                for q in range(num_nodes)
             ]
         )
         rows["rsa_grid"].append(corr(dm(template), grid))
@@ -160,7 +166,8 @@ def measure(
             rows["map_corr"].append(mean(uc))
             rows["rsa"].append(corr(dm(left), dm(right)))
             null_rsa.extend(
-                corr(dm(left), dm(right[torch.randperm(64, generator=rng)])) for _ in range(repeats)
+                corr(dm(left), dm(right[torch.randperm(num_nodes, generator=rng)]))
+                for _ in range(repeats)
             )
     finite_null = torch.tensor(
         [v for v in null_rsa if torch.isfinite(torch.tensor(v))], dtype=torch.float64
@@ -185,16 +192,16 @@ def measure(
 
 
 def extract(
-    model: TEM, *, worlds: int, steps: int, seed: int, burn: int = 300
+    model: TEM, *, worlds: int, steps: int, seed: int, burn: int = 300, size: int = 8
 ) -> dict[str, list[tuple[Tensor, Tensor, Tensor]]]:
-    """Extract aligned inferred g, prior g, and bound p from fresh 8x8 worlds."""
+    """Extract aligned inferred g, prior g, and bound p from fresh worlds."""
     if worlds < 2 or steps - burn <= 200 or burn < 0:
         raise ValueError("need two worlds and more than 200 post-burn samples")
     streams: dict[str, list[tuple[Tensor, Tensor, Tensor]]] = {k: [] for k in ("g", "g_gen", "p")}
     model.eval()
     with torch.no_grad():
         for w in range(worlds):
-            world = GraphWorld(8, sensory=model.config.sensory, seed=seed + w)
+            world = GraphWorld(size, sensory=model.config.sensory, seed=seed + w)
             walk = world.random_walk(steps, stay=False, valid_only=True)
             state = model.reset(1)
             acts: dict[str, list[Tensor]] = {k: [] for k in streams}
@@ -238,15 +245,37 @@ def main() -> None:
     parser.add_argument("--worlds", type=int, default=4)
     parser.add_argument("--steps", type=int, default=3000)
     parser.add_argument("--seed", type=int, default=1000000)
+    parser.add_argument("--size", type=int, default=8)
     args = parser.parse_args()
     torch.set_num_threads(1)
     if args.checkpoint:
         model, train_seed, updates = load_checkpoint(args.checkpoint)
     else:
         train_seed, updates = 0, 0
-        model = TEM(TEMConfig(widths=(5, 6, 7, 8)), generator=torch.Generator().manual_seed(0))
-    streams = extract(model, worlds=args.worlds, steps=args.steps, seed=args.seed)
-    results = {key: measure(value) for key, value in streams.items()}
+        model = TEM(
+            TEMConfig(widths=(5, 6, 7, 8) if args.size <= 8 else (args.size,)),
+            generator=torch.Generator().manual_seed(0),
+        )
+    start_time = monotonic()
+    streams = extract(model, worlds=args.worlds, steps=args.steps, seed=args.seed, size=args.size)
+    results = {key: measure(value, size=args.size) for key, value in streams.items()}
+    elapsed = monotonic() - start_time
+    print(f"Probe completed in {elapsed:.2f} seconds ({elapsed / 60:.2f} minutes)")
+
+    hex_scores = []
+    square_scores = []
+    if args.size >= 16:
+        for _key, value in streams.items():
+            for a, pos, _ in value:
+                template, _ = maps(a, pos, args.size)
+                for u in range(template.shape[1]):
+                    rate = template[:, u].reshape(args.size, args.size)
+                    if torch.isfinite(rate).all() and not rate.isnan().all():
+                        g = gridness(rate)
+                        if g.resolvable and math.isfinite(g.hexagonal):
+                            hex_scores.append(g.hexagonal)
+                            square_scores.append(g.square)
+
     diagnostics = {
         key: [
             {
@@ -271,7 +300,17 @@ def main() -> None:
         "worlds": args.worlds,
         "steps": args.steps,
         "burn": 300,
-        "gridness": {"resolvable": False, "reason": "8x8 is too small"},
+        "gridness": {
+            "resolvable": args.size >= 16,
+            "hex_gridness": float(torch.tensor(hex_scores, dtype=torch.float64).mean())
+            if hex_scores
+            else None,
+            "square_gridness": float(torch.tensor(square_scores, dtype=torch.float64).mean())
+            if square_scores
+            else None,
+            "reason": "Resolvable at 16x16" if args.size >= 16 else "8x8 is too small",
+        },
+        "probe_seconds": elapsed,
         "results": clean,
         "diagnostics": diagnostics,
         "config": vars(model.config),
