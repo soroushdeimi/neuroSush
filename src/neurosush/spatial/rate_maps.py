@@ -18,6 +18,14 @@ def rate_maps(
     Activity is (samples, units); each sample has equal duration. For spikes,
     divide by sample duration in seconds first to obtain Hz.
     """
+    activity, nodes = _prepare_samples(activity, nodes, shape)
+    counts = torch.bincount(nodes, minlength=math.prod(shape))
+    return _accumulate_maps(activity, nodes, shape, counts), counts.reshape(shape)
+
+
+def _prepare_samples(
+    activity: torch.Tensor, nodes: torch.Tensor, shape: tuple[int, ...]
+) -> tuple[torch.Tensor, torch.Tensor]:
     activity = activity.detach().to(device="cpu", dtype=torch.float64)
     nodes = nodes.detach().to(device="cpu", dtype=torch.long)
     size = math.prod(shape)
@@ -25,12 +33,17 @@ def rate_maps(
         raise ValueError("expected positive shape, activity (samples, units), nodes (samples,)")
     if not torch.isfinite(activity).all() or (nodes < 0).any() or (nodes >= size).any():
         raise ValueError("activity must be finite and nodes must lie within shape")
-    counts = torch.bincount(nodes, minlength=size)
-    total = torch.zeros(size, activity.shape[1], dtype=activity.dtype)
+    return activity, nodes
+
+
+def _accumulate_maps(
+    activity: torch.Tensor, nodes: torch.Tensor, shape: tuple[int, ...], counts: torch.Tensor
+) -> torch.Tensor:
+    total = torch.zeros(counts.numel(), activity.shape[1], dtype=activity.dtype)
     total.index_add_(0, nodes, activity)
     means = total / counts[:, None].clamp_min(1)
     means[counts == 0] = float("nan")
-    return means.T.reshape(activity.shape[1], *shape), counts.reshape(shape)
+    return means.T.reshape(activity.shape[1], *shape)
 
 
 def spatial_information(rate: torch.Tensor, occupancy: torch.Tensor) -> torch.Tensor:
@@ -82,15 +95,16 @@ def shuffled_position_control(
     """
     if repeats < 1 or len(shape) not in (1, 2):
         raise ValueError(f"need positive repeats and 1D/2D shape, got {repeats}, {shape}")
-    rate_maps(activity, nodes, shape)
-    labels = nodes.detach().cpu()
+    activity, labels = _prepare_samples(activity, nodes, shape)
+    counts = torch.bincount(labels, minlength=math.prod(shape))
+    occupancy = counts.reshape(shape)
     generator = torch.Generator().manual_seed(seed)
     hex_scores: list[list[float]] = []
     square_scores: list[list[float]] = []
     information: list[torch.Tensor] = []
     for _ in range(repeats):
         shuffled = labels[torch.randperm(len(labels), generator=generator)]
-        maps, occupancy = rate_maps(activity, shuffled, shape)
+        maps = _accumulate_maps(activity, shuffled, shape, counts)
         information.append(spatial_information(maps, occupancy))
         scores = [gridness(m, annulus=annulus) for m in maps] if len(shape) == 2 else []
         hex_scores.append([s.hexagonal for s in scores] if scores else [math.nan] * len(maps))
