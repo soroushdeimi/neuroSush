@@ -24,6 +24,6 @@ window.NeuroShapes.grid = function(count) {
     }
   }
   const shape=b.finish(count);
-  shape.labels=[['Imposed hexagonal firing fields',-.92,1.03],['Module 1',-.89,.79],['Module 2',.38,.92],['Module 3',.38,.08],['Spacing ratio 1.4 · trajectory and field hits',-.92,-.76],['Illustrative · not learned',-.92,-.91]];
+  shape.labels=[['Imposed hexagonal firing fields',-.92,1.03],['Module 1',-.89,.79],['Module 2',-.5,.92],['Module 3',-.5,.08],['Spacing ratio 1.4 · trajectory and field hits',-.92,-.76],['Illustration. This lattice is imposed by the scene code, not learned.',-.92,-.91]];
   return shape;
 };

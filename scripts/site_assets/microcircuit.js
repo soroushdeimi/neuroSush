@@ -33,6 +33,6 @@ window.NeuroShapes.microcircuit = function(count) {
   }
   b.line([-.88,-1.06,0],[.9,-1.06,0],.001,0,200);
   const shape=b.finish(count);
-  shape.labels=[['L1',-1.04,.92],['L2',-1.04,.68],['L3',-1.04,.4],['L4',-1.04,.12],['L5',-1.04,-.19],['L6',-1.04,-.5],['Generated spike raster',-.84,-1.14]];
+  shape.labels=[['L1',.84,.92],['L2',.84,.68],['L3',.84,.4],['L4',.84,.12],['L5',.84,-.19],['L6',.84,-.5],['Generated spike raster',.64,-1.14]];
   return shape;
 };

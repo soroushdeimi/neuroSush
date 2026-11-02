@@ -22,6 +22,6 @@ window.NeuroShapes.hierarchy = function(count) {
     for(let i=0;i<500;i++)b.add([x+(b.random()-.5)*.012,-.56+b.random()*1.3,.02],tag);
   }
   const shape=b.finish(count);
-  shape.labels=[['Higher area',.5,.94],['Intermediate',.52,.27],['V1',.6,-.44],['Predictions ↓',-.82,-.94],['Errors ↑',.24,-.94]];
+  shape.labels=[['Higher area',.5,.94],['Intermediate',.52,.27],['V1',.6,-.44],['Predictions ↓',.5,-.94],['Errors ↑',.24,-.94]];
   return shape;
 };

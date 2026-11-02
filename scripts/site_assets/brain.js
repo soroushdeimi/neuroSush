@@ -19,7 +19,7 @@ window.NeuroShapes.brain = function(count) {
   }
   // A paired parametric mesh with anatomical poles and warped gyral ridges.
   for(const side of [-1,1]){
-    for(let i=0;i<14500;i++){
+    for(let i=0;i<3500;i++){
       const u=b.random()*Math.PI*2,v=Math.acos(b.random()*2-1),sample=cortex(u,v,side);
       // Most visible samples belong to the near hemisphere in a lateral view.
       if(side<0&&sample.p[1]<.58&&b.random()>.18)continue;
@@ -75,6 +75,6 @@ window.NeuroShapes.brain = function(count) {
     b.add([-.08+.39*Math.cos(a),.03+.19*Math.sin(a),.04],0);
   }
   const shape=b.finish(count);
-  shape.labels=[['Cerebral cortex',-.89,1.02],['Hippocampal formation',-.92,-.5],['Cerebellum',.53,-.83],['Brainstem',-.09,-1.08]];
+  shape.labels=[['Cerebral cortex',.45,1.02],['Hippocampal formation',.48,-.2],['Cerebellum',.53,-.83],['Brainstem',.35,-1.08]];
   return shape;
 };

@@ -30,6 +30,6 @@ window.NeuroShapes.synapse = function(count) {
   for(let row=0;row<3;row++)for(let col=0;col<5;col++)outline([(col-2)*.18+(row%2)*.035,.23+row*.17],.055,.055);
   b.line([-.065,-.42,.3],[-.065,-.74,.3]);b.line([.065,-.42,.3],[.065,-.74,.3]);
   const shape=b.finish(count);
-  shape.labels=[['Presynaptic bouton',-.57,.97],['Vesicles',.35,.55],['Cleft',.52,.04],['Spine head',.5,-.27],['Dendrite',.52,-.9]];
+  shape.labels=[['Presynaptic bouton',-.57,.97],['Vesicles',-.35,.55],['Cleft',-.2,.04],['Spine head',-.3,-.27],['Dendrite',-.4,-.9]];
   return shape;
 };
