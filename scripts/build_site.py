@@ -20,6 +20,7 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         '<a href="' + prefix + 'gallery.html">Atlas</a>'
         '<a href="' + prefix + 'research.html">Research</a>'
         '<a href="' + prefix + 'results.html">Results</a>'
+        '<a href="' + prefix + 'studio-live.html">Studio Live</a>'
         '<a href="' + home + '#studio">Studio <span class="chip">preview</span></a>'
         '<a href="' + home + '#evidence">Benchmarks</a>'
         '<a href="' + repo + '/tree/main/docs">Docs ↗</a></nav>'
@@ -183,8 +184,9 @@ def main():
     (out_dir / "assets" / "index.html").unlink(missing_ok=True)
     (out_dir / "assets" / "results.html").unlink(missing_ok=True)
     (out_dir / "assets" / "research.html").unlink(missing_ok=True)
+    (out_dir / "assets" / "studio-live.html").unlink(missing_ok=True)
 
-    # 6. Index, Results & Research
+    # 6. Index, Results, Research & Studio Live
     index_content = build_index(
         [(p, PLATES[p].title_en if p in PLATES else p) for p in all_plates if p != "demo"],
         __version__,
@@ -214,6 +216,15 @@ def main():
         .replace("{{FOOTER}}", rs_footer)
     )
     (out_dir / "research.html").write_text(research_content, encoding="utf-8")
+
+    studio_live_template = (_ASSETS / "studio-live.html").read_text(encoding="utf-8")
+    sl_header, sl_footer = chrome("")
+    studio_live_content = (
+        studio_live_template.replace("{{VERSION}}", html.escape(__version__))
+        .replace("{{HEADER}}", sl_header)
+        .replace("{{FOOTER}}", sl_footer)
+    )
+    (out_dir / "studio-live.html").write_text(studio_live_content, encoding="utf-8")
 
 
 if __name__ == "__main__":
