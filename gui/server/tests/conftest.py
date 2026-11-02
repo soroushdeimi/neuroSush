@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import pytest
-from studio.config import Config
 import studio.config as config_module
 import studio.projects.db as projects_db
+from studio.config import Config
 
 
 @pytest.fixture(autouse=True)
