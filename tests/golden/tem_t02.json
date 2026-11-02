@@ -1,0 +1,239 @@
+{
+  "atol": 1e-12,
+  "memory": [
+    [
+      0.8,
+      -0.5,
+      0.1
+    ],
+    [
+      0.2,
+      0.3,
+      -0.4
+    ],
+    [
+      -0.1,
+      0.2,
+      0.6
+    ]
+  ],
+  "pattern": [
+    0.7,
+    -0.2,
+    0.5
+  ],
+  "predicted": [
+    -0.4,
+    0.3,
+    0.1
+  ],
+  "cue": [
+    0.5,
+    -0.6,
+    0.2
+  ],
+  "updates": [
+    {
+      "opts": {
+        "decay": 0.99,
+        "rate": 0.6,
+        "clip": 1.0
+      },
+      "expected": [
+        [
+          0.99,
+          -0.429,
+          0.495
+        ],
+        [
+          0.10800000000000003,
+          0.267,
+          -0.5760000000000001
+        ],
+        [
+          -0.027000000000000024,
+          0.222,
+          0.738
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "decay": 0.99,
+        "rate": 0.6,
+        "clip": 0.5
+      },
+      "expected": [
+        [
+          0.5,
+          -0.429,
+          0.495
+        ],
+        [
+          0.10800000000000003,
+          0.267,
+          -0.5
+        ],
+        [
+          -0.027000000000000024,
+          0.222,
+          0.5
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "decay": 0.99,
+        "rate": 0.6,
+        "clip": null
+      },
+      "expected": [
+        [
+          0.99,
+          -0.429,
+          0.495
+        ],
+        [
+          0.10800000000000003,
+          0.267,
+          -0.5760000000000001
+        ],
+        [
+          -0.027000000000000024,
+          0.222,
+          0.738
+        ]
+      ]
+    }
+  ],
+  "retrievals": [
+    {
+      "iterations": 0,
+      "opts": {
+        "retention": 0.7,
+        "negative_slope": 0.05,
+        "cap": 0.8,
+        "mask": null
+      },
+      "expected": [
+        0.5,
+        -0.6,
+        0.2
+      ]
+    },
+    {
+      "iterations": 0,
+      "opts": {
+        "retention": 0.7,
+        "negative_slope": 0.05,
+        "cap": 0.8,
+        "mask": [
+          true,
+          false,
+          true
+        ]
+      },
+      "expected": [
+        0.5,
+        -0.6,
+        0.2
+      ]
+    },
+    {
+      "iterations": 1,
+      "opts": {
+        "retention": 0.7,
+        "negative_slope": 0.05,
+        "cap": 0.8,
+        "mask": null
+      },
+      "expected": [
+        0.8,
+        -0.028999999999999998,
+        0.09
+      ]
+    },
+    {
+      "iterations": 1,
+      "opts": {
+        "retention": 0.7,
+        "negative_slope": 0.05,
+        "cap": 0.8,
+        "mask": [
+          true,
+          false,
+          true
+        ]
+      },
+      "expected": [
+        0.8,
+        -0.6,
+        0.09
+      ]
+    },
+    {
+      "iterations": 3,
+      "opts": {
+        "retention": 0.7,
+        "negative_slope": 0.05,
+        "cap": 0.8,
+        "mask": null
+      },
+      "expected": [
+        0.8,
+        0.2425200000000001,
+        -0.0010220000000000012
+      ]
+    },
+    {
+      "iterations": 3,
+      "opts": {
+        "retention": 0.7,
+        "negative_slope": 0.05,
+        "cap": 0.8,
+        "mask": [
+          true,
+          false,
+          true
+        ]
+      },
+      "expected": [
+        0.8,
+        -0.6,
+        -0.010269750000000001
+      ]
+    },
+    {
+      "iterations": 6,
+      "opts": {
+        "retention": 0.7,
+        "negative_slope": 0.05,
+        "cap": 0.8,
+        "mask": null
+      },
+      "expected": [
+        0.8,
+        0.7236162487800002,
+        0.03261644886500003
+      ]
+    },
+    {
+      "iterations": 6,
+      "opts": {
+        "retention": 0.7,
+        "negative_slope": 0.05,
+        "cap": 0.8,
+        "mask": [
+          true,
+          false,
+          true
+        ]
+      },
+      "expected": [
+        0.8,
+        -0.6,
+        -0.010695070330093752
+      ]
+    }
+  ]
+}
