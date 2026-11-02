@@ -67,3 +67,7 @@ this is explicitly schematic rather than a balanced-network measurement.
 Exactly 20 columns (1.953%, rounded to 2%) are active per illustrative A/B/C step.
 Predicted cells carry trace-coloured rings; three candidate sets narrow through
 schematic lateral voting. These are explanatory encodings, not an HTM execution.
+
+`hierarchy.js` draws three outlined cortical sheets, downward prediction particles
+and upward residual particles whose count/intensity falls over a four-second cycle.
+The error plot is an explanatory exponential, not a training result.

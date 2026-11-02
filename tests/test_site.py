@@ -171,3 +171,11 @@ def test_sparse_geometry_uses_1024_minicolumns(tmp_path, monkeypatch):
     assert "row<32" in module
     assert "col<32" in module
     assert "Lateral voting" in module
+
+
+def test_hierarchy_has_directional_flows(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    module = (tmp_path / "assets/hierarchy.js").read_text()
+    assert "Predictions ↓" in module
+    assert "Errors ↑" in module
+    assert "layer<3" in module

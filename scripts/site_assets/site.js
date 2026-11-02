@@ -26,6 +26,7 @@
  shapes[1]=window.NeuroShapes.synapse(count);
  shapes[2]=window.NeuroShapes.microcircuit(count);
  shapes[3]=window.NeuroShapes.sparse(count);
+ shapes[4]=window.NeuroShapes.hierarchy(count);
  function mobileFigures(ms=0){
   if(innerWidth>=1024)return;
   const time=ms/1000,step=Math.floor(time*.65)%3;
@@ -44,8 +45,9 @@
     if(tag>=100&&tag<1124&&(Math.round(tag-100)*37+step*211)%1024<20){ink='--spike';alpha=1;}
     if(tag>=1200&&tag<2224){if((Math.round(tag-1200)*37+((step+1)%3)*211)%1024<20){ink='--trace';alpha=1;}else continue;}
     if(tag>=3000){if(tag-3000>8-(time*.6%3)*3)alpha=.06;if(tag===3000)ink='--trace';}
-    if(tag===7||tag===8)ink='--spike';
+    if(tag===7||tag===8)ink='--spike';if(tag===9)ink='--trace';if(tag===10){ink='--exc';alpha=Math.exp(-(time%4));}
     let p=Array.from(data.slice(i*3,i*3+3));if(index===1&&tag===7)p[1]=.1-((time*1.4+i*.13)%1)*.16;
+    if(index===4&&tag===9)p[1]=.74-((time*.38+i*.017)%1.3);if(index===4&&tag===10)p[1]=-.56+((time*.38+i*.017)%1.3);
     if(index===0&&Math.abs(Math.abs(p[1]+.0864)-window.NeuroInstruments.spikeAge*25)<.04)ink='--spike';
     const [x,y]=project(p);context.globalAlpha=alpha;context.fillStyle=color(ink);context.fillRect(x,y,2,2);
    }
@@ -63,8 +65,9 @@
  void main(){float q=clamp(progress,0.,1.)*5.;int k=min(4,int(floor(q)));float u=q>=5.?1.:smoothstep(.05,.25,fract(q));q=float(k)+u;vec3 p=k==0?mix(a,b,u):k==1?mix(b,c,u):k==2?mix(c,d,u):k==3?mix(d,e,u):mix(e,f,u);
  float tag=k==0?mix(ta,tb,u):k==1?mix(tb,tc,u):k==2?mix(tc,td,u):k==3?mix(td,te,u):mix(te,tf,u);
  if(q>.8&&q<1.2&&lineMode<.5){if(abs(tag-6.)<.1){float weight=.5+.2*sin(time*.7);p.x*=.8+weight*.4;p.y=(p.y+.4)*(.8+weight*.4)-.4;}if(abs(tag-7.)<.1)p.y=.1-fract(time*1.4+float(gl_VertexID)*.13)*.16;}
- float turn=.18*sin(time*.12)+0.;mat2 rot=mat2(cos(turn),-sin(turn),sin(turn),cos(turn));p.xz=rot*p.xz;float perspective=3.8/(3.8+p.z);vec2 xy=p.xy*perspective*mix(1.,.55,mobile);xy.x=xy.x/aspect*.9+mix(.43*cos(q*3.14159),.02,mobile);xy.y=xy.y*.7-mix(0.,.44,mobile);gl_Position=vec4(xy,0.,1.);gl_PointSize=2.;glow=.25;float travel=abs(a.y+.0864);float wave=exp(-pow((travel-spikeAge*25.)*18.,2.));glow+=wave*(a.y<-.144?1.8:.55)*(1.-smoothstep(0.,.15,progress));if(q>1.8&&q<2.2){float wave=abs(p.x-sin(time*1.1));glow+=step(wave,.05)*.9;if(abs(tag-8.)<.1)glow=1.;}strength=1.;
+ if(q>3.8&&q<4.2&&lineMode<.5){if(abs(tag-9.)<.1){p.y=.74-mod(time*.38+float(gl_VertexID)*.017,1.3);tag=3.;}if(abs(tag-10.)<.1){p.y=-.56+mod(time*.38+float(gl_VertexID)*.017,1.3);tag=1.;}} float turn=.18*sin(time*.12)+0.;mat2 rot=mat2(cos(turn),-sin(turn),sin(turn),cos(turn));p.xz=rot*p.xz;float perspective=3.8/(3.8+p.z);vec2 xy=p.xy*perspective*mix(1.,.55,mobile);xy.x=xy.x/aspect*.9+mix(.43*cos(q*3.14159),.02,mobile);xy.y=xy.y*.7-mix(0.,.44,mobile);gl_Position=vec4(xy,0.,1.);gl_PointSize=2.;glow=.25;float travel=abs(a.y+.0864);float wave=exp(-pow((travel-spikeAge*25.)*18.,2.));glow+=wave*(a.y<-.144?1.8:.55)*(1.-smoothstep(0.,.15,progress));if(q>1.8&&q<2.2){float wave=abs(p.x-sin(time*1.1));glow+=step(wave,.05)*.9;if(abs(tag-8.)<.1)glow=1.;}strength=abs(tag-1.)<.1&&q>3.8&&q<4.2?exp(-mod(time,4.)):1.;
  if(q>2.8&&q<3.2&&lineMode<.5){float stepIndex=mod(floor(time*.65),3.);if(tag>=100.&&tag<1124.){float id=tag-100.;if(mod(id*37.+stepIndex*211.,1024.)<20.)glow=1.;}if(tag>=1200.&&tag<2224.){float id=tag-1200.;if(mod(id*37.+mod(stepIndex+1.,3.)*211.,1024.)<20.)tag=3.;else strength=.1;}if(tag>=3000.){float candidate=tag-3000.;strength=candidate<=8.-mod(time*.6,3.)*3.?1.:.08;tag=candidate==0.?3.:0.;}}
+
  region=tag;}`;
  const fragment=`#version 300 es
  precision highp float;uniform float light,lineMode;uniform vec3 inkColor,spikeColor,excColor,inhColor,traceColor;uniform float time;in float glow;in float region;in float strength;out vec4 color;
