@@ -8,12 +8,41 @@ from neurosush.viz.catalog import PLATES
 from neurosush.viz.export import available_plates, render_plate
 
 
+def favicon_links(prefix: str = "") -> str:
+    """Use browser colour preference independently of the page theme."""
+    links = []
+    for theme in ("light", "dark"):
+        base = f"{prefix}assets/logo/{theme}/"
+        media = f"(prefers-color-scheme: {theme})"
+        links.append(f'<link rel="icon" href="{base}favicon.ico" sizes="any" media="{media}">')
+        for size in (32, 16):
+            links.append(
+                f'<link rel="icon" href="{base}mark-{size}.png" type="image/png" '
+                f'sizes="{size}x{size}" media="{media}">'
+            )
+        links.append(
+            f'<link rel="apple-touch-icon" href="{base}mark-180.png" '
+            f'sizes="180x180" media="{media}">'
+        )
+    return "".join(links)
+
+
+def brand_mark(prefix: str = "") -> str:
+    return "".join(
+        f'<img class="brand-mark brand-mark-{theme}" '
+        f'src="{prefix}assets/logo/{theme}/transparent-512.png" '
+        'width="28" height="28" alt="">'
+        for theme in ("dark", "light")
+    )
+
+
 def chrome(prefix: str = "") -> tuple[str, str]:
     repo = "https://github.com/soroushdeimi/neuroSush"
     home = prefix + "index.html"
+    brand = brand_mark(prefix) + "<span>neuroSush</span>"
     header = (
         '<a class="skip" href="#main">Skip to content</a>'
-        '<header class="site-header"><a class="brand" href="' + home + '">neuroSush</a>'
+        '<header class="site-header"><a class="brand" href="' + home + '">' + brand + "</a>"
         '<a class="version" href="' + repo + '/blob/main/CHANGELOG.md">v' + __version__ + "</a>"
         '<nav id="main-nav" aria-label="Main">'
         '<a href="' + home + '#workflow">Library</a>'
@@ -47,7 +76,9 @@ def chrome(prefix: str = "") -> tuple[str, str]:
     footer = (
         '<footer class="site-footer"><div class="footer-grid"><div><a class="brand" href="'
         + home
-        + '">neuroSush</a>'
+        + '">'
+        + brand
+        + "</a>"
         "<p>Spiking networks, HTM / Thousand Brains and predictive coding on PyTo"
         "rch.</p><small>MIT licence</small></div>"
         '<nav aria-label="Library"><strong>Library</strong><a href="'
@@ -127,7 +158,8 @@ def build_index(plates: list[tuple[str, str]], version: str) -> str:
         if pid in featured
     )
     return (
-        template.replace("{{VERSION}}", html.escape(version))
+        template.replace("{{ICONS}}", favicon_links())
+        .replace("{{VERSION}}", html.escape(version))
         .replace("{{HEADER}}", chrome()[0])
         .replace("{{FOOTER}}", chrome()[1])
         .replace("{{PREVIEWS}}", previews)
@@ -157,8 +189,7 @@ def main():
         content = (
             content.replace(
                 "</head>",
-                '<link rel="icon" href="../assets/mark.svg">'
-                '<link rel="stylesheet" href="../assets/site.css">'
+                favicon_links("../") + '<link rel="stylesheet" href="../assets/site.css">'
                 '<script defer src="../assets/site.js"></script></head>',
             )
             .replace("<body>", '<body class="atlas-page">' + header + '<main id="main">')
@@ -169,14 +200,19 @@ def main():
     # 2. Demo copy
     demo_dir = out_dir / "demos" / "the-neuron"
     demo_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy("demos/the-neuron/index.html", demo_dir / "index.html")
+    demo = Path("demos/the-neuron/index.html").read_text(encoding="utf-8")
+    (demo_dir / "index.html").write_text(
+        demo.replace("</head>", favicon_links("../../") + "</head>"), encoding="utf-8"
+    )
 
     # 3. .nojekyll
     (out_dir / ".nojekyll").touch()
 
     # 4. 404.html
     (out_dir / "404.html").write_text(
-        '<!DOCTYPE html><html data-theme="dark"><body><h1>404</h1>'
+        '<!DOCTYPE html><html data-theme="dark"><head>'
+        + favicon_links()
+        + "</head><body><h1>404</h1>"
         '<a href="index.html">Back to home</a></body></html>',
         encoding="utf-8",
     )
@@ -216,7 +252,8 @@ def main():
     results_template = (_ASSETS / "results.html").read_text(encoding="utf-8")
     r_header, r_footer = chrome("")
     results_content = (
-        results_template.replace("{{VERSION}}", html.escape(__version__))
+        results_template.replace("{{ICONS}}", favicon_links())
+        .replace("{{VERSION}}", html.escape(__version__))
         .replace("{{HEADER}}", r_header)
         .replace("{{FOOTER}}", r_footer)
     )
@@ -225,7 +262,8 @@ def main():
     research_template = (_ASSETS / "research.html").read_text(encoding="utf-8")
     rs_header, rs_footer = chrome("")
     research_content = (
-        research_template.replace("{{VERSION}}", html.escape(__version__))
+        research_template.replace("{{ICONS}}", favicon_links())
+        .replace("{{VERSION}}", html.escape(__version__))
         .replace("{{HEADER}}", rs_header)
         .replace("{{FOOTER}}", rs_footer)
     )
@@ -234,7 +272,8 @@ def main():
     studio_live_template = (_ASSETS / "studio-live.html").read_text(encoding="utf-8")
     sl_header, sl_footer = chrome("")
     studio_live_content = (
-        studio_live_template.replace("{{VERSION}}", html.escape(__version__))
+        studio_live_template.replace("{{ICONS}}", favicon_links())
+        .replace("{{VERSION}}", html.escape(__version__))
         .replace("{{HEADER}}", sl_header)
         .replace("{{FOOTER}}", sl_footer)
     )
@@ -242,7 +281,8 @@ def main():
     tem_template = (_ASSETS / "tem.html").read_text(encoding="utf-8")
     t_header, t_footer = chrome("")
     tem_content = (
-        tem_template.replace("{{VERSION}}", html.escape(__version__))
+        tem_template.replace("{{ICONS}}", favicon_links())
+        .replace("{{VERSION}}", html.escape(__version__))
         .replace("{{HEADER}}", t_header)
         .replace("{{FOOTER}}", t_footer)
     )
