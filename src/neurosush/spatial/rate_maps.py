@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Any
 
 import torch
 
-from neurosush.spatial.gridness import gridness
+from neurosush.spatial.gridness import gridness, spatial_autocorrelogram
 
 
 def rate_maps(
@@ -114,3 +115,77 @@ def shuffled_position_control(
         torch.tensor(square_scores, dtype=torch.float64),
         torch.stack(information),
     )
+
+
+def _to_json_ready(obj: Any, decimals: int | None = 3) -> Any:
+    """Recursively convert tensors, NaNs, and floats into JSON-safe types."""
+    if isinstance(obj, torch.Tensor):
+        obj = obj.detach().cpu().tolist()
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return round(obj, decimals) if decimals is not None else obj
+    if isinstance(obj, list):
+        return [_to_json_ready(item, decimals=decimals) for item in obj]
+    if isinstance(obj, tuple):
+        return [_to_json_ready(item, decimals=decimals) for item in obj]
+    if isinstance(obj, dict):
+        return {str(k): _to_json_ready(v, decimals=decimals) for k, v in obj.items()}
+    if isinstance(obj, (int, str, bool)) or obj is None:
+        return obj
+    return obj
+
+
+def rate_map_export(
+    activity: torch.Tensor,
+    nodes: torch.Tensor,
+    shape: tuple[int, ...],
+    *,
+    annulus: tuple[float, float] | None = None,
+    decimals: int | None = 3,
+) -> dict[str, Any]:
+    """Turn per-node activity into JSON-ready spatial maps and autocorrelograms."""
+    activity, nodes = _prepare_samples(activity, nodes, shape)
+    maps, counts = rate_maps(activity, nodes, shape)
+    occupancy = _to_json_ready(counts.tolist(), decimals=decimals)
+
+    units_export = []
+    si = spatial_information(maps, counts.double())
+    for u in range(activity.shape[1]):
+        rate = maps[u]
+        rate_list = _to_json_ready(rate.tolist(), decimals=decimals)
+
+        sac_list = None
+        grid_dict = None
+        if len(shape) == 2 and not rate.isnan().all():
+            try:
+                sac = spatial_autocorrelogram(rate)
+                sac_list = _to_json_ready(sac.tolist(), decimals=decimals)
+                g = gridness(rate, annulus=annulus)
+                grid_dict = {
+                    "hexagonal": _to_json_ready(g.hexagonal, decimals=decimals),
+                    "square": _to_json_ready(g.square, decimals=decimals),
+                    "resolvable": g.resolvable,
+                    "annulus": _to_json_ready(list(g.annulus), decimals=decimals),
+                    "correlations": _to_json_ready(g.correlations, decimals=decimals),
+                }
+            except Exception:
+                pass
+
+        units_export.append(
+            {
+                "unit": u,
+                "rate_map": rate_list,
+                "spatial_information": _to_json_ready(si[u].item(), decimals=decimals)
+                if u < len(si)
+                else None,
+                "autocorrelogram": sac_list,
+                "gridness": grid_dict,
+            }
+        )
+
+    return {
+        "shape": list(shape),
+        "occupancy": occupancy,
+        "units": units_export,
+    }

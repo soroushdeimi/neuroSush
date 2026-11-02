@@ -46,7 +46,7 @@ class GraphWorld:
         diagnostic_small: bool = False,
     ) -> None:
         if (track and width != 40) or (
-            not track and not (2 if diagnostic_small else 5) <= width <= 8
+            not track and not (2 if diagnostic_small else 5) <= width <= 16
         ):
             raise ValueError(
                 f"invalid width={width}, track={track}, diagnostic_small={diagnostic_small}"

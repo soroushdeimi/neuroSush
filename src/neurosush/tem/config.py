@@ -87,8 +87,8 @@ class TEMConfig:
                 raise ValueError(f"{name} must contain positive integers, got {values}")
         if self.transition == "rotation" and any(n % 2 for n in self.modules):
             raise ValueError(f"rotation modules must be even, got {self.modules}")
-        if any(width < 2 or width > 8 for width in self.widths):
-            raise ValueError(f"widths must be in [2, 8], got {self.widths}")
+        if any(width < 2 or width > 16 for width in self.widths):
+            raise ValueError(f"widths must be in [2, 16], got {self.widths}")
         if self.compressed < 2 or comb(self.compressed, 2) < self.sensory:
             raise ValueError(
                 f"compressed={self.compressed} cannot encode "

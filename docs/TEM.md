@@ -136,3 +136,18 @@ Completed smoke measurements are in `experiments/results/tem-spatial-random.{jso
 The completed 500-update v2 seed-1 pipeline check is in
 `experiments/results/tem-spatial-500.{json,md}` (three worlds, 1800 transitions).
 Full retraining spatial results are pending.
+
+## Retraining and 16x16 Commands
+
+Exact commands for retraining v2 seeds 1 and 2 and running a 16x16 world model (with checkpoints every 500 updates):
+
+```bash
+# Retrain v2 seed 1 (16000 updates, checkpoints every 500)
+nohup PYTHONPATH=src python experiments/tem_overnight_v1.py --variant v2 --seed 1 --updates 16000 --out experiments/results/overnight/v2-s1.json --checkpoint-every 500 > v2-s1.log 2>&1 &
+
+# Retrain v2 seed 2 (16000 updates, checkpoints every 500)
+nohup PYTHONPATH=src python experiments/tem_overnight_v1.py --variant v2 --seed 2 --updates 16000 --out experiments/results/overnight/v2-s2.json --checkpoint-every 500 > v2-s2.log 2>&1 &
+
+# 16x16 world run (seed 0, 16000 updates, checkpoints every 500)
+nohup PYTHONPATH=src python experiments/tem_overnight_v1.py --variant v2 --seed 0 --size 16 --updates 16000 --out experiments/results/overnight/v2-s16-s0.json --checkpoint-every 500 > v2-s16-s0.log 2>&1 &
+```

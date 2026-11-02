@@ -14,6 +14,7 @@ from neurosush.spatial.phase import (
 )
 from neurosush.spatial.rate_maps import (
     ShuffleNull,
+    rate_map_export,
     rate_maps,
     shuffled_position_control,
     spatial_information,
@@ -33,6 +34,7 @@ __all__ = [
     "gridness",
     "make_worlds",
     "phase_slope_class",
+    "rate_map_export",
     "rate_maps",
     "shuffled_position_control",
     "spatial_autocorrelogram",

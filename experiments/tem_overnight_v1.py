@@ -41,13 +41,15 @@ def main() -> None:
     parser.add_argument("--updates", type=int, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--checkpoint-every", type=int, default=500)
+    parser.add_argument("--size", type=int, default=8)
     args = parser.parse_args()
     if args.updates < 1:
         parser.error("--updates must be positive")
     torch.set_num_threads(1)
     parity = args.variant != "v0"
+    widths = (5, 6, 7, 8) if args.size == 8 else (args.size,)
     config = TEMConfig(
-        widths=(5, 6, 7, 8),
+        widths=widths,
         inference_memory_loss=parity,
         calibrated_reductions=parity,
         bounded_attractor_activation=parity,

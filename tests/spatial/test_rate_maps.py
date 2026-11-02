@@ -5,7 +5,12 @@ from __future__ import annotations
 import pytest
 import torch
 
-from neurosush.spatial import rate_maps, shuffled_position_control, spatial_information
+from neurosush.spatial import (
+    rate_map_export,
+    rate_maps,
+    shuffled_position_control,
+    spatial_information,
+)
 
 
 class TestRateMaps:
@@ -45,3 +50,14 @@ class TestRateMaps:
     def test_metric_validation(self):
         with pytest.raises(ValueError, match="nonnegative"):
             spatial_information(torch.tensor([[-1.0, 1.0]]), torch.ones(2))
+
+    def test_rate_map_export(self):
+        activity = torch.tensor([[1.0, 0.0], [2.0, 1.0], [0.0, 3.0]])
+        nodes = torch.tensor([0, 1, 0])
+        exported = rate_map_export(activity, nodes, (2, 2))
+        assert exported["shape"] == [2, 2]
+        assert "occupancy" in exported
+        assert len(exported["units"]) == 2
+        assert "rate_map" in exported["units"][0]
+        assert "autocorrelogram" in exported["units"][0]
+        assert "gridness" in exported["units"][0]
