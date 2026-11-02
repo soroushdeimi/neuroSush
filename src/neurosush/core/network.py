@@ -104,6 +104,7 @@ class Network:
             self.generator.seed()
         else:
             self.generator.manual_seed(seed)
+        self.seed = seed
         self.groups: list[NeuronGroup] = []
         self.synapses: list[SynapseGroup] = []
         self.iteration = 0
