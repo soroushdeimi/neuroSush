@@ -96,4 +96,21 @@ def test_landing_links_resolve_and_template_is_complete(tmp_path, monkeypatch):
             assert (tmp_path / href).is_file(), href
     assert 'data-theme="dark"' in page
     assert "TEM planned" in page
-    assert "synthetic activity" in page
+    assert "ILLUSTRATIVE ART" in page
+
+
+def test_shared_shell_and_scroll_story(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    index = (tmp_path / "index.html").read_text()
+    assert index.count('<section class="chapter') == 6
+    assert 'aria-hidden="true"' in index
+    for rel in ("index.html", "gallery.html", "plates/N01.html", "plates/Y01.html"):
+        page = (tmp_path / rel).read_text()
+        assert 'class="site-header"' in page
+        assert 'class="site-footer"' in page
+        assert "assets/site.css" in page
+        assert "assets/site.js" in page
+    script = (tmp_path / "assets/site.js").read_text()
+    assert "webgl2" in script
+    assert "visibilitychange" in script
+    assert "prefers-reduced-motion" in script

@@ -7,69 +7,45 @@ from neurosush import __version__
 from neurosush.viz.catalog import PLATES
 from neurosush.viz.export import available_plates, render_plate
 
-_CSS = """
-:root{
---bg:#fff;
---fg:#1b1f24;
---muted:#57606a;
---card:#f6f8fa;
---line:#d0d7de;
---accent:#0b6bcb}
-@media (prefers-color-scheme:dark){:root{
---bg:#0d1117;
---fg:#e6edf3;
---muted:#9da7b3;
---card:#161b22;
---line:#30363d;
---accent:#58a6ff}
-}
-*{box-sizing:border-box}
-body{margin:0;padding:24px 16px;background:var(--bg);color:var(--fg);
-font:16px/1.5 system-ui,sans-serif}
-main{max-width:960px;margin:0 auto}
-h1{margin:0 0 4px}
-p.lead{color:var(--muted);margin:0 0 24px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:0;list-style:none}
-.grid a{display:block;height:100%;padding:12px;background:var(--card);
-border:1px solid var(--line);border-radius:8px;color:var(--fg);text-decoration:none}
-.grid a:hover,.grid a:focus-visible{border-color:var(--accent)}
-.id{font:600 13px ui-monospace,monospace;color:var(--accent)}
-h2{margin-top:32px}
-"""
+
+def chrome(prefix: str = "") -> tuple[str, str]:
+    header = (
+        '<a class="skip" href="#main">Skip to content</a>'
+        '<header class="site-header"><a class="brand" href="'
+        + prefix
+        + 'index.html">neuroSush<small>PYTORCH / ATLAS</small></a>'
+        '<nav aria-label="Main"><a href="' + prefix + 'gallery.html">Atlas</a>'
+        '<a class="repo" href="https://github.com/soroushdeimi/neuroSush">GitHub ↗</a>'
+        '<button id="theme" aria-label="Switch to light theme">◐ Theme</button></nav></header>'
+    )
+    footer = (
+        '<footer class="site-footer"><span>neuroSush / Brain-inspired. Tensor-native. / MIT</span>'
+        '<nav aria-label="Footer"><a href="'
+        + prefix
+        + 'index.html">Home</a><a href="'
+        + prefix
+        + 'gallery.html">Atlas</a>'
+        '<a href="https://github.com/soroushdeimi/neuroSush/tree/main/docs">Docs ↗</a>'
+        "</nav></footer>"
+    )
+    return header, footer
 
 
 def build_gallery(plates: list[tuple[str, str]], version: str) -> str:
-    """Return the gallery page; ``plates`` is a list of (id, title) pairs."""
-    cards = "\n".join(
-        f'<li><a href="plates/{html.escape(pid)}.html"><span class="id">{html.escape(pid)}</span>'
-        f"<br>{html.escape(title)}</a></li>"
-        for pid, title in plates
+    page = build_index(plates, version)
+    head = page[: page.index("<body>")]
+    header, footer = chrome()
+    catalog = page[page.index('<section class="catalog"') : page.index("</main>")]
+    return (
+        head.replace("neuroSush — Give your ideas a nervous system.", "neuroSush Atlas")
+        + '<body class="atlas-page">'
+        + header
+        + '<main id="main">'
+        + catalog.replace("A question worth running.", "The living Atlas.")
+        + "</main>"
+        + footer
+        + "</body></html>"
     )
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>neuroSush Atlas</title>
-<style>{_CSS}</style>
-</head>
-<body>
-<main>
-<p><a href="index.html">← neuroSush home</a></p>
-<h1>neuroSush Atlas</h1>
-<p class="lead">Animated plates for spiking neurons, built from the neuroSush library
-(version {html.escape(version)}).</p>
-<h2>Talk demo</h2>
-<ul class="grid"><li><a href="demos/the-neuron/index.html"><span class="id">LIVE</span><br>
-The neuron: bucket model and Hodgkin-Huxley gates</a></li></ul>
-<h2>Plates</h2>
-<ul class="grid">
-{cards}
-</ul>
-</main>
-</body>
-</html>
-"""
 
 
 _ASSETS = Path(__file__).resolve().parent / "site_assets"
@@ -94,6 +70,8 @@ def build_index(plates: list[tuple[str, str]], version: str) -> str:
     )
     return (
         template.replace("{{VERSION}}", html.escape(version))
+        .replace("{{HEADER}}", chrome()[0])
+        .replace("{{FOOTER}}", chrome()[1])
         .replace("{{PREVIEWS}}", previews)
         .replace("{{PLATES}}", cards)
     )
@@ -118,6 +96,17 @@ def main():
             continue
 
         content = render_plate(plate_id, None, source="live")
+        header, footer = chrome("../")
+        content = (
+            content.replace(
+                "</head>",
+                '<link rel="icon" href="../assets/mark.svg">'
+                '<link rel="stylesheet" href="../assets/site.css">'
+                '<script defer src="../assets/site.js"></script></head>',
+            )
+            .replace("<body>", '<body class="atlas-page">' + header + '<main id="main">')
+            .replace("</body>", "</main>" + footer + "</body>")
+        )
         (plates_dir / f"{plate_id}.html").write_text(content, encoding="utf-8")
 
     # 2. Demo copy
