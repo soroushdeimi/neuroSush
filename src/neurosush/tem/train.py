@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from pathlib import Path
 from time import monotonic
 from typing import TypedDict, cast
 
@@ -136,6 +137,7 @@ def train(
     grad_every: int = 100,
     checkpoint_path: str | None = None,
     checkpoint_every: int = 500,
+    snapshots: list[int] | str | None = None,
     on_update: Callable[[list[dict[str, float]]], None] | None = None,
 ) -> TrainResult:
     """Fit slow weights with Adam and truncated BPTT through fast memory.
@@ -155,6 +157,14 @@ def train(
         raise ValueError(f"grad_every must be positive, got {grad_every}")
     if steps < 1 or log_every < 0:
         raise ValueError(f"need steps >= 1 and log_every >= 0, got {steps}, {log_every}")
+    snapshot_set: set[int] = set()
+    if snapshots:
+        if isinstance(snapshots, str):
+            raw_snaps = [int(u.strip()) for u in snapshots.split(",") if u.strip()]
+        else:
+            raw_snaps = list(snapshots)
+        target_updates = steps // config.bptt
+        snapshot_set = {u for u in raw_snaps if u <= target_updates}
     start = monotonic()
     generator = torch.Generator(device=device).manual_seed(seed)
     model = TEM(config, generator=generator).to(device)
@@ -256,8 +266,13 @@ def train(
             record.update({name: transferred[name] for name in gradients})
             record.update({name: transferred[name] for name in term_norms})
             history.append(record)
-            if checkpoint_path and len(history) % checkpoint_every == 0:
-                save_checkpoint(checkpoint_path, model, seed=seed, updates=len(history))
+            current_updates = len(history)
+            if checkpoint_path and current_updates % checkpoint_every == 0:
+                save_checkpoint(checkpoint_path, model, seed=seed, updates=current_updates)
+            if checkpoint_path and snapshot_set and current_updates in snapshot_set:
+                p = Path(checkpoint_path)
+                snap_path = p.parent / f"{p.stem}-u{current_updates}{p.suffix}"
+                save_checkpoint(snap_path, model, seed=seed, updates=current_updates)
             if on_update is not None:
                 on_update(history)
             if log_every and len(history) % log_every == 0:
@@ -266,6 +281,10 @@ def train(
         walk_number += 1
     if checkpoint_path:
         save_checkpoint(checkpoint_path, model, seed=seed, updates=len(history))
+        if snapshot_set and len(history) not in snapshot_set:
+            p = Path(checkpoint_path)
+            snap_path = p.parent / f"{p.stem}-u{len(history)}{p.suffix}"
+            save_checkpoint(snap_path, model, seed=seed, updates=len(history))
     return TrainResult(model, history, config, monotonic() - start)
 
 

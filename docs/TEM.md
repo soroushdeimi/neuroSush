@@ -141,6 +141,10 @@ Full retraining spatial results are pending.
 
 Exact commands for retraining v2 seeds 1 and 2 and running a 16x16 world model (with checkpoints every 500 updates):
 
+- `--snapshots 500,2000,4000,8000,16000` controls trajectory snapshot intervals saved as `<variant>-s<seed>-u<update>.pt`.
+- Snapshots beyond the requested `--updates` count are automatically skipped.
+- The final update is also saved as a snapshot if it differs from the milestone checkpoints.
+
 ```bash
 # Retrain v2 seed 1 (16000 updates, checkpoints every 500)
 nohup PYTHONPATH=src python experiments/tem_overnight_v1.py --variant v2 --seed 1 --updates 16000 --out experiments/results/overnight/v2-s1.json --checkpoint-every 500 > v2-s1.log 2>&1 &

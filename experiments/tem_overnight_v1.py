@@ -42,6 +42,12 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--checkpoint-every", type=int, default=500)
     parser.add_argument("--size", type=int, default=8)
+    parser.add_argument(
+        "--snapshots",
+        type=str,
+        default="500,2000,4000,8000,16000",
+        help="Comma-separated list of update numbers for snapshot checkpoints",
+    )
     args = parser.parse_args()
     if args.updates < 1:
         parser.error("--updates must be positive")
@@ -82,6 +88,7 @@ def main() -> None:
             Path("experiments/results/checkpoints") / f"{args.variant}-s{args.seed}.pt"
         ),
         checkpoint_every=args.checkpoint_every,
+        snapshots=args.snapshots,
     )
     payload.update(
         history=result.history,
