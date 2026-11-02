@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Grid cells and TEM: research background, literature review, and neuroSush implementation.">
+<title>neuroSush — Grid cells and TEM: what we studied and what we built</title>
+<link rel="icon" href="assets/mark.svg">
+<link rel="stylesheet" href="assets/site.css">
+<script defer src="assets/site.js"></script>
+</head>
+<body class="atlas-page">
+{{HEADER}}
+<main id="main">
+<div class="catalog" style="max-width: 1000px; margin: auto; padding-top: 40px;">
+<p class="eyebrow">RESEARCH STORY / LITERATURE & REPRODUCTION</p>
+<h1>Grid cells and TEM: what we studied and what we built</h1>
+<p style="font-size: 1.25rem; font-weight: 500; color: var(--ink); margin-bottom: 40px;">
+An exhaustive look at entorhinal spatial representations, Whittington et al. 2020 (TEM) and Kawahara & Fujisawa 2025 (Spiking TEM), our rate-coded and spiking re-implementations, stability fixes, and spatial evaluation toolkit.
+</p>
+<p style="font-size: 0.85rem; color: var(--ink-muted); margin-bottom: 40px;">
+Last updated: 2026-11-02. Grounded in <a href="results.html">Results report ↗</a>, <a href="https://github.com/soroushdeimi/neuroSush/blob/main/docs/TEM.md" target="_blank">docs/TEM.md ↗</a>, and codebase modules.
+</p>
+
+<section id="grid-cells" style="margin-bottom: 50px;">
+<p class="eyebrow">01 / BACKGROUND</p>
+<h2>Grid Cells in One Screen</h2>
+<p>
+Grid cells are specialized neurons located in the medial entorhinal cortex (MEC) that fire at multiple locations forming a periodic, hexagonal lattice tiling the environment. Discovered in rodents and humans, they provide a metric, internal coordinate system for physical and abstract space.
+</p>
+<p>
+Why they matter: they suggest that the brain computes spatial relationships and relational structures using low-dimensional manifold representations. The core question we study is whether neural network models trained to learn relational structure shared across diverse environments organically develop grid-like representations or whether spatial periodicity requires structural constraints.
+</p>
+</section>
+
+<section id="papers" style="margin-bottom: 50px;">
+<p class="eyebrow">02 / LITERATURE REVIEW</p>
+<h2>The Two Papers We Studied</h2>
+
+<div style="background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 24px;">
+  <h3 style="margin-top: 0; font-size: 18px;">Whittington et al. 2020 (Cell 183) — Tolman-Eichenbaum Machine (TEM)</h3>
+  <p><strong>Question:</strong> How does the hippocampal-entorhinal system maintain and generalize cognitive maps across environments?</p>
+  <p><strong>Architecture:</strong> Factorisation of relational structure <code>g</code> (where am I on the graph) and sensory identity <code>x</code> (what do I see), combined into conjunctive representation <code>p = g ⊙ x</code>, stored in a fast Hebbian memory <code>M</code> reset per world, while slow transition weights (graph dynamics) are learned across worlds via backpropagation.</p>
+  <p><strong>What they report:</strong> Generalisation of predictive inference to novel routes in new environments; emergence of grid-like rate maps and place-like fields in factorised units.</p>
+  <p><strong>Limits:</strong> Relies on low-rank graph approximations and idealized training schedules; evaluated primarily on abstract graph worlds.</p>
+</div>
+
+<div style="background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px;">
+  <h3 style="margin-top: 0; font-size: 18px;">Kawahara & Fujisawa 2025 (bioRxiv) — Spiking TEM</h3>
+  <p><strong>Question:</strong> Can spiking neural networks implement TEM principles in biologically plausible dynamics?</p>
+  <p><strong>Architecture:</strong> TensorFlow 2 spiking network implementation featuring spiking neuron models and a theta oscillation term in <code>SpikingDense</code>.</p>
+  <p><strong>What they report:</strong> Implementation of spiking TEM dynamics and spatial representation analyses.</p>
+  <p><strong>Limits:</strong> In our public code audit (one run, 40k iterations, 8x8 worlds), prediction loss remained near chance (2.1-2.5); spatial probes show strong within-world position tuning (CA1 spatial info 2.614) but no evidence of shared cross-world structure (map corr near zero, RSA near zero), population distances follow sensory identity rather than grid distance, gridness is unresolvable at 8x8, and no phase precession machinery is present.</p>
+</div>
+</section>
