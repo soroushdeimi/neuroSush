@@ -42,7 +42,8 @@ class LandingParser(HTMLParser):
             self.stack.pop()
 
     def handle_endtag(self, tag):
-        assert self.stack and self.stack[-1] == tag, f"Mismatched closing tag: {tag}"
+        assert self.stack, f"Unexpected closing tag: {tag}"
+        assert self.stack[-1] == tag, f"Mismatched closing tag: {tag}"
         self.stack.pop()
 
 
