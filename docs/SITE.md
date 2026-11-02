@@ -35,5 +35,5 @@ This measures browser frame callbacks, not GPU execution time.
 
 The scene is illustrative. Its LIF readout computes the documented Euler update,
 threshold and reset locally. Atlas numerical code is preserved. Spatial structure is
-not described as learned emergence; TEM is planned for this published snapshot.
+not described as learned emergence; T01 teaches TEM binding with imposed position codes and parity-tested Hebbian equations.
 Benchmark figures are quoted from docs/BENCHMARKS.md with hardware and workload.
