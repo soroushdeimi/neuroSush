@@ -1,0 +1,20 @@
+{
+  "inputs": {},
+  "layers": {
+    "L4": {
+      "groups": {
+        "exc": {
+          "behaviors": [],
+          "inhibitory": false,
+          "shape": 2,
+          "tags": []
+        }
+      },
+      "inputs": null,
+      "outputs": null,
+      "synapses": []
+    }
+  },
+  "outputs": {},
+  "synapses": []
+}
