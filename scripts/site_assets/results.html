@@ -40,8 +40,8 @@ The ecosystem includes the PyTorch library, Atlas plate T01 (teaching visualizat
 <strong>Metric</strong> (ours, not the paper's): accuracy of predicting the observation on the first visit to an already-seen node through a <strong>new directed edge</strong>, in 4x4 and 8x8 graph worlds. 3 training seeds, 16,000 updates each. Best baseline (sensory-only / frequency) is <strong>0.1027</strong>. Source: <code>experiments/tem_overnight_report.py</code> over <code>experiments/results/overnight/*.json</code>.
 </p>
 
-<div style="overflow-x: auto; margin: 20px 0;">
-<table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+<div tabindex="0" aria-label="Model variants table" style="overflow-x: auto; max-width: 100%; width: 100%; margin: 20px 0;">
+<table style="width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; font-size: 13px;">
   <thead>
     <tr style="border-bottom: 2px solid var(--border);">
       <th style="padding: 10px;">Variant</th>
@@ -120,8 +120,8 @@ These are implementation choices tested together, not four independently proven 
 Their TF2 code run in an isolated venv: 40k iterations, one seed, 8x8 worlds. Prediction loss stayed near chance for 10 labels (about 2.1-2.5, ln10 = 2.30). Our v1/v2 reach cross-entropy 1.15 / 1.01 (different code and worlds, indicative only). Spatial analysis of their checkpoint (our own scripts: <code>reference-code/run-spikingtem/analysis/</code>):
 </p>
 
-<div style="overflow-x: auto; margin: 20px 0;">
-<table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+<div tabindex="0" aria-label="Author stream table" style="overflow-x: auto; max-width: 100%; width: 100%; margin: 20px 0;">
+<table style="width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; font-size: 11px;">
   <thead>
     <tr style="border-bottom: 2px solid var(--border);">
       <th style="padding: 8px;">Stream</th>
@@ -176,7 +176,7 @@ Their TF2 code run in an isolated venv: 40k iterations, one seed, 8x8 worlds. Pr
 <section id="claims" style="margin-bottom: 50px;">
 <p class="eyebrow">05 / SCIENTIFIC SCOPE</p>
 <h2>What We May and May Not Claim</h2>
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
+<div class="claims-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
   <div style="background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;">
     <h3 style="color: var(--exc); margin-top: 0; font-size: 16px;">May Say</h3>
     <ul style="padding-left: 20px; font-size: 14px; line-height: 1.6;">
