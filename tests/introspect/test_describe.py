@@ -157,3 +157,25 @@ def test_non_finite_default_is_reported_without_invalid_json():
     ]
     assert any("upper" in reason and "inf" in reason for reason in description["limitations"])
     json.dumps(description, allow_nan=False)
+
+
+def test_unpack_explicit_required_keys_override_total():
+    from typing_extensions import NotRequired, Required, TypedDict, Unpack
+
+    from neurosush.core.behavior import Behavior
+
+    class Extra(TypedDict, total=False):
+        size: Required[int]
+        label: NotRequired[str]
+        enabled: bool
+
+    class Options(Behavior):
+        def __init__(self, **kwargs: Unpack[Extra]):
+            pass
+
+    params = {p["name"]: p for p in describe(Options)["params"]}
+    assert params["size"]["required"] is True
+    assert params["size"]["type"] == {"type": "integer"}
+    assert params["label"]["required"] is False
+    assert params["label"]["type"] == {"type": "string"}
+    assert params["enabled"]["required"] is False

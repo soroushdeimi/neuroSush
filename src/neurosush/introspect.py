@@ -69,7 +69,12 @@ def _parameters(cls: type[Behavior]) -> list[tuple[str, Any, Any, inspect._Param
     init = cls.__init__
     if init is object.__init__:
         return []
-    hints = get_type_hints(init, include_extras=True)
+    # Resolve annotations without Python 3.10's implicit Optional for None defaults.
+    hints = get_type_hints(
+        types.SimpleNamespace(__annotations__=init.__annotations__),
+        globalns=init.__globals__,
+        include_extras=True,
+    )
     result: list[tuple[str, Any, Any, inspect._ParameterKind]] = []
     for name, parameter in inspect.signature(init).parameters.items():
         if name == "self":
@@ -89,13 +94,18 @@ def _parameters(cls: type[Behavior]) -> list[tuple[str, Any, Any, inspect._Param
             )
             inherited = {p[0]: p for p in _parameters(parent)} if parent else {}
             for key, hint in get_type_hints(typed, include_extras=True).items():
+                required = key in typed.__required_keys__
+                wrapper = get_origin(hint)
+                # Explicit wrappers take precedence over older TypedDict metadata.
+                wrapper_name = getattr(wrapper, "_name", None)
+                if wrapper_name in ("Required", "NotRequired"):
+                    required = wrapper_name == "Required"
+                    hint = get_args(hint)[0]
                 default = (
                     inherited[key][2]
                     if key in inherited
-                    else (inspect.Parameter.empty if key in typed.__required_keys__ else _OPTIONAL)
+                    else (inspect.Parameter.empty if required else _OPTIONAL)
                 )
-                if get_origin(hint) is not None and "Required" in str(get_origin(hint)):
-                    hint = get_args(hint)[0]
                 result.append((key, hint, default, inspect.Parameter.KEYWORD_ONLY))
         else:
             result.append((name, annotation, parameter.default, parameter.kind))
