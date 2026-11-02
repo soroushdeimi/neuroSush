@@ -21,7 +21,6 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         '<a href="' + prefix + 'research.html">Research</a>'
         '<a href="' + prefix + 'results.html">Results</a>'
         '<a href="' + prefix + 'studio-live.html">Studio Live</a>'
-        '<a href="' + home + '#studio">Studio <span class="chip">preview</span></a>'
         '<a href="' + home + '#evidence">Benchmarks</a>'
         '<a href="' + repo + '/tree/main/docs">Docs ↗</a></nav>'
         '<div class="header-tools"><a class="icon-button" href="' + repo + '" '
