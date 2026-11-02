@@ -151,4 +151,3 @@ nohup PYTHONPATH=src python experiments/tem_overnight_v1.py --variant v2 --seed 
 # 16x16 world run (seed 0, 16000 updates, checkpoints every 500)
 nohup PYTHONPATH=src python experiments/tem_overnight_v1.py --variant v2 --seed 0 --size 16 --updates 16000 --out experiments/results/overnight/v2-s16-s0.json --checkpoint-every 500 > v2-s16-s0.log 2>&1 &
 ```
-
