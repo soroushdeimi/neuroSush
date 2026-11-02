@@ -21,6 +21,8 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         '<a href="' + prefix + 'research.html">Research</a>'
         '<a href="' + prefix + 'results.html">Results</a>'
         '<a href="' + prefix + 'studio-live.html">Studio Live</a>'
+        '<a href="' + prefix + 'tem.html">Live TEM</a>'
+        '<a href="' + home + '#studio">Studio <span class="chip">preview</span></a>'
         '<a href="' + home + '#evidence">Benchmarks</a>'
         '<a href="' + repo + '/tree/main/docs">Docs ↗</a></nav>'
         '<div class="header-tools"><a class="icon-button" href="' + repo + '" '
@@ -29,7 +31,7 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         "14 6v-4c0-1-.3-2-1-2 4 0 6-2 6-6 0-2-1-3-2-4 0-1 0-2-1-3-2 0-3 1-4 2h-4C"
         '9 4 8 3 6 3 5 4 5 5 5 6c-1 1-2 2-2 4 0 4 2 6 6 6-.7.5-1 1-1 2v4"/></svg>'
         "</a>"
-        '<button id="theme" class="icon-button" aria-label="Switch to dark theme"'
+        '<button id="theme" class="icon-button" aria-label="Switch to light theme"'
         ' title="Change theme">'
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15A9 9 0 0 1 9 '
         '4a9 9 0 1 0 11 11Z"/></svg></button>'
@@ -62,6 +64,7 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         + 'gallery.html">All plates</a>'
         '<a href="' + prefix + 'research.html">Research</a>'
         '<a href="' + prefix + 'results.html">Results</a>'
+        '<a href="' + prefix + 'tem.html">Live TEM</a>'
         '<a href="'
         + prefix
         + 'gallery.html#neurons">Neurons</a><a href="'
@@ -149,7 +152,7 @@ def main():
         if plate_id == "demo":
             continue
 
-        content = render_plate(plate_id, None, source="live")
+        content = render_plate(plate_id, None, source="live", theme="dark")
         header, footer = chrome("../")
         content = (
             content.replace(
@@ -173,7 +176,7 @@ def main():
 
     # 4. 404.html
     (out_dir / "404.html").write_text(
-        "<!DOCTYPE html><html><body><h1>404</h1>"
+        '<!DOCTYPE html><html data-theme="dark"><body><h1>404</h1>'
         '<a href="index.html">Back to home</a></body></html>',
         encoding="utf-8",
     )
@@ -186,6 +189,18 @@ def main():
     (out_dir / "assets" / "studio-live.html").unlink(missing_ok=True)
 
     # 6. Index, Results, Research & Studio Live
+    (out_dir / "assets" / "tem.html").unlink(missing_ok=True)
+
+    # 6. Data copy
+    site_data_dir = _ASSETS / "data"
+    if site_data_dir.exists():
+        data_dir = out_dir / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        for json_file in site_data_dir.glob("*.json"):
+            if json_file.is_file():
+                shutil.copy(json_file, data_dir / json_file.name)
+
+    # 7. Index, Results, Research & Live TEM
     index_content = build_index(
         [(p, PLATES[p].title_en if p in PLATES else p) for p in all_plates if p != "demo"],
         __version__,
@@ -224,6 +239,14 @@ def main():
         .replace("{{FOOTER}}", sl_footer)
     )
     (out_dir / "studio-live.html").write_text(studio_live_content, encoding="utf-8")
+    tem_template = (_ASSETS / "tem.html").read_text(encoding="utf-8")
+    t_header, t_footer = chrome("")
+    tem_content = (
+        tem_template.replace("{{VERSION}}", html.escape(__version__))
+        .replace("{{HEADER}}", t_header)
+        .replace("{{FOOTER}}", t_footer)
+    )
+    (out_dir / "tem.html").write_text(tem_content, encoding="utf-8")
 
 
 if __name__ == "__main__":

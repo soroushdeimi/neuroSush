@@ -61,6 +61,9 @@ Why they matter: they suggest that the brain computes spatial relationships and 
 We ran the authors' public Spiking TEM code (one run) and audited its checkpoints (<a href="results.html">see findings table in Results report ↗</a>). In parallel, we built a clean, modular re-implementation of rate-coded and spiking TEM in PyTorch (<code>src/neurosush/tem/</code>).
 </p>
 <p>
+<strong>Spatial Probe of Our Models:</strong> Spatial probes of our trained models (v2 s0 and v1 s0, one seed, 8x8 worlds) are now complete and published in the <a href="results.html">Results report ↗</a> (Section 6.1). g carries a representational geometry shared across worlds (cross-world RSA 0.74 for v2 and 0.83 for v1 vs null ~0.04), while p follows sensory identity. Caveats apply: one seed, 8x8 worlds (gridness not resolvable), signed spatial info is a diagnostic not bits/spike, shared geometry is not grid distance (not grid cells), not a paper ranking, and random-init p also decodes position.
+</p>
+<p>
 <strong>The Four Stability Fixes:</strong> Training TEM from scratch at reference scale required four key stability innovations:
 </p>
 <ol style="padding-left: 20px; line-height: 1.8;">
@@ -103,7 +106,7 @@ Explore the live models and interactive visualisations across the repository:
   <li><strong>neuroSush Studio:</strong> Project persistence, revisions, and simulation runs (preview, in development).</li>
 </ul>
 <p>
-<strong>Live demos next (not yet available):</strong> Recorded run of the trained model and spatial-probe rate maps of our own retrained checkpoints.
+<strong>Live demos:</strong> Spatial probe results for v2 s0 and v1 s0 are now published in the <a href="results.html">Results report ↗</a> (Section 6.1). Next: seeds 1-2, 16x16 worlds, and recorded-run demo.
 </p>
 </section>
 
@@ -111,7 +114,7 @@ Explore the live models and interactive visualisations across the repository:
 <p class="eyebrow">06 / HONEST STATUS</p>
 <h2>What We May and May Not Claim</h2>
 <p style="font-size: 0.9rem; color: var(--ink-muted); margin-bottom: 20px;">
-Not a paper reproduction. Grid-cell emergence not shown. Structure imposed.
+Not a paper reproduction. Grid-cell emergence not shown. Structure imposed. Spatial probe results for v2 s0 and v1 s0 (one seed, 8x8 worlds) are now in the <a href="results.html">Results report ↗</a> (Section 6.1). Caveats: one seed, 8x8 worlds, signed spatial info is a diagnostic not bits/spike, shared geometry is not grid distance, not a paper ranking, and random-init p decodes position.
 </p>
 <div class="claims-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
   <div style="background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;">

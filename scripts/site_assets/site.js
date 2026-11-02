@@ -10,7 +10,7 @@
  addEventListener('keydown',e=>{if(e.key==='Escape'){$('#main-nav')?.classList.remove('open');$('#menu')?.setAttribute('aria-expanded','false');}});
  let light=false;
  function theme(value){light=value==='light';document.documentElement.dataset.theme=value;if(window.Atlas)window.Atlas.Theme.set(value);$('#theme')?.setAttribute('aria-label',`Switch to ${light?'dark':'light'} theme`);$('#theme')?.setAttribute('aria-pressed',String(light));try{localStorage.setItem('neurosush-theme',value);}catch{} }
- let saved='light';try{saved=localStorage.getItem('neurosush-theme')||'light';}catch{}theme(saved==='light'?'light':'dark');
+ let saved='dark';try{saved=localStorage.getItem('neurosush-theme')||'dark';}catch{}theme(saved==='light'?'light':'dark');
  $('#theme')?.addEventListener('click',()=>{theme(light?'dark':'light');if($('#neural'))drawStatic();});
  $('#menu')?.addEventListener('click',()=>{const open=$('#main-nav').classList.toggle('open');$('#menu').setAttribute('aria-expanded',String(open));});
  document.querySelectorAll('[data-copy]').forEach(button=>button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(button.dataset.copy);button.setAttribute('aria-label','Copied');}catch{button.setAttribute('aria-label','Select and copy the command');}}));
