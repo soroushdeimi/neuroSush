@@ -1,6 +1,6 @@
 # neuroSush: scientific results and explanations (single source of truth)
 
-Last updated: 2026-11-02. Every number below comes from a run or file named in the "Source" column.
+Last updated: 2026-11-02 (6.1 corrected after audit). Every number below comes from a run or file named in the "Source" column.
 Rule: nothing goes on the site, in a PR or to the supervisor unless it is in this file with its caveat.
 
 ## 1. What we built (one paragraph)
@@ -98,8 +98,8 @@ Source: `experiments/results/tem-spatial-v2-s0.{json,md}`, `tem-spatial-v1-s0.{j
 
 Reading:
 - Position can be decoded within a world from g and from p (well above the shift null).
-- **g carries a representational geometry shared across worlds**: cross-world RSA 0.74 (v2) and 0.83 (v1) against a null p95 of about 0.04, while the random-init control (0.07) stays inside its null. The authors' public run showed about 0 on this measure. Different code, worlds and training, so this is not a ranking against the paper.
-- That shared geometry does **not** follow Manhattan grid distance (RSA vs grid about 0) nor sensory identity, so it is not a metric, grid-like code. It means g is a consistent, world-independent code for position; it does not show grid cells.
+- **Audit note (2026-11-02): this is NOT evidence of a world-independent position code.** Cross-world RSA of g is 0.74 (v2) and 0.83 (v1), but the node-permutation null (p95 about 0.04) is weak: an untrained path integrator with random transition weights already scores 0.13-0.20, and trained transitions without memory score 0.17 (v1) and 0.49 (v2). Displacement (i-j) alone explains 91-95% of within-world distance variance, so g mostly path-integrates coherently with a world-specific phase. The margin of the full model over path integration alone is real but smaller (about 0.25 for v2). The earlier random-init control (0.07) was degenerate (transitions start at zero, g never moves). The authors' public run showed about 0 on this measure; different code, worlds and training, so not a ranking against the paper.
+- It does not follow Manhattan grid distance (RSA vs grid about 0) nor sensory identity. It does not show grid cells. Control experiments and metric tests are planned before any stronger statement.
 - p mainly follows sensory identity (RSA vs sensory 0.63 and 0.73), as in the authors' run, and its map correlation across worlds is near zero.
 - Random-init p also decodes position (0.54) because the fast memory binds observations within a world: high within-world decoding alone is not evidence of learned geometry.
 - Spatial information of g and g_gen is about 1e12 because the reference formula accepts signed activations: a diagnostic, not bits per spike. Only p (3.1 and 8.8e6 for v2/v1, the latter also not interpretable) has a usable-looking value for v2.
