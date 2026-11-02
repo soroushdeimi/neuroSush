@@ -4,9 +4,11 @@ window.NeuroShapes.neuron = function(count) {
   let seed = 812;
   const random = () => ((seed = seed * 16807 % 2147483647) / 2147483647);
   const points = [];
+  const lines = [];
   const add = (x, y, z) => points.push(x, y, z);
   // Sample tapered tube surfaces, including occasional dendritic spines.
   function tube(start, end, radius, density = 1600, spines = false) {
+    lines.push(...start.map(v=>v*.72),...end.map(v=>v*.72));
     const delta = end.map((v, i) => v - start[i]);
     const length = Math.hypot(...delta);
     const axis = delta.map(v => v / length);
@@ -71,5 +73,6 @@ window.NeuroShapes.neuron = function(count) {
     const source = Math.floor(random()*(points.length/3))*3;
     result.set(points.slice(source,source+3).map(v => v*.72),i*3);
   }
+  result.lines=new Float32Array(lines);
   return result;
 };

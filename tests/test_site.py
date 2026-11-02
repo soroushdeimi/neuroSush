@@ -126,3 +126,21 @@ def test_neuron_module_is_shipped(tmp_path, monkeypatch):
     script = (tmp_path / "assets/site.js").read_text()
     assert "advanceLIF(dt)" in script
     assert "uniform.spikeAge" in script
+
+
+def test_foundation_and_instrument_assets(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    assets = tmp_path / "assets"
+    for name in ("tokens.css", "components.css", "instruments.js"):
+        assert (assets / name).is_file()
+    tokens = (assets / "tokens.css").read_text()
+    assert "#F4F1EA" in tokens
+    assert "#0D0E0E" in tokens
+    assert "font-display:swap" in tokens
+    for font in (assets / "fonts").glob("*.woff2"):
+        assert font.stat().st_size < 32768
+    assert (assets / "fonts/SourceSerif4-OFL.txt").is_file()
+    page = (tmp_path / "index.html").read_text()
+    assert "stage-number" not in page
+    assert "01 /" not in page
+    assert 'id="motion"' in page

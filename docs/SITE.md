@@ -48,3 +48,7 @@ from google/fonts, under the adjacent verified SIL OFL licences. The complete se
 174,432 bytes; non-math fonts total 154,332 bytes. Math loads only when used.
 Chapter order is neuron, synapse, circuit, columns, hierarchy, space. Mobile uses
 separate figures above prose; final scene modules are being integrated individually.
+
+`instruments.js` advances the LIF model at 1 ms simulated per 1 ms displayed,
+with fixed Euler dt 0.5 ms and a 200 ms labelled window. Neuron centre-lines supplement
+the sampled tube surfaces. The spike propagation speed is a visual encoding.

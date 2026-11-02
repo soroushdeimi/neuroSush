@@ -5,3 +5,5 @@
 @media(max-width:1023px){.rail{display:none}.stage{display:none}.story{margin-top:var(--s-8)}.chapter,.chapter:last-child{height:auto;min-height:0;display:block;padding:var(--s-6) var(--gutter) var(--s-8)}.chapter-copy{width:100%;max-width:none}.chapter-copy p{max-width:var(--w-prose)}.chapter-figure{width:100%;aspect-ratio:16/10;display:block;margin-bottom:var(--s-6)}.metrics{grid-template-columns:1fr 1fr}.plate-list,.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.section,.catalog{padding:var(--s-8) var(--gutter)}}
 @media(max-width:639px){.chapter-figure{aspect-ratio:4/5}.plate-list,.grid{grid-template-columns:1fr}.chapter h2{font-size:var(--t-h1)}.chapter-copy .actions{gap:var(--s-3)}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.chapter-copy{opacity:1!important}}
+
+.miniature{display:block;width:100%;max-width:340px;height:144px}figure{margin:var(--s-6) 0}.scope{margin-inline:0}
