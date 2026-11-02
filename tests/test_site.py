@@ -114,6 +114,7 @@ def test_shared_shell_and_scroll_story(tmp_path, monkeypatch):
         "results.html",
         "research.html",
         "tem.html",
+        "studio-live.html",
         "plates/N01.html",
         "plates/Y01.html",
     ):
@@ -122,6 +123,11 @@ def test_shared_shell_and_scroll_story(tmp_path, monkeypatch):
         assert 'class="site-footer"' in page
         assert "assets/site.css" in page
         assert "assets/site.js" in page
+        for theme in ("dark", "light"):
+            assert page.count(f'class="brand-mark brand-mark-{theme}"') == 2
+            assert (
+                page.count(f'logo/{theme}/transparent-512.png" width="28" height="28" alt=""') == 2
+            )
     script = (tmp_path / "assets/site.js").read_text()
     assert "webgl2" in script
     assert "visibilitychange" in script
@@ -145,6 +151,20 @@ def test_foundation_and_instrument_assets(tmp_path, monkeypatch):
     assets = tmp_path / "assets"
     for name in ("tokens.css", "components.css", "instruments.js"):
         assert (assets / name).is_file()
+    logo = Path(__file__).resolve().parents[1] / "scripts/site_assets/logo"
+    for theme in ("dark", "light"):
+        for name in (
+            "mark-16.png",
+            "mark-32.png",
+            "mark-180.png",
+            "mark-512.png",
+            "transparent-512.png",
+            "favicon.ico",
+        ):
+            source = logo / theme / name
+            assert (assets / "logo" / theme / name).read_bytes() == source.read_bytes()
+            assert source.stat().st_size < 300_000
+    assert {p.name for p in (assets / "logo").iterdir()} == {"dark", "light"}
     tokens = (assets / "tokens.css").read_text()
     assert "#F4F1EA" in tokens
     assert "#0D0E0E" in tokens
@@ -310,3 +330,39 @@ def test_workflow_section_six_stages_and_api(tmp_path, monkeypatch):
     assert 'role="tablist"' in page
     assert 'role="tabpanel"' in page
     assert "<svg" in page
+
+
+def test_favicons_resolve_on_every_built_page(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+
+    class Icons(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.links = []
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            if tag == "link" and attrs.get("rel") in ("icon", "apple-touch-icon"):
+                self.links.append(attrs)
+
+    for page in tmp_path.rglob("*.html"):
+        icons = Icons()
+        content = page.read_text(encoding="utf-8")
+        assert "{{ICONS}}" not in content
+        icons.feed(content)
+        assert len(icons.links) == 8, page
+        for theme in ("dark", "light"):
+            themed = [
+                link
+                for link in icons.links
+                if link.get("media") == f"(prefers-color-scheme: {theme})"
+            ]
+            assert len(themed) == 4, page
+            assert {link["sizes"] for link in themed} == {"any", "16x16", "32x32", "180x180"}
+            for link in themed:
+                asset = (page.parent / link["href"]).resolve()
+                assert asset.is_relative_to(tmp_path.resolve())
+                assert asset.is_file(), (page, link)
+                assert asset.parent.name == theme
+                if link["sizes"] in ("16x16", "32x32"):
+                    assert link["type"] == "image/png"
