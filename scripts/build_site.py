@@ -30,7 +30,7 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         "14 6v-4c0-1-.3-2-1-2 4 0 6-2 6-6 0-2-1-3-2-4 0-1 0-2-1-3-2 0-3 1-4 2h-4C"
         '9 4 8 3 6 3 5 4 5 5 5 6c-1 1-2 2-2 4 0 4 2 6 6 6-.7.5-1 1-1 2v4"/></svg>'
         "</a>"
-        '<button id="theme" class="icon-button" aria-label="Switch to dark theme"'
+        '<button id="theme" class="icon-button" aria-label="Switch to light theme"'
         ' title="Change theme">'
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15A9 9 0 0 1 9 '
         '4a9 9 0 1 0 11 11Z"/></svg></button>'
@@ -151,7 +151,7 @@ def main():
         if plate_id == "demo":
             continue
 
-        content = render_plate(plate_id, None, source="live")
+        content = render_plate(plate_id, None, source="live", theme="dark")
         header, footer = chrome("../")
         content = (
             content.replace(
@@ -175,7 +175,7 @@ def main():
 
     # 4. 404.html
     (out_dir / "404.html").write_text(
-        "<!DOCTYPE html><html><body><h1>404</h1>"
+        '<!DOCTYPE html><html data-theme="dark"><body><h1>404</h1>'
         '<a href="index.html">Back to home</a></body></html>',
         encoding="utf-8",
     )

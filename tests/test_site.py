@@ -97,7 +97,7 @@ def test_landing_links_resolve_and_template_is_complete(tmp_path, monkeypatch):
             assert href == "#" or href[1:] in ids
         elif not href.startswith("https://"):
             assert (tmp_path / href.split("#")[0]).is_file(), href
-    assert 'data-theme="light"' in page
+    assert 'data-theme="dark"' in page
     assert "Results report" in page
     assert "Research story" in page
     assert "not a reconstruction" in page
@@ -279,3 +279,12 @@ def test_research_report_page(tmp_path, monkeypatch):
             assert href == "#" or href[1:] in ids
         elif not href.startswith(("https://", "http://", "mailto:")):
             assert (tmp_path / href.split("#")[0]).is_file(), href
+
+
+def test_all_built_pages_default_to_dark_theme(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    for path in tmp_path.rglob("*.html"):
+        if "demos" in path.parts:
+            continue
+        content = path.read_text(encoding="utf-8")
+        assert 'data-theme="dark"' in content, f"{path} missing data-theme=dark"
