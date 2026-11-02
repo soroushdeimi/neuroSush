@@ -40,3 +40,11 @@ The scene is illustrative. Its LIF readout computes the documented Euler update,
 threshold and reset locally. Atlas numerical code is preserved. Spatial structure is
 not described as learned emergence; TEM is planned for this published snapshot.
 Benchmark figures are quoted from docs/BENCHMARKS.md with hardware and workload.
+
+Shared `tokens.css` and `components.css` implement warm paper (default) and graphite,
+semantic data colours, the spacing scale and shared landing/gallery/plate chrome.
+Fonts are static WOFF2 subsets of Source Serif 4, IBM Plex Sans/Mono and STIX Two Math
+from google/fonts, under the adjacent verified SIL OFL licences. The complete set is
+174,432 bytes; non-math fonts total 154,332 bytes. Math loads only when used.
+Chapter order is neuron, synapse, circuit, columns, hierarchy, space. Mobile uses
+separate figures above prose; final scene modules are being integrated individually.

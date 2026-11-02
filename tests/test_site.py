@@ -93,10 +93,10 @@ def test_landing_links_resolve_and_template_is_complete(tmp_path, monkeypatch):
         if href.startswith("#"):
             assert href == "#" or href[1:] in ids
         elif not href.startswith("https://"):
-            assert (tmp_path / href).is_file(), href
-    assert 'data-theme="dark"' in page
-    assert "TEM planned" in page
-    assert "ILLUSTRATIVE ART" in page
+            assert (tmp_path / href.split("#")[0]).is_file(), href
+    assert 'data-theme="light"' in page
+    assert "not yet in a tagged release" in page
+    assert "not a reconstruction" in page
 
 
 def test_shared_shell_and_scroll_story(tmp_path, monkeypatch):

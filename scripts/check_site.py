@@ -4,6 +4,7 @@ import argparse
 import re
 from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 
 class LandingParser(HTMLParser):
@@ -34,7 +35,8 @@ class LandingParser(HTMLParser):
             elif url.startswith(("https:", "http:", "//")):
                 assert tag == "a", f"External resource: {url}"
             else:
-                assert (self.root / url).is_file(), f"Missing file: {url}"
+                path = self.root / unquote(urlsplit(url).path)
+                assert path.is_file(), f"Missing file: {url}"
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
