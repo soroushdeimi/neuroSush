@@ -112,3 +112,106 @@ The ecosystem includes the PyTorch library, Atlas plate T01 (teaching visualizat
 These are implementation choices tested together, not four independently proven causes (v1 groups 1+3, v2 adds 2).
 </p>
 </section>
+
+<section id="authors-code" style="margin-bottom: 50px;">
+<p class="eyebrow">04 / EXTERNAL REPRODUCTION</p>
+<h2>The Authors' Public Code (Spiking TEM, Kawahara & Fujisawa 2025), One Run</h2>
+<p>
+Their TF2 code run in an isolated venv: 40k iterations, one seed, 8x8 worlds. Prediction loss stayed near chance for 10 labels (about 2.1-2.5, ln10 = 2.30). Our v1/v2 reach cross-entropy 1.15 / 1.01 (different code and worlds, indicative only). Spatial analysis of their checkpoint (our own scripts: <code>reference-code/run-spikingtem/analysis/</code>):
+</p>
+
+<div style="overflow-x: auto; margin: 20px 0;">
+<table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+  <thead>
+    <tr style="border-bottom: 2px solid var(--border);">
+      <th style="padding: 8px;">Stream</th>
+      <th style="padding: 8px;">Spatial info (null)</th>
+      <th style="padding: 8px;">Units above null p95</th>
+      <th style="padding: 8px;">Split-half r</th>
+      <th style="padding: 8px;">Decoder acc</th>
+      <th style="padding: 8px;">Cross-world map corr</th>
+      <th style="padding: 8px;">Cross-world RSA</th>
+      <th style="padding: 8px;">Distance vs grid / sensory</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 8px; font-weight: 500;">g (inferred)</td>
+      <td style="padding: 8px;">0.598 (0.174)</td>
+      <td style="padding: 8px;">97%</td>
+      <td style="padding: 8px;">0.70</td>
+      <td style="padding: 8px;">0.163 (0.021)</td>
+      <td style="padding: 8px;">-0.008</td>
+      <td style="padding: 8px;">0.003 (0.064)</td>
+      <td style="padding: 8px;">0.018 / 0.415</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 8px; font-weight: 500;">g_gen (prior)</td>
+      <td style="padding: 8px;">0.485 (0.312)</td>
+      <td style="padding: 8px;">91%</td>
+      <td style="padding: 8px;">0.41</td>
+      <td style="padding: 8px;">0.038 (0.019)</td>
+      <td style="padding: 8px;">-0.015</td>
+      <td style="padding: 8px;">0.040 (0.078)</td>
+      <td style="padding: 8px;">0.101 / 0.109</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; font-weight: 500;">p (CA1)</td>
+      <td style="padding: 8px;">2.614 (0.383)</td>
+      <td style="padding: 8px;">100%</td>
+      <td style="padding: 8px;">0.89</td>
+      <td style="padding: 8px;">0.266 (0.021)</td>
+      <td style="padding: 8px;">0.000</td>
+      <td style="padding: 8px;">0.000 (0.040)</td>
+      <td style="padding: 8px;">0.018 / 0.959</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p>
+<strong>Reading:</strong> strong within-world position tuning; <strong>no evidence of shared cross-world structure</strong>; population distances follow sensory identity, not grid distance; gridness not measurable at 8x8; no phase machinery in their code (only a theta term in SpikingDense); one seed. An earlier claim "g does not carry position" was wrong (a bug: positions were not copied) and is retracted. Not a paper reproduction.
+</p>
+</section>
+
+<section id="claims" style="margin-bottom: 50px;">
+<p class="eyebrow">05 / SCIENTIFIC SCOPE</p>
+<h2>What We May and May Not Claim</h2>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
+  <div style="background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;">
+    <h3 style="color: var(--exc); margin-top: 0; font-size: 16px;">May Say</h3>
+    <ul style="padding-left: 20px; font-size: 14px; line-height: 1.6;">
+      <li>A clean, tested TEM implementation that trains stably at reference-scale and clearly beats baselines on our internal metric.</li>
+      <li>Better than our earlier model (v0).</li>
+      <li>Their public-default run stayed near chance in prediction loss; ours does not (different code/worlds, one seed).</li>
+    </ul>
+  </div>
+  <div style="background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;">
+    <h3 style="color: var(--inh); margin-top: 0; font-size: 16px;">May NOT Say</h3>
+    <ul style="padding-left: 20px; font-size: 14px; line-height: 1.6;">
+      <li>"Better than the paper" (we never scored their model on our metric; no remapping/gridness comparison).</li>
+      <li>"Grid cells emerged" (periodicity in v3 is structure imposed; gridness is unresolved at 8x8; grid-cell emergence not shown).</li>
+      <li>Theta phase precession as emergent (theta is imposed).</li>
+      <li>Any number not in section 2 or 3.</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<section id="live-progress" style="margin-bottom: 50px;">
+<p class="eyebrow">06 / STATUS & SOURCES</p>
+<h2>Live Now, In Progress & Sources</h2>
+<p>
+<strong>Live now:</strong> <a href="plates/T01.html">TEACHING: position imposed (Plate T01) ↗</a> and the <a href="gallery.html">Atlas gallery ↗</a>.
+</p>
+<p>
+<strong>In progress:</strong> Spatial probe of our own models (retrains running), recorded-run demo, site redesign.
+</p>
+<p>
+<strong>Sources:</strong> Paper DOIs (Whittington et al. 2020 Cell, doi:10.1016/j.cell.2020.10.024; Kawahara & Fujisawa 2025, bioRxiv doi:10.1101/2025.10.16.682754), <a href="https://github.com/soroushdeimi/neuroSush/blob/main/docs/TEM.md" target="_blank">docs/TEM.md ↗</a>, and <a href="https://github.com/soroushdeimi/neuroSush" target="_blank">GitHub repository ↗</a>.
+</p>
+</section>
+</div>
+</main>
+{{FOOTER}}
+</body>
+</html>
