@@ -6,6 +6,7 @@ All notable changes to neuroSush are documented here, following the
 ## [Unreleased]
 
 ### Added
+- Cinematic product landing page with original canvas artwork, a live LIF tuner, dark/light themes, reduced-motion support, and a labeled GUI concept. The Atlas gallery and talk demo remain directly reachable.
 - Static demo site (gallery, all shipped plates, the talk demo, GitHub Pages workflow, `scripts/build_site.py`).
 - `neurosush.neurons.surrogate`: `SurrogateSpike`, `spike`, and `lif_step` for differentiable surrogate gradient spikes and Leaky Integrate-and-Fire steps.
 - `neurosush.neurons.oscillation`: `theta_current` for imposed theta-band inhibitory modulation.

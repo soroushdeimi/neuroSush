@@ -25,7 +25,9 @@ reported in its papers, on small setups.
 
 [https://soroushdeimi.github.io/neuroSush/](https://soroushdeimi.github.io/neuroSush/)
 
-Every Atlas plate and the live Hodgkin-Huxley demo, built from this repository by `scripts/build_site.py`.
+The product introduction, every Atlas plate and the live Hodgkin-Huxley demo, built from this
+repository by `scripts/build_site.py`. The original plate index is available at `gallery.html`.
+The landing page uses local assets only, with dark/light themes and reduced-motion support.
 
 ## Design
 
