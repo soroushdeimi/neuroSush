@@ -27,6 +27,7 @@
  shapes[2]=window.NeuroShapes.microcircuit(count);
  shapes[3]=window.NeuroShapes.sparse(count);
  shapes[4]=window.NeuroShapes.hierarchy(count);
+ shapes[5]=window.NeuroShapes.brain(count);
  function mobileFigures(ms=0){
   if(innerWidth>=1024)return;
   const time=ms/1000,step=Math.floor(time*.65)%3;
@@ -41,6 +42,7 @@
    if(data.lines){context.beginPath();for(let i=0;i<Math.min(data.lines.length,count*6);i+=6){const a=project(data.lines.slice(i,i+3)),b=project(data.lines.slice(i+3,i+6));context.moveTo(...a);context.lineTo(...b);}context.stroke();}
    for(let i=0;i<count;i++){
     const tag=data.tags?.[i]||0;let ink='--text-2',alpha=.45;
+    if(tag<0)alpha=.15+Math.abs(tag)*.7;if(tag===3)ink='--trace';
     if(i%13===0){if(tag===1)ink='--exc';if(tag===2)ink='--inh';if(tag===3||tag===4)ink='--trace';}
     if(tag>=100&&tag<1124&&(Math.round(tag-100)*37+step*211)%1024<20){ink='--spike';alpha=1;}
     if(tag>=1200&&tag<2224){if((Math.round(tag-1200)*37+((step+1)%3)*211)%1024<20){ink='--trace';alpha=1;}else continue;}
@@ -68,12 +70,12 @@
  if(q>3.8&&q<4.2&&lineMode<.5){if(abs(tag-9.)<.1){p.y=.74-mod(time*.38+float(gl_VertexID)*.017,1.3);tag=3.;}if(abs(tag-10.)<.1){p.y=-.56+mod(time*.38+float(gl_VertexID)*.017,1.3);tag=1.;}} float turn=.18*sin(time*.12)+0.;mat2 rot=mat2(cos(turn),-sin(turn),sin(turn),cos(turn));p.xz=rot*p.xz;float perspective=3.8/(3.8+p.z);vec2 xy=p.xy*perspective*mix(1.,.55,mobile);xy.x=xy.x/aspect*.9+mix(.43*cos(q*3.14159),.02,mobile);xy.y=xy.y*.7-mix(0.,.44,mobile);gl_Position=vec4(xy,0.,1.);gl_PointSize=2.;glow=.25;float travel=abs(a.y+.0864);float wave=exp(-pow((travel-spikeAge*25.)*18.,2.));glow+=wave*(a.y<-.144?1.8:.55)*(1.-smoothstep(0.,.15,progress));if(q>1.8&&q<2.2){float wave=abs(p.x-sin(time*1.1));glow+=step(wave,.05)*.9;if(abs(tag-8.)<.1)glow=1.;}strength=abs(tag-1.)<.1&&q>3.8&&q<4.2?exp(-mod(time,4.)):1.;
  if(q>2.8&&q<3.2&&lineMode<.5){float stepIndex=mod(floor(time*.65),3.);if(tag>=100.&&tag<1124.){float id=tag-100.;if(mod(id*37.+stepIndex*211.,1024.)<20.)glow=1.;}if(tag>=1200.&&tag<2224.){float id=tag-1200.;if(mod(id*37.+mod(stepIndex+1.,3.)*211.,1024.)<20.)tag=3.;else strength=.1;}if(tag>=3000.){float candidate=tag-3000.;strength=candidate<=8.-mod(time*.6,3.)*3.?1.:.08;tag=candidate==0.?3.:0.;}}
 
- region=tag;}`;
+ if(tag<0.)strength=.15+abs(tag)*.85;region=tag;}`;
  const fragment=`#version 300 es
  precision highp float;uniform float light,lineMode;uniform vec3 inkColor,spikeColor,excColor,inhColor,traceColor;uniform float time;in float glow;in float region;in float strength;out vec4 color;
  void main(){if(lineMode>.5){color=vec4(inkColor,.6);return;}float r=length(gl_PointCoord-.5);if(r>.5)discard;vec3 ink=inkColor;
  if(mod(gl_FragCoord.x+gl_FragCoord.y,13.)<1.){if(abs(region-1.)<.1)ink=excColor;if(abs(region-2.)<.1)ink=inhColor;if(abs(region-3.)<.1||abs(region-4.)<.1||abs(region-5.)<.1)ink=traceColor;if(abs(region-6.)<.1)ink=sin(time*.7)>0.?excColor:inhColor;}
- if(abs(region-7.)<.1||glow>.7)ink=spikeColor;color=vec4(ink,(glow>.7?1.:.6)*strength);}`;
+ if(abs(region-3.)<.1)ink=traceColor;if(abs(region-7.)<.1||glow>.7)ink=spikeColor;color=vec4(ink,(glow>.7?1.:.6)*strength);}`;
  function shader(type,source){const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
  program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,vertex));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,fragment));gl.linkProgram(program);gl.useProgram(program);
  shapes.forEach((data,i)=>{const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);buffers.push(buffer);const loc=gl.getAttribLocation(program,'abcdef'[i]);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,3,gl.FLOAT,false,0,0);const tags=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,tags);gl.bufferData(gl.ARRAY_BUFFER,data.tags||new Float32Array(count),gl.STATIC_DRAW);const tagLoc=gl.getAttribLocation(program,'t'+'abcdef'[i]);gl.enableVertexAttribArray(tagLoc);gl.vertexAttribPointer(tagLoc,1,gl.FLOAT,false,0,0);});

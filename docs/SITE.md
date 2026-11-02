@@ -71,3 +71,9 @@ schematic lateral voting. These are explanatory encodings, not an HTM execution.
 `hierarchy.js` draws three outlined cortical sheets, downward prediction particles
 and upward residual particles whose count/intensity falls over a four-second cycle.
 The error plot is an explanatory exponential, not a training result.
+
+`brain.js` creates paired brain-shaped parametric surfaces with domain-warped folds,
+central and Sylvian sulcal depressions, longitudinal separation, temporal contour,
+cerebellar folia and a tapering brainstem. A curved hippocampal formation and
+entorhinal patch are highlighted. The anatomy is a procedural schematic, never
+a reconstruction or a claim of learned spatial structure.

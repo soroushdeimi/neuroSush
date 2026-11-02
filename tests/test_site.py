@@ -179,3 +179,11 @@ def test_hierarchy_has_directional_flows(tmp_path, monkeypatch):
     assert "Predictions ↓" in module
     assert "Errors ↑" in module
     assert "layer<3" in module
+
+
+def test_brain_has_folded_cortex_and_hindbrain(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    module = (tmp_path / "assets/brain.js").read_text()
+    for anatomy in ("sulcus", "sylvian", "central", "Cerebellum", "Brainstem"):
+        assert anatomy in module
+    assert "Hippocampal formation" in module
