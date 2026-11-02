@@ -10,74 +10,79 @@
 <script defer src="assets/site.js"></script>
 <script defer src="assets/studio-live.js"></script>
 <style>
-@media(max-width: 1023px) {
-  .studio-workspace { grid-template-columns: 1fr !important; }
+@media(min-width: 1024px) {
+  .studio-workspace { grid-template-columns: 1.35fr 1fr !important; }
+}
+@media(max-width: 767px) {
+  .oscilloscope-grid { grid-template-columns: 1fr !important; }
 }
 </style>
 </head>
 <body class="atlas-page">
 {{HEADER}}
 <main id="main">
-<div class="catalog" style="max-width: 1200px; margin: auto; padding-top: 24px;">
+<div class="catalog" style="max-width: 1360px; margin: auto; padding-top: 24px;">
 <p class="eyebrow">IN-BROWSER NETWORK STUDIO & CODE GENERATOR</p>
 <h1>Studio Live</h1>
-<div class="honesty-note" style="border: 1px solid var(--border); background: var(--surface); padding: 16px; margin-bottom: 24px; border-radius: 4px; font-size: 0.9rem; color: var(--text-2);">
+<p style="font-size: 1.1rem; color: var(--text-2); margin-top: -8px; margin-bottom: 16px;">Click a neuron to inspect, drag the Poisson rate, turn on STDP.</p>
+<div class="honesty-note" style="border: 1px solid var(--border); background: var(--surface); padding: 12px 16px; margin-bottom: 20px; border-radius: 4px; font-size: 0.875rem; color: var(--text-2);">
 <strong>Honesty & scope:</strong> In-browser simulator using the same equations as the library (parity-tested for the Atlas plates). It is not the library itself and uses small networks; export the code and run it with <code>pip install neurosush</code>.
 </div>
 
-<div class="studio-workspace" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; width: 100%; max-width: 100%;">
-<div class="studio-left" style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
-<div style="background: var(--surface); border: 1px solid var(--border); padding: 12px; border-radius: 4px; min-width: 0;">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-    <span class="eyebrow" style="margin: 0;">Network Visualization Canvas</span>
-    <div style="display: flex; gap: 8px;">
-      <button id="btn-play" class="button" style="min-height: 32px; padding: 0 12px;">Play</button>
-      <button id="btn-step" class="button" style="min-height: 32px; padding: 0 12px;">Step</button>
-      <button id="btn-reset" class="button" style="min-height: 32px; padding: 0 12px;">Reset</button>
+<div class="studio-workspace" style="display: grid; grid-template-columns: 1fr; gap: 24px; align-items: start; width: 100%; max-width: 100%; overflow-x: hidden;">
+<!-- Hero Canvas & Oscilloscopes Column -->
+<div class="studio-left" style="display: flex; flex-direction: column; gap: 16px; min-width: 0; max-width: 100%;">
+<div style="background: var(--surface); border: 1px solid var(--border); padding: 16px; border-radius: 4px; min-width: 0; max-width: 100%;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+    <span class="eyebrow" style="margin: 0;">Live Spiking Network Canvas</span>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <select id="preset-select" class="button" style="min-height: 32px; padding: 0 8px; font-size: 0.85rem;">
+        <option value="balanced">Preset: Balanced E/I Network</option>
+        <option value="wta">Preset: Winner-Take-All with STDP</option>
+        <option value="chain">Preset: Feed-Forward Chain</option>
+      </select>
+      <button id="btn-play" class="button primary" style="min-height: 32px; padding: 0 14px;">Pause</button>
+      <button id="btn-step" class="button" style="min-height: 32px; padding: 0 10px;">Step</button>
+      <button id="btn-reset" class="button" style="min-height: 32px; padding: 0 10px;">Reset</button>
     </div>
   </div>
-  <canvas id="studio-canvas" width="560" height="380" style="width: 100%; height: auto; max-width: 100%; background: var(--inset); border: 1px solid var(--border); border-radius: 2px; cursor: crosshair;" aria-label="Spiking network populations and spike propagation"></canvas>
+  <canvas id="studio-canvas" width="800" height="450" style="width: 100%; height: auto; aspect-ratio: 16/9; max-width: 100%; background: var(--inset); border: 1px solid var(--border); border-radius: 2px; cursor: crosshair;" aria-label="Spiking network populations, synaptic curves and amber firing flashes"></canvas>
   <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 0.85rem; color: var(--text-3); flex-wrap: wrap; gap: 8px;">
-    <span id="canvas-status">Click neuron to inspect voltage · Click canvas to inject current</span>
-    <button id="btn-pulse" class="button" style="min-height: 28px; padding: 0 8px; font-size: 0.8rem;">⚡ Pulse Packet</button>
+    <span id="canvas-status">Active simulation running · Click neuron to select</span>
+    <button id="btn-pulse" class="button" style="min-height: 28px; padding: 0 10px; font-size: 0.8rem;">⚡ Pulse Packet</button>
   </div>
 </div>
 
-<div style="background: var(--surface); border: 1px solid var(--border); padding: 12px; border-radius: 4px; min-width: 0;">
+<!-- Oscilloscopes visible without scrolling -->
+<div style="background: var(--surface); border: 1px solid var(--border); padding: 14px; border-radius: 4px; min-width: 0; max-width: 100%;">
   <p class="eyebrow" style="margin-bottom: 8px;">Live Oscilloscopes</p>
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+  <div class="oscilloscope-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%;">
     <div style="min-width: 0;">
       <small>Raster Plot (Spikes)</small>
-      <canvas id="raster-canvas" width="265" height="120" style="width: 100%; height: auto; max-width: 100%; background: var(--inset); border: 1px solid var(--border);"></canvas>
+      <canvas id="raster-canvas" width="380" height="100" style="width: 100%; height: auto; max-width: 100%; background: var(--inset); border: 1px solid var(--border);"></canvas>
     </div>
     <div style="min-width: 0;">
       <small id="selected-trace-label">Selected Neuron Voltage (mV)</small>
-      <canvas id="voltage-canvas" width="265" height="120" style="width: 100%; height: auto; max-width: 100%; background: var(--inset); border: 1px solid var(--border);"></canvas>
+      <canvas id="voltage-canvas" width="380" height="100" style="width: 100%; height: auto; max-width: 100%; background: var(--inset); border: 1px solid var(--border);"></canvas>
     </div>
   </div>
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+  <div class="oscilloscope-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; width: 100%;">
     <div style="min-width: 0;">
       <small>Population Firing Rate (Hz)</small>
-      <canvas id="rate-canvas" width="265" height="100" style="width: 100%; height: auto; max-width: 100%; background: var(--inset); border: 1px solid var(--border);"></canvas>
+      <canvas id="rate-canvas" width="380" height="90" style="width: 100%; height: auto; max-width: 100%; background: var(--inset); border: 1px solid var(--border);"></canvas>
     </div>
     <div style="min-width: 0;">
-      <small>Synaptic Weights / STDP</small>
-      <canvas id="weight-canvas" width="265" height="100" style="width: 100%; height: auto; max-width: 100%; background: var(--inset); border: 1px solid var(--border);"></canvas>
+      <small id="weight-view-label">Synaptic Weight Heatmap & Histogram</small>
+      <canvas id="weight-canvas" width="380" height="90" style="width: 100%; height: auto; max-width: 100%; background: var(--inset); border: 1px solid var(--border);"></canvas>
     </div>
   </div>
 </div>
 </div>
 
-<div class="studio-right" style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
-<div style="background: var(--surface); border: 1px solid var(--border); padding: 16px; border-radius: 4px; min-width: 0;">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-    <h3 style="margin: 0; font-size: 1.1rem;">Presets & Configuration</h3>
-    <select id="preset-select" class="button" style="min-height: 32px; padding: 0 8px;">
-      <option value="balanced">Preset: Balanced E/I Network</option>
-      <option value="wta">Preset: Winner-Take-All with STDP</option>
-      <option value="chain">Preset: Feed-Forward Chain</option>
-    </select>
-  </div>
+<!-- Controls & Code Export Column -->
+<div class="studio-right" style="display: flex; flex-direction: column; gap: 16px; min-width: 0; max-width: 100%;">
+<div style="background: var(--surface); border: 1px solid var(--border); padding: 16px; border-radius: 4px; min-width: 0; max-width: 100%;">
+  <h3 style="margin: 0 0 12px; font-size: 1.1rem;">Network Configuration Stages</h3>
 
   <!-- Stepper stages -->
   <div class="stepper-tabs" style="display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; flex-wrap: wrap;">
@@ -86,10 +91,10 @@
     <button class="step-tab" data-step="2">3. Connect</button>
     <button class="step-tab" data-step="3">4. Learning</button>
     <button class="step-tab" data-step="4">5. Input</button>
-    <button class="step-tab" data-step="5">6. Run</button>
+    <button class="step-tab" data-step="5">6. Export</button>
   </div>
 
-  <div id="step-content" style="min-height: 220px;">
+  <div id="step-content" style="min-height: 240px;">
     <!-- Step 0: Populations -->
     <div class="step-panel" data-panel="0">
       <h4>Populations (Up to 4)</h4>
@@ -146,21 +151,21 @@
     <div class="step-panel" data-panel="4" hidden>
       <h4>Background & Extrinsic Drive</h4>
       <p style="font-size: 0.85rem; color: var(--text-2);">Poisson spike train input rates and baseline currents.</p>
-      <label><small>Poisson Rate (Hz): <span id="val-poisson-rate">10</span> Hz</small>
-        <input type="range" id="slider-poisson" min="0" max="50" value="10" style="width: 100%;">
+      <label><small>Poisson Rate (Hz): <span id="val-poisson-rate">25</span> Hz</small>
+        <input type="range" id="slider-poisson" min="0" max="60" value="25" style="width: 100%;">
       </label>
-      <label style="margin-top: 12px; display: block;"><small>Injected Current (nA): <span id="val-current">2.0</span> nA</small>
-        <input type="range" id="slider-current" min="0" max="15" step="0.5" value="2.0" style="width: 100%;">
+      <label style="margin-top: 12px; display: block;"><small>Injected Current (nA): <span id="val-current">3.0</span> nA</small>
+        <input type="range" id="slider-current" min="0" max="15" step="0.5" value="3.0" style="width: 100%;">
       </label>
     </div>
 
-    <!-- Step 5: Run -->
+    <!-- Step 5: Export -->
     <div class="step-panel" data-panel="5" hidden>
-      <h4>Simulation & Code Export</h4>
-      <p style="font-size: 0.85rem; color: var(--text-2);">Simulating deterministic network dynamics. Export ready-to-run Python code for neuroSush.</p>
+      <h4>Code Export & neuroSush Python</h4>
+      <p style="font-size: 0.85rem; color: var(--text-2);">Export ready-to-run Python code for neuroSush using standard network APIs.</p>
       <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
-        <button id="btn-export" class="button primary" style="flex: 1; min-width: 180px;">Export neuroSush Python ↗</button>
-        <button id="btn-copy-code" class="button" style="min-width: 100px;">Copy Code</button>
+        <button id="btn-export" class="button primary" style="flex: 1; min-width: 160px;">Generate Code ↗</button>
+        <button id="btn-copy-code" class="button" style="min-width: 90px;">Copy</button>
       </div>
       <small id="copy-status" style="display: block; margin-top: 6px; color: var(--trace);"></small>
     </div>
@@ -173,9 +178,13 @@
   </div>
 </div>
 
-<div style="background: var(--surface); border: 1px solid var(--border); padding: 16px; border-radius: 4px; min-width: 0;">
-  <h4 style="margin-bottom: 8px;">Exported Python Code Preview</h4>
-  <pre style="max-height: 180px; font-size: 0.85rem; background: var(--inset); padding: 8px; border: 1px solid var(--border); overflow: auto;"><code id="code-preview"># Click Export to generate runnable neuroSush code...</code></pre>
+<!-- Always visible Export Code Panel -->
+<div style="background: var(--surface); border: 1px solid var(--border); padding: 16px; border-radius: 4px; min-width: 0; max-width: 100%;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 4px;">
+    <h4 style="margin: 0; font-size: 0.95rem;">Exported Python Code</h4>
+    <button id="btn-copy-code-main" class="button" style="min-height: 28px; padding: 0 8px; font-size: 0.8rem;">Copy Code</button>
+  </div>
+  <pre style="max-height: 220px; font-size: 0.8rem; background: var(--inset); padding: 8px; border: 1px solid var(--border); overflow: auto; max-width: 100%;"><code id="code-preview" style="word-break: break-all; white-space: pre-wrap;"># Click Generate or Export to view runnable neuroSush code...</code></pre>
 </div>
 </div>
 </div>

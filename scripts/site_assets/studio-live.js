@@ -22,35 +22,35 @@
     v_rest: -70.0,
     v_reset: -75.0,
     resistance: 10.0,
-    poisson_rate: 10.0,
-    current: 2.0,
+    poisson_rate: 25.0,
+    current: 3.0,
     stdp_enabled: false,
     a_plus: 0.02,
     a_minus: 0.021,
     populations: [
-      { id: 0, name: 'Exc1', size: 40, excitatory: true },
-      { id: 1, name: 'Inh1', size: 10, excitatory: false },
+      { id: 0, name: 'Exc', size: 40, excitatory: true },
+      { id: 1, name: 'Inh', size: 12, excitatory: false },
     ],
     connections: [
-      { src: 0, dst: 0, p: 0.2, weight: 0.5, delay: 1 },
-      { src: 0, dst: 1, p: 0.3, weight: 0.8, delay: 1 },
-      { src: 1, dst: 0, p: 0.3, weight: -0.6, delay: 1 },
+      { src: 0, dst: 0, p: 0.25, weight: 0.6, delay: 1 },
+      { src: 0, dst: 1, p: 0.35, weight: 0.8, delay: 1 },
+      { src: 1, dst: 0, p: 0.35, weight: -0.7, delay: 1 },
     ],
   };
 
   // Simulation Runtime State
   let simState = {
     stepCount: 0,
-    isPlaying: false,
+    isPlaying: true,
     speed: 1,
-    neurons: [], // flat array of neuron states across populations
-    synapses: [], // list of connections with weight matrices
-    raster: [], // recent spikes history for raster
-    voltages: [], // history for selected neuron
-    rates: [], // history for population rates
-    weights: [], // histogram / sample weights
+    neurons: [],
+    synapses: [],
+    raster: [],
+    voltages: [],
+    rates: [],
+    weights: [],
     selectedNeuron: 0,
-    pulses: [], // active traveling pulse packets
+    pulses: [],
   };
 
   // Presets definition
@@ -62,19 +62,19 @@
       v_rest: -70.0,
       v_reset: -75.0,
       resistance: 10.0,
-      poisson_rate: 12.0,
-      current: 2.5,
+      poisson_rate: 30.0,
+      current: 3.5,
       stdp_enabled: false,
       a_plus: 0.02,
       a_minus: 0.021,
       populations: [
-        { id: 0, name: 'Exc', size: 50, excitatory: true },
-        { id: 1, name: 'Inh', size: 12, excitatory: false },
+        { id: 0, name: 'Exc', size: 48, excitatory: true },
+        { id: 1, name: 'Inh', size: 16, excitatory: false },
       ],
       connections: [
-        { src: 0, dst: 0, p: 0.2, weight: 0.4, delay: 1 },
-        { src: 0, dst: 1, p: 0.3, weight: 0.6, delay: 1 },
-        { src: 1, dst: 0, p: 0.3, weight: -0.5, delay: 1 },
+        { src: 0, dst: 0, p: 0.25, weight: 0.5, delay: 1 },
+        { src: 0, dst: 1, p: 0.35, weight: 0.7, delay: 1 },
+        { src: 1, dst: 0, p: 0.35, weight: -0.6, delay: 1 },
       ],
     },
     wta: {
@@ -84,7 +84,7 @@
       v_rest: -70.0,
       v_reset: -75.0,
       resistance: 10.0,
-      poisson_rate: 15.0,
+      poisson_rate: 28.0,
       current: 3.0,
       stdp_enabled: true,
       a_plus: 0.02,
@@ -92,13 +92,13 @@
       populations: [
         { id: 0, name: 'PopA', size: 30, excitatory: true },
         { id: 1, name: 'PopB', size: 30, excitatory: true },
-        { id: 2, name: 'InhWTA', size: 15, excitatory: false },
+        { id: 2, name: 'InhWTA', size: 16, excitatory: false },
       ],
       connections: [
-        { src: 0, dst: 2, p: 0.4, weight: 0.5, delay: 1 },
-        { src: 1, dst: 2, p: 0.4, weight: 0.5, delay: 1 },
-        { src: 2, dst: 0, p: 0.5, weight: -0.8, delay: 1 },
-        { src: 2, dst: 1, p: 0.5, weight: -0.8, delay: 1 },
+        { src: 0, dst: 2, p: 0.4, weight: 0.6, delay: 1 },
+        { src: 1, dst: 2, p: 0.4, weight: 0.6, delay: 1 },
+        { src: 2, dst: 0, p: 0.5, weight: -0.9, delay: 1 },
+        { src: 2, dst: 1, p: 0.5, weight: -0.9, delay: 1 },
       ],
     },
     chain: {
@@ -108,8 +108,8 @@
       v_rest: -70.0,
       v_reset: -75.0,
       resistance: 10.0,
-      poisson_rate: 8.0,
-      current: 2.0,
+      poisson_rate: 25.0,
+      current: 3.0,
       stdp_enabled: false,
       a_plus: 0.02,
       a_minus: 0.021,
@@ -143,12 +143,12 @@
         simState.neurons.push({
           id: offset + i,
           popId: pop.id,
-          v: config.v_rest + (rng() - 0.5) * 5.0,
-          u: 0.0, // for izhikevich / adex
+          v: config.v_rest + (rng() - 0.5) * 4.0,
+          u: 0.0,
           refractory: 0.0,
-          flashing: 0.0,
-          x_trace: 0.0, // STDP pre trace
-          v_trace: 0.0, // STDP post trace
+          flashing: 0.0, // 0 to 1 for amber glow trail (~300ms)
+          x_trace: 0.0,
+          v_trace: 0.0,
           x: 0,
           y: 0,
         });
@@ -156,7 +156,6 @@
       offset += pop.size;
     }
 
-    // Initialize synapse weights and delay structures
     simState.synapses = config.connections.map(conn => {
       const srcPop = config.populations.find(p => p.id === conn.src);
       const dstPop = config.populations.find(p => p.id === conn.dst);
@@ -167,7 +166,7 @@
           for (let j = 0; j < dstPop.size; j++) {
             if (rng() < conn.p) {
               row.push({
-                w: conn.weight * (0.8 + 0.4 * rng()),
+                w: conn.weight * (0.85 + 0.3 * rng()),
                 delay: conn.delay || 1,
                 queue: new Array(conn.delay || 1).fill(0),
               });
@@ -184,7 +183,6 @@
     simState.selectedNeuron = Math.min(0, simState.neurons.length - 1);
   }
 
-  // Neuron model step functions (matching library / Atlas plates)
   function stepNeuron(neuron, I_ext, dt = 1.0) {
     if (neuron.refractory > 0) {
       neuron.refractory -= dt;
@@ -203,8 +201,7 @@
       }
     } else if (config.model === 'elif') {
       const deltaT = 2.0;
-      const thetaRh = config.v_th;
-      const expTerm = deltaT * Math.exp(Math.min(50, (neuron.v - thetaRh) / deltaT));
+      const expTerm = deltaT * Math.exp(Math.min(50, (neuron.v - config.v_th) / deltaT));
       const dv = dt * ((config.v_rest - neuron.v) + expTerm + config.resistance * I_ext) / config.tau;
       neuron.v += dv;
       if (neuron.v >= config.v_th + 15.0) {
@@ -215,28 +212,21 @@
     } else if (config.model === 'adex') {
       const deltaT = 2.0;
       const tauW = 30.0;
-      const a = 0.5;
-      const b = 5.0;
       const dv = dt * ((config.v_rest - neuron.v) + deltaT * Math.exp(Math.min(50, (neuron.v - config.v_th) / deltaT)) - neuron.u + config.resistance * I_ext) / config.tau;
-      const du = dt * (a * (neuron.v - config.v_rest) - neuron.u) / tauW;
+      const du = dt * (0.5 * (neuron.v - config.v_rest) - neuron.u) / tauW;
       neuron.v += dv;
       neuron.u += du;
       if (neuron.v >= config.v_th + 20.0) {
         spiked = true;
         neuron.v = config.v_reset;
-        neuron.u += b;
+        neuron.u += 5.0;
         neuron.refractory = 2.0;
       }
     } else if (config.model === 'izhikevich') {
-      // Izhikevich regular spiking (a=0.02, b=0.2, c=-65, d=8)
-      const v = neuron.v;
-      const u = neuron.u;
-      const I = I_ext;
-      // 2 substeps per ms
-      let vv = v,
-        uu = u;
+      let vv = neuron.v,
+        uu = neuron.u;
       for (let s = 0; s < 2; s++) {
-        const dv = (0.04 * vv * vv + 5 * vv + 140 - uu + I) / 2.0;
+        const dv = (0.04 * vv * vv + 5 * vv + 140 - uu + I_ext) / 2.0;
         const du = (0.02 * (0.2 * vv - uu)) / 2.0;
         vv += dv;
         uu += du;
@@ -257,14 +247,12 @@
     simState.stepCount++;
     const currentSpikes = [];
 
-    // Poisson background & external drive input per neuron
     simState.neurons.forEach(neuron => {
       let I_ext = config.current;
       if (rng() * 1000 < config.poisson_rate * 1.0) {
-        I_ext += 5.0; // Poisson spike input current bump
+        I_ext += 6.0; // robust Poisson drive
       }
 
-      // Add synaptic input collected from delay queues
       simState.synapses.forEach(syn => {
         const srcPop = config.populations.find(p => p.id === syn.src);
         const dstPop = config.populations.find(p => p.id === syn.dst);
@@ -274,11 +262,10 @@
             for (let i = 0; i < srcPop.size; i++) {
               const conn = syn.weights[i][localIdx];
               if (conn) {
-                // Pop spike from queue
                 const arriving = conn.queue.shift();
-                conn.queue.push(0); // push empty for next
+                conn.queue.push(0);
                 if (arriving) {
-                  I_ext += conn.w * 10.0;
+                  I_ext += conn.w * 8.0;
                 }
               }
             }
@@ -289,16 +276,15 @@
       const spiked = stepNeuron(neuron, I_ext);
       if (spiked) {
         currentSpikes.push(neuron.id);
-        neuron.flashing = 1.0;
+        neuron.flashing = 1.0; // full amber glow
         if (simState.selectedNeuron === neuron.id) {
-          neuron.v = 30.0; // visual spike peak for selected trace
+          neuron.v = 30.0;
         }
       } else {
-        if (neuron.flashing > 0) neuron.flashing -= 0.1;
+        if (neuron.flashing > 0) neuron.flashing = Math.max(0, neuron.flashing - 0.05); // ~300ms fade trail at 60fps
       }
     });
 
-    // Propagate spikes into synapse delay queues & STDP
     simState.synapses.forEach(syn => {
       const srcPop = config.populations.find(p => p.id === syn.src);
       const dstPop = config.populations.find(p => p.id === syn.dst);
@@ -309,9 +295,9 @@
         const srcSpiked = currentSpikes.includes(srcNeuron.id);
 
         if (srcSpiked) {
-          srcNeuron.x_trace = 1.0; // pre trace jump
+          srcNeuron.x_trace = 1.0;
         } else {
-          srcNeuron.x_trace *= Math.exp(-1.0 / 20.0); // decay tau=20
+          srcNeuron.x_trace *= Math.exp(-1.0 / 20.0);
         }
 
         for (let j = 0; j < dstPop.size; j++) {
@@ -322,30 +308,27 @@
           const dstSpiked = currentSpikes.includes(dstNeuron.id);
 
           if (srcSpiked) {
-            // enqueue spike at delay index
             const delayIdx = Math.min(conn.queue.length - 1, conn.delay - 1);
             conn.queue[delayIdx] = 1;
 
-            // Traveling pulse packet record for canvas animation
-            if (simState.pulses.length < 30 && rng() < 0.2) {
+            if (simState.pulses.length < 40 && rng() < 0.25) {
               simState.pulses.push({
                 x1: srcNeuron.x,
                 y1: srcNeuron.y,
                 x2: dstNeuron.x,
                 y2: dstNeuron.y,
                 progress: 0.0,
-                speed: 0.05 + rng() * 0.05,
+                speed: 0.06 + rng() * 0.06,
+                isExc: syn.weight >= 0,
               });
             }
           }
 
           if (config.stdp_enabled && srcSpiked) {
-            // Post before pre -> LTD
             conn.w -= config.a_minus * dstNeuron.v_trace;
             conn.w = Math.max(0.0, Math.min(5.0, conn.w));
           }
           if (config.stdp_enabled && dstSpiked) {
-            // Pre before post -> LTP
             conn.w += config.a_plus * srcNeuron.x_trace;
             conn.w = Math.max(0.0, Math.min(5.0, conn.w));
           }
@@ -353,7 +336,6 @@
       }
     });
 
-    // Update post traces for STDP
     simState.neurons.forEach(neuron => {
       const spiked = currentSpikes.includes(neuron.id);
       if (spiked) {
@@ -363,9 +345,8 @@
       }
     });
 
-    // Record raster and trace history
     simState.raster.push(currentSpikes);
-    if (simState.raster.length > 80) simState.raster.shift();
+    if (simState.raster.length > 100) simState.raster.shift();
 
     const sel = simState.neurons[simState.selectedNeuron];
     if (sel) {
@@ -373,18 +354,16 @@
       if (simState.voltages.length > 120) simState.voltages.shift();
     }
 
-    // Population firing rates
     const rates = config.populations.map(pop => {
       const spkCount = currentSpikes.filter(id => {
         const n = simState.neurons[id];
         return n && n.popId === pop.id;
       }).length;
-      return (spkCount / Math.max(1, pop.size)) * 1000.0 / 1.0; // Hz approx
+      return (spkCount / Math.max(1, pop.size)) * 1000.0;
     });
     simState.rates.push(rates);
     if (simState.rates.length > 100) simState.rates.shift();
 
-    // Synapse weights sample for histogram
     const wSample = [];
     simState.synapses.forEach(syn => {
       syn.weights.forEach(row => {
@@ -394,9 +373,11 @@
       });
     });
     simState.weights = wSample;
+
+    // Update code preview continuously
+    updateCodePreview();
   }
 
-  // Canvas Rendering
   function renderCanvas() {
     const canvas = document.getElementById('studio-canvas');
     if (!canvas) return;
@@ -408,32 +389,64 @@
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--inset').trim() || '#121414';
     ctx.fillRect(0, 0, w, h);
 
-    // Draw population clusters and neurons
     const popCount = config.populations.length;
     const cols = Math.min(2, popCount);
     const rows = Math.ceil(popCount / cols);
     const cellW = w / cols;
     const cellH = h / rows;
 
+    // 1. Draw thin curved synapse bundles with opacity/width following weight
+    simState.synapses.forEach(syn => {
+      const srcPop = config.populations.find(p => p.id === syn.src);
+      const dstPop = config.populations.find(p => p.id === syn.dst);
+      if (!srcPop || !dstPop) return;
+      const srcIdx = config.populations.indexOf(srcPop);
+      const dstIdx = config.populations.indexOf(dstPop);
+      const cx1 = ((srcIdx % cols) * cellW) + cellW / 2;
+      const cy1 = (Math.floor(srcIdx / cols) * cellH) + cellH / 2;
+      const cx2 = ((dstIdx % cols) * cellW) + cellW / 2;
+      const cy2 = (Math.floor(dstIdx / cols) * cellH) + cellH / 2;
+
+      // Sample a subset of weights for clean rendering
+      syn.weights.forEach((row, i) => {
+        if (i % 3 !== 0) return;
+        row.forEach((conn, j) => {
+          if (!conn || j % 3 !== 0) return;
+          const srcN = simState.neurons[srcPop.startIdx + i];
+          const dstN = simState.neurons[dstPop.startIdx + j];
+          if (!srcN || !dstN) return;
+
+          ctx.strokeStyle = conn.w >= 0 ? 'rgba(213, 94, 0, 0.35)' : 'rgba(31, 100, 168, 0.45)';
+          ctx.lineWidth = Math.min(2.0, Math.max(0.5, conn.w * 0.8));
+          ctx.beginPath();
+          ctx.moveTo(srcN.x, srcN.y);
+          // quadratic curve bowing towards center
+          const mx = (srcN.x + dstN.x) / 2 + (cx2 - cx1) * 0.1;
+          const my = (srcN.y + dstN.y) / 2 + (cy2 - cy1) * 0.1;
+          ctx.quadraticCurveTo(mx, my, dstN.x, dstN.y);
+          ctx.stroke();
+        });
+      });
+    });
+
+    // 2. Draw population clusters and neurons with amber firing glow & trail
     config.populations.forEach((pop, pIdx) => {
       const cx = (pIdx % cols) * cellW + cellW / 2;
       const cy = Math.floor(pIdx / cols) * cellH + cellH / 2;
 
-      // Draw cluster bounding circle / box
-      ctx.strokeStyle = pop.excitatory ? 'var(--exc-mark, #B13A0A)' : 'var(--inh-mark, #1F64A8)';
+      ctx.strokeStyle = pop.excitatory ? 'rgba(213, 94, 0, 0.6)' : 'rgba(31, 100, 168, 0.6)';
       ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
+      ctx.setLineDash([5, 5]);
       ctx.beginPath();
-      ctx.arc(cx, cy, Math.min(cellW, cellH) * 0.38, 0, Math.PI * 2);
+      ctx.arc(cx, cy, Math.min(cellW, cellH) * 0.40, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
 
       ctx.fillStyle = ctx.strokeStyle;
-      ctx.font = '11px sans-serif';
-      ctx.fillText(`${pop.name} (N=${pop.size})`, cx - 35, cy - Math.min(cellW, cellH) * 0.42);
+      ctx.font = '12px sans-serif';
+      ctx.fillText(`${pop.name} (N=${pop.size})`, cx - 40, cy - Math.min(cellW, cellH) * 0.44);
 
-      // Position neurons in circular layout within cluster
-      const radius = Math.min(cellW, cellH) * 0.28;
+      const radius = Math.min(cellW, cellH) * 0.30;
       for (let i = 0; i < pop.size; i++) {
         const angle = (i / pop.size) * Math.PI * 2;
         const nx = cx + Math.cos(angle) * radius;
@@ -444,58 +457,49 @@
           neuron.y = ny;
 
           ctx.beginPath();
-          ctx.arc(nx, ny, neuron.id === simState.selectedNeuron ? 5 : 3.5, 0, Math.PI * 2);
-          if (neuron.flashing > 0) {
-            ctx.fillStyle = '#B87400'; // Amber active flash
+          ctx.arc(nx, ny, neuron.id === simState.selectedNeuron ? 6 : 4, 0, Math.PI * 2);
+
+          if (neuron.flashing > 0.05) {
+            // Amber glow when firing / trailing
+            ctx.fillStyle = `rgba(184, 116, 0, ${0.4 + 0.6 * neuron.flashing})`;
+            ctx.fill();
+            ctx.strokeStyle = '#F2B33D';
+            ctx.lineWidth = 2.0;
+            ctx.stroke();
           } else {
             ctx.fillStyle = pop.excitatory ? '#D55E00' : '#0072B2';
+            ctx.fill();
           }
-          ctx.fill();
+
           if (neuron.id === simState.selectedNeuron) {
             ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 2.0;
             ctx.stroke();
           }
         }
       }
     });
 
-    // Draw synapse bundle connections between populations
-    simState.synapses.forEach(syn => {
-      const srcPop = config.populations.find(p => p.id === syn.src);
-      const dstPop = config.populations.find(p => p.id === syn.dst);
-      if (srcPop && dstPop) {
-        const srcIdx = config.populations.indexOf(srcPop);
-        const dstIdx = config.populations.indexOf(dstPop);
-        const x1 = ((srcIdx % cols) * cellW) + cellW / 2;
-        const y1 = (Math.floor(srcIdx / cols) * cellH) + cellH / 2;
-        const x2 = ((dstIdx % cols) * cellW) + cellW / 2;
-        const y2 = (Math.floor(dstIdx / cols) * cellH) + cellH / 2;
-
-        ctx.strokeStyle = syn.weight > 0 ? 'rgba(213, 94, 0, 0.25)' : 'rgba(0, 114, 178, 0.25)';
-        ctx.lineWidth = Math.min(4, Math.max(1, Math.abs(syn.weight) * 2));
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-    });
-
-    // Draw traveling pulse packets
-    ctx.fillStyle = '#B87400';
+    // 3. Draw traveling pulses along curves
     simState.pulses.forEach(p => {
       p.progress += p.speed;
-      const px = p.x1 + (p.x2 - p.x1) * p.progress;
-      const py = p.y1 + (p.y2 - p.y1) * p.progress;
+      const mx = (p.x1 + p.x2) / 2;
+      const my = (p.y1 + p.y2) / 2;
+      // Quadratic bezier point calculation
+      const t = p.progress;
+      const px = (1 - t) * (1 - t) * p.x1 + 2 * (1 - t) * t * mx + t * t * p.x2;
+      const py = (1 - t) * (1 - t) * p.y1 + 2 * (1 - t) * t * my + t * t * p.y2;
+
       ctx.beginPath();
-      ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = p.isExc ? '#F2B33D' : '#5BA8E0';
       ctx.fill();
     });
     simState.pulses = simState.pulses.filter(p => p.progress < 1.0);
   }
 
   function renderOscilloscopes() {
-    // Raster Plot
+    // 1. Raster Plot
     const rCanvas = document.getElementById('raster-canvas');
     if (rCanvas) {
       const ctx = rCanvas.getContext('2d');
@@ -507,16 +511,17 @@
 
       const nTotal = simState.neurons.length;
       simState.raster.forEach((spikes, tIdx) => {
-        const x = (tIdx / 80) * w;
+        const x = (tIdx / 100) * w;
         spikes.forEach(id => {
           const y = (id / Math.max(1, nTotal)) * h;
-          ctx.fillStyle = '#B87400';
-          ctx.fillRect(x, y, 2, 2);
+          const neuron = simState.neurons[id];
+          ctx.fillStyle = neuron && neuron.popId === 0 ? '#D55E00' : '#0072B2';
+          ctx.fillRect(x, y, 2.5, Math.max(2, h / nTotal));
         });
       });
     }
 
-    // Voltage Trace
+    // 2. Voltage Trace
     const vCanvas = document.getElementById('voltage-canvas');
     if (vCanvas) {
       const ctx = vCanvas.getContext('2d');
@@ -527,11 +532,10 @@
       ctx.fillRect(0, 0, w, h);
 
       ctx.strokeStyle = '#B87400';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.8;
       ctx.beginPath();
       simState.voltages.forEach((v, idx) => {
         const x = (idx / 120) * w;
-        // map v from [-80, 40] to [h, 0]
         const y = h - ((v - (-80)) / 120.0) * h;
         if (idx === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
@@ -539,7 +543,7 @@
       ctx.stroke();
     }
 
-    // Firing Rate
+    // 3. Firing Rate
     const rtCanvas = document.getElementById('rate-canvas');
     if (rtCanvas) {
       const ctx = rtCanvas.getContext('2d');
@@ -551,12 +555,12 @@
 
       config.populations.forEach((pop, pIdx) => {
         ctx.strokeStyle = pop.excitatory ? '#D55E00' : '#0072B2';
-        ctx.lineWidth = 1.2;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
         simState.rates.forEach((rates, idx) => {
           const x = (idx / 100) * w;
           const r = rates[pIdx] || 0;
-          const y = h - Math.min(1.0, r / 100.0) * h;
+          const y = h - Math.min(1.0, r / 120.0) * h;
           if (idx === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
@@ -564,8 +568,9 @@
       });
     }
 
-    // Weight Histogram
+    // 4. Weight Heatmap & Histogram (when STDP is on, show matrix heatmap + histogram)
     const wCanvas = document.getElementById('weight-canvas');
+    const wLabel = document.getElementById('weight-view-label');
     if (wCanvas) {
       const ctx = wCanvas.getContext('2d');
       const w = wCanvas.width;
@@ -574,24 +579,59 @@
       ctx.fillStyle = '#090A0A';
       ctx.fillRect(0, 0, w, h);
 
-      if (simState.weights.length > 0) {
-        const bins = new Array(20).fill(0);
+      if (config.stdp_enabled && simState.synapses.length > 0) {
+        if (wLabel) wLabel.textContent = 'STDP Weight Matrix Heatmap & Histogram';
+        // Render small weight matrix heatmap on left half, histogram on right half
+        const syn = simState.synapses[0];
+        const rows = syn.weights.length;
+        const cols = syn.weights[0].length;
+        const cellW = (w / 2) / Math.max(1, cols);
+        const cellH = h / Math.max(1, rows);
+
+        syn.weights.forEach((row, i) => {
+          row.forEach((conn, j) => {
+            if (!conn) return;
+            const intensity = Math.min(1.0, conn.w / 5.0);
+            ctx.fillStyle = `rgba(184, 116, 0, ${intensity})`;
+            ctx.fillRect(j * cellW, i * cellH, cellW - 0.5, cellH - 0.5);
+          });
+        });
+
+        // Histogram on right half
+        const histX = w / 2 + 10;
+        const histW = w / 2 - 15;
+        const bins = new Array(15).fill(0);
         simState.weights.forEach(wt => {
-          const b = Math.min(19, Math.floor((wt / 5.0) * 20));
+          const b = Math.min(14, Math.floor((wt / 5.0) * 15));
           bins[b]++;
         });
         const maxBin = Math.max(...bins, 1);
-        const bw = w / 20;
+        const bw = histW / 15;
         bins.forEach((cnt, idx) => {
           const bh = (cnt / maxBin) * h;
-          ctx.fillStyle = '#B87400';
-          ctx.fillRect(idx * bw + 1, h - bh, bw - 2, bh);
+          ctx.fillStyle = '#F2B33D';
+          ctx.fillRect(histX + idx * bw, h - bh, bw - 1, bh);
         });
+      } else {
+        if (wLabel) wLabel.textContent = 'Synaptic Weight Histogram';
+        if (simState.weights.length > 0) {
+          const bins = new Array(25).fill(0);
+          simState.weights.forEach(wt => {
+            const b = Math.min(24, Math.floor((wt / 5.0) * 25));
+            bins[b]++;
+          });
+          const maxBin = Math.max(...bins, 1);
+          const bw = w / 25;
+          bins.forEach((cnt, idx) => {
+            const bh = (cnt / maxBin) * h;
+            ctx.fillStyle = '#B87400';
+            ctx.fillRect(idx * bw + 1, h - bh, bw - 1, bh);
+          });
+        }
       }
     }
   }
 
-  // Python Code Export Generator
   function generatePythonCode() {
     let code = `\"\"\"Generated by neuroSush Studio Live.
 pip install neurosush>=0.7.0
@@ -654,6 +694,12 @@ from neurosush.synapses.init import WeightInit
     return code;
   }
 
+  function updateCodePreview() {
+    const code = generatePythonCode();
+    const codePreview = document.getElementById('code-preview');
+    if (codePreview) codePreview.textContent = code;
+  }
+
   // UI Wireup & Stepper
   let currentStep = 0;
   const totalSteps = 6;
@@ -694,7 +740,6 @@ from neurosush.synapses.init import WeightInit
     config = JSON.parse(JSON.stringify(p));
     initSimulation();
     renderPopulationsUI();
-    // Update inputs
     document.getElementById('model-select').value = config.model;
     document.getElementById('param-tau').value = config.tau;
     document.getElementById('param-vth').value = config.v_th;
@@ -705,11 +750,22 @@ from neurosush.synapses.init import WeightInit
     document.getElementById('stdp-enabled').checked = config.stdp_enabled;
     document.getElementById('param-aplus').value = config.a_plus;
     document.getElementById('param-aminus').value = config.a_minus;
+    updateCodePreview();
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    // Respect prefers-reduced-motion: if true, default isPaused = true (static frame)
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      simState.isPlaying = false;
+      const playBtn = document.getElementById('btn-play');
+      if (playBtn) playBtn.textContent = 'Run';
+    }
+
+    loadPreset('balanced');
     initSimulation();
     renderPopulationsUI();
+    updateCodePreview();
 
     // Stepper buttons
     document.getElementById('btn-next-step')?.addEventListener('click', () => {
@@ -735,7 +791,7 @@ from neurosush.synapses.init import WeightInit
     const playBtn = document.getElementById('btn-play');
     playBtn?.addEventListener('click', () => {
       simState.isPlaying = !simState.isPlaying;
-      playBtn.textContent = simState.isPlaying ? 'Pause' : 'Play';
+      playBtn.textContent = simState.isPlaying ? 'Pause' : 'Run';
     });
     document.getElementById('btn-step')?.addEventListener('click', () => {
       simulateStep();
@@ -748,19 +804,16 @@ from neurosush.synapses.init import WeightInit
       renderOscilloscopes();
     });
 
-    // Pulse packet button
     document.getElementById('btn-pulse')?.addEventListener('click', () => {
       simState.neurons.forEach(n => {
-        if (n.popId === 0) n.v = 0.0; // excite pop 0
+        if (n.popId === 0) n.v = 0.0;
       });
     });
 
-    // Canvas click to select neuron or inject current
     document.getElementById('studio-canvas')?.addEventListener('click', e => {
       const rect = e.target.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      // Find closest neuron
       let closestId = 0;
       let minDist = Infinity;
       simState.neurons.forEach(n => {
@@ -770,44 +823,46 @@ from neurosush.synapses.init import WeightInit
           closestId = n.id;
         }
       });
-      if (minDist < 30) {
+      if (minDist < 35) {
         simState.selectedNeuron = closestId;
         const selLabel = document.getElementById('selected-trace-label');
         if (selLabel) selLabel.textContent = `Neuron #${closestId} Voltage (mV)`;
       } else {
-        // inject current to all
-        simState.neurons.forEach(n => { n.v += 10.0; });
+        simState.neurons.forEach(n => { n.v += 12.0; });
       }
     });
 
-    // Preset select
     document.getElementById('preset-select')?.addEventListener('change', e => {
       loadPreset(e.target.value);
     });
 
-    // Model & parameters change
     document.getElementById('model-select')?.addEventListener('change', e => {
       config.model = e.target.value;
+      updateCodePreview();
     });
     document.getElementById('param-tau')?.addEventListener('input', e => {
       config.tau = parseFloat(e.target.value) || 20.0;
+      updateCodePreview();
     });
     document.getElementById('param-vth')?.addEventListener('input', e => {
       config.v_th = parseFloat(e.target.value) || -40.0;
+      updateCodePreview();
     });
     document.getElementById('slider-poisson')?.addEventListener('input', e => {
       config.poisson_rate = parseFloat(e.target.value);
       document.getElementById('val-poisson-rate').textContent = config.poisson_rate;
+      updateCodePreview();
     });
     document.getElementById('slider-current')?.addEventListener('input', e => {
       config.current = parseFloat(e.target.value);
       document.getElementById('val-current').textContent = config.current;
+      updateCodePreview();
     });
     document.getElementById('stdp-enabled')?.addEventListener('change', e => {
       config.stdp_enabled = e.target.checked;
+      updateCodePreview();
     });
 
-    // Add Population button
     document.getElementById('btn-add-pop')?.addEventListener('click', () => {
       if (config.populations.length < 4) {
         const newId = config.populations.length;
@@ -819,19 +874,18 @@ from neurosush.synapses.init import WeightInit
         });
         initSimulation();
         renderPopulationsUI();
+        updateCodePreview();
       }
     });
 
-    // Export Python code button
     document.getElementById('btn-export')?.addEventListener('click', () => {
-      const code = generatePythonCode();
-      const codePreview = document.getElementById('code-preview');
-      if (codePreview) codePreview.textContent = code;
       currentStep = 5;
       updateStepView();
+      const codePreview = document.getElementById('code-preview');
+      if (codePreview) codePreview.scrollIntoView({ behavior: 'smooth' });
     });
 
-    document.getElementById('btn-copy-code')?.addEventListener('click', () => {
+    const copyHandler = () => {
       const code = generatePythonCode();
       navigator.clipboard.writeText(code).then(() => {
         const status = document.getElementById('copy-status');
@@ -840,7 +894,6 @@ from neurosush.synapses.init import WeightInit
           setTimeout(() => { status.textContent = ''; }, 2000);
         }
       }).catch(() => {
-        // Fallback
         const ta = document.createElement('textarea');
         ta.value = code;
         document.body.appendChild(ta);
@@ -850,17 +903,18 @@ from neurosush.synapses.init import WeightInit
         const status = document.getElementById('copy-status');
         if (status) status.textContent = 'Copied (fallback)!';
       });
-    });
+    };
 
-    // Main Animation Loop (respects reduced motion)
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById('btn-copy-code')?.addEventListener('click', copyHandler);
+    document.getElementById('btn-copy-code-main')?.addEventListener('click', copyHandler);
 
+    // Main Animation Loop
     function animationLoop() {
       if (simState.isPlaying && !prefersReducedMotion) {
         simulateStep();
-        renderCanvas();
-        renderOscilloscopes();
       }
+      renderCanvas();
+      renderOscilloscopes();
       requestAnimationFrame(animationLoop);
     }
     requestAnimationFrame(animationLoop);
