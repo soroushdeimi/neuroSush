@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="neuroSush scientific results, model variants, and reproducibility report.">
+<title>neuroSush — Results & Reproducibility</title>
+<link rel="icon" href="assets/mark.svg">
+<link rel="stylesheet" href="assets/site.css">
+<script defer src="assets/site.js"></script>
+</head>
+<body class="atlas-page">
+{{HEADER}}
+<main id="main">
+<div class="catalog" style="max-width: 1000px; margin: auto; padding-top: 40px;">
+<p class="eyebrow">SCIENTIFIC REPORT / SINGLE SOURCE OF TRUTH</p>
+<h1>Results & Reproducibility</h1>
+<p style="font-size: 1.25rem; font-weight: 500; color: var(--ink); margin-bottom: 40px;">
+Clean tested TEM implementation that beats baselines on our internal metric; grid-cell emergence not shown.
+</p>
+<p style="font-size: 0.85rem; color: var(--ink-muted); margin-bottom: 40px;">
+Last updated: 2026-11-02. Every number below comes from a run or file named in the source report (<a href="https://github.com/soroushdeimi/neuroSush/blob/main/docs/RESULTS.md" target="_blank">docs/RESULTS.md ↗</a>). Rule: nothing goes on the site or in a PR unless it is supported by the findings with its caveat.
+</p>
+
+<section id="what-we-built" style="margin-bottom: 50px;">
+<p class="eyebrow">01 / WHAT WE BUILT</p>
+<h2>Architecture & Components</h2>
+<p>
+neuroSush is a PyTorch library for spiking networks, HTM / Thousand Brains models and, new, a Tolman-Eichenbaum Machine (TEM, Whittington et al. 2020 Cell). TEM separates a cognitive map into reusable <strong>structure g</strong> (where am I on the graph) and <strong>sensory identity x</strong> (what do I see). Their conjunction <strong>p</strong> is stored in a fast <strong>Hebbian memory M</strong> that is reset per world, while the slow weights (transitions shared across worlds) are trained. Result: after seeing a node once, the model predicts it when reached through a NEW route in a NEW world. Code: <code>src/neurosush/tem/</code>, teaching note: <a href="https://github.com/soroushdeimi/neuroSush/blob/main/docs/TEM.md" target="_blank">docs/TEM.md ↗</a>.
+</p>
+<p>
+The ecosystem includes the PyTorch library, Atlas plate T01 (teaching visualization of Tolman-Eichenbaum Machine with imposed structure), and the Studio backend for project persistence, simulations, and validation.
+</p>
+</section>
+
+<section id="results-model" style="margin-bottom: 50px;">
+<p class="eyebrow">02 / RESULTS OF OUR MODEL</p>
+<h2>Internal Metric & Variants</h2>
+<p>
+<strong>Metric</strong> (ours, not the paper's): accuracy of predicting the observation on the first visit to an already-seen node through a <strong>new directed edge</strong>, in 4x4 and 8x8 graph worlds. 3 training seeds, 16,000 updates each. Best baseline (sensory-only / frequency) is <strong>0.1027</strong>. Source: <code>experiments/tem_overnight_report.py</code> over <code>experiments/results/overnight/*.json</code>.
+</p>
+
+<div style="overflow-x: auto; margin: 20px 0;">
+<table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+  <thead>
+    <tr style="border-bottom: 2px solid var(--border);">
+      <th style="padding: 10px;">Variant</th>
+      <th style="padding: 10px;">What it is</th>
+      <th style="padding: 10px;">Accuracy mean ± SD</th>
+      <th style="padding: 10px;">95% CI</th>
+      <th style="padding: 10px;">Position R² (null p95)</th>
+      <th style="padding: 10px;">Verdict</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 10px; font-weight: 500;">v0</td>
+      <td style="padding: 10px;">earlier model + reference schedules</td>
+      <td style="padding: 10px;">0.236 ± 0.150</td>
+      <td style="padding: 10px;">[-0.137, 0.608]</td>
+      <td style="padding: 10px;">-0.059 (-0.045)</td>
+      <td style="padding: 10px; color: var(--inh);">FAIL, unstable, max grad 3.7e6</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 10px; font-weight: 500;">v1</td>
+      <td style="padding: 10px;">+ L_p_x term, calibrated reductions, bounded attractor activation</td>
+      <td style="padding: 10px;">0.721 ± 0.038</td>
+      <td style="padding: 10px;">[0.627, 0.815]</td>
+      <td style="padding: 10px;">0.296 (-0.178)</td>
+      <td style="padding: 10px; color: var(--exc);">PASS</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 10px; font-weight: 500;">v2</td>
+      <td style="padding: 10px;">v1 + reliability-weighted fusion</td>
+      <td style="padding: 10px;">0.769 ± 0.007</td>
+      <td style="padding: 10px;">[0.751, 0.787]</td>
+      <td style="padding: 10px;">0.458 (-0.045)</td>
+      <td style="padding: 10px; color: var(--exc);">PASS, best learned variant</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 10px; font-weight: 500;">v3 (rotation/torus, from v0)</td>
+      <td style="padding: 10px;">group structure built in</td>
+      <td style="padding: 10px;">0.832 ± 0.014</td>
+      <td style="padding: 10px;">[0.797, 0.866]</td>
+      <td style="padding: 10px;">0.264</td>
+      <td style="padding: 10px;">PASS but <strong>structure imposed</strong></td>
+    </tr>
+    <tr>
+      <td style="padding: 10px; font-weight: 500;">v3 (from v1)</td>
+      <td style="padding: 10px;">group structure built in</td>
+      <td style="padding: 10px;">0.783 ± 0.048</td>
+      <td style="padding: 10px;">[0.664, 0.903]</td>
+      <td style="padding: 10px;">0.482</td>
+      <td style="padding: 10px;">PASS but <strong>structure imposed</strong></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<small>PASS rule: n&gt;=3, mean &gt;= best baseline + 0.05, every seed &gt; frequency, CI lower bound &gt; mean frequency. Best baseline: 0.1027.</small>
+</section>
+
+<section id="four-fixes" style="margin-bottom: 50px;">
+<p class="eyebrow">03 / TRAINING STABILITY</p>
+<h2>The Four Fixes (v0 -> v1/v2)</h2>
+<ol style="padding-left: 20px; line-height: 1.8;">
+  <li><strong>Missing L_p_x term and mis-scaled objective:</strong> Supervise sensory-cued memory, calibrate loss reductions.</li>
+  <li><strong>Reliability-blind fusion -> <code>reliable_fusion</code>:</strong> Weight memory correction by retrieval reliability.</li>
+  <li><strong>Unbounded attractor activation -> bounded activation:</strong> Prevents exploding gradients.</li>
+  <li><strong>Compressed memory curriculum:</strong> Gradual memory use.</li>
+</ol>
+<p style="font-size: 0.9rem; color: var(--ink-muted);">
+These are implementation choices tested together, not four independently proven causes (v1 groups 1+3, v2 adds 2).
+</p>
+</section>
