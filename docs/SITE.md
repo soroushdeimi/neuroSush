@@ -77,3 +77,9 @@ central and Sylvian sulcal depressions, longitudinal separation, temporal contou
 cerebellar folia and a tapering brainstem. A curved hippocampal formation and
 entorhinal patch are highlighted. The anatomy is a procedural schematic, never
 a reconstruction or a claim of learned spatial structure.
+
+`grid.js` supplies three imposed hexagonal field modules (spacing ratio 1.4),
+trajectories and illustrative field-hit marks. The final scene first shows the brain,
+fades cortex for a medial temporal view, and flattens into the arena as scroll ends.
+Mobile presents brain and lattice figures separately. TEM is in the library on main,
+not yet in a tagged release; there is no live TEM demonstration.

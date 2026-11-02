@@ -187,3 +187,11 @@ def test_brain_has_folded_cortex_and_hindbrain(tmp_path, monkeypatch):
     for anatomy in ("sulcus", "sylvian", "central", "Cerebellum", "Brainstem"):
         assert anatomy in module
     assert "Hippocampal formation" in module
+
+
+def test_grid_lattice_is_explicit_and_separate(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    module = (tmp_path / "assets/grid.js").read_text()
+    assert "Math.sqrt(3)/2" in module
+    assert "Math.pow(1.4,module)" in module
+    assert "not learned" in module
