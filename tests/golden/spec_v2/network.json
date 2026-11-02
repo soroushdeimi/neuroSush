@@ -1,0 +1,41 @@
+{
+  "assets": {},
+  "columns": {},
+  "groups": {
+    "exc": {
+      "behaviors": [
+        {
+          "kind": "LIF",
+          "params": {
+            "tau": 10.0,
+            "threshold": -50.0,
+            "v_reset": -70.0,
+            "v_rest": -65.0
+          }
+        }
+      ],
+      "shape": 2
+    }
+  },
+  "network": {
+    "batch_size": null,
+    "behaviors": [],
+    "device": "cpu",
+    "dt": 1.0,
+    "dtype": "float32",
+    "independent": false,
+    "seed": 7
+  },
+  "recordings": [
+    {
+      "attributes": [
+        "v"
+      ],
+      "interval": 1,
+      "max_steps": 1000,
+      "target": "exc"
+    }
+  ],
+  "synapses": [],
+  "version": 2
+}
