@@ -151,3 +151,18 @@ nohup PYTHONPATH=src python experiments/tem_overnight_v1.py --variant v2 --seed 
 # 16x16 world run (seed 0, 16000 updates, checkpoints every 500)
 nohup PYTHONPATH=src python experiments/tem_overnight_v1.py --variant v2 --seed 0 --size 16 --updates 16000 --out experiments/results/overnight/v2-s16-s0.json --checkpoint-every 500 > v2-s16-s0.log 2>&1 &
 ```
+
+## Recorded run export
+
+To generate compact JSON run records (`tem-run.json`, schema version 1) for the site viewer,
+run the exporter CLI:
+
+```bash
+PYTHONPATH=src python experiments/tem_record_run.py --checkpoint experiments/results/checkpoints/v2-s0.pt --out site-data/tem-run-v2-s0.json
+```
+
+This loads checkpoint weights with restricted unpickling, runs walks across evaluation worlds with
+fresh fast memory per world, selects the most position-informative units for `g` and `p`, and exports
+rate maps, walk coordinates, prediction correctness, and first-visit new edge indicators while ensuring
+the file stays compact (<300 KB).
+
