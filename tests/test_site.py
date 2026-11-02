@@ -221,9 +221,14 @@ def test_results_report_page(tmp_path, monkeypatch):
     assert results_path.exists()
     page = results_path.read_text(encoding="utf-8")
     assert "0.1027" in page
+    assert "0.742" in page
+    assert "0.833" in page
+    assert "one seed" in page.lower()
+    assert "not grid" in page.lower() or "not a metric, grid-like code" in page.lower()
     assert "structure imposed" in page
     assert "not a paper reproduction" in page.lower()
     assert "grid-cell emergence not shown" in page.lower()
+    assert "overflow-x: auto" in page
     ids = set(re.findall(r'id="([^"]+)"', page))
     for href in re.findall(r'href="([^"]+)"', page):
         if href.startswith("#"):

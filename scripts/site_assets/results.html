@@ -16,7 +16,7 @@
 <p class="eyebrow">SCIENTIFIC REPORT / SINGLE SOURCE OF TRUTH</p>
 <h1>Results & Reproducibility</h1>
 <p style="font-size: 1.25rem; font-weight: 500; color: var(--ink); margin-bottom: 40px;">
-Clean tested TEM implementation that beats baselines on our internal metric; grid-cell emergence not shown.
+Clean tested TEM implementation that trains stably at reference-scale and clearly beats baselines on our internal metric; grid-cell emergence not shown.
 </p>
 <p style="font-size: 0.85rem; color: var(--ink-muted); margin-bottom: 40px;">
 Last updated: 2026-11-02. Every number below comes from a run or file named in the source report (<a href="https://github.com/soroushdeimi/neuroSush/blob/main/docs/RESULTS.md" target="_blank">docs/RESULTS.md ↗</a>). Rule: nothing goes on the site or in a PR unless it is supported by the findings with its caveat.
@@ -173,8 +173,137 @@ Their TF2 code run in an isolated venv: 40k iterations, one seed, 8x8 worlds. Pr
 </p>
 </section>
 
+<section id="spatial-probe" style="margin-bottom: 50px;">
+<p class="eyebrow">05 / SPATIAL PROBE OF OUR MODELS</p>
+<h2>Spatial Probe of Our Own Trained Models (2026-11-02, One Seed Each)</h2>
+<p>
+Same metric definitions as section 4, applied to our frozen checkpoints (v2 s0 and v1 s0, 16,000 updates, 8x8 worlds, new worlds with empty memory). Source: <code>experiments/results/tem-spatial-v2-s0.json</code>, <code>tem-spatial-v1-s0.json</code>, random-init control <code>tem-spatial-random.json</code>.
+</p>
+
+<div tabindex="0" aria-label="Trained models spatial probe table" style="overflow-x: auto; max-width: 100%; width: 100%; margin: 20px 0;">
+<table style="width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; font-size: 11px;">
+  <thead>
+    <tr style="border-bottom: 2px solid var(--border);">
+      <th style="padding: 8px;">Stream</th>
+      <th style="padding: 8px;">Model</th>
+      <th style="padding: 8px;">Decoder acc (shift null p95)</th>
+      <th style="padding: 8px;">Cross-world map corr</th>
+      <th style="padding: 8px;">Cross-world RSA (null p95)</th>
+      <th style="padding: 8px;">RSA vs grid / vs sensory</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 8px; font-weight: 500;">g</td>
+      <td style="padding: 8px;">v2 s0</td>
+      <td style="padding: 8px;">0.246 (0.025)</td>
+      <td style="padding: 8px;">0.217</td>
+      <td style="padding: 8px;">0.742 (0.039)</td>
+      <td style="padding: 8px;">0.009 / 0.020</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 8px; font-weight: 500;">g</td>
+      <td style="padding: 8px;">v1 s0</td>
+      <td style="padding: 8px;">0.322 (0.024)</td>
+      <td style="padding: 8px;">-0.029</td>
+      <td style="padding: 8px;">0.833 (0.042)</td>
+      <td style="padding: 8px;">-0.045 / 0.073</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 8px; font-weight: 500;">g</td>
+      <td style="padding: 8px;">random init</td>
+      <td style="padding: 8px;">0.115 (0.021)</td>
+      <td style="padding: 8px;">0.041</td>
+      <td style="padding: 8px;">0.072 (0.161)</td>
+      <td style="padding: 8px;">0.109 / 0.161</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 8px; font-weight: 500;">g</td>
+      <td style="padding: 8px;">authors' run (section 4)</td>
+      <td style="padding: 8px;">0.163 (0.021)</td>
+      <td style="padding: 8px;">-0.008</td>
+      <td style="padding: 8px;">0.003 (0.064)</td>
+      <td style="padding: 8px;">0.018 / 0.415</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 8px; font-weight: 500;">p</td>
+      <td style="padding: 8px;">v2 s0</td>
+      <td style="padding: 8px;">0.766 (0.030)</td>
+      <td style="padding: 8px;">0.037</td>
+      <td style="padding: 8px;">0.066 (0.043)</td>
+      <td style="padding: 8px;">0.082 / 0.630</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 8px; font-weight: 500;">p</td>
+      <td style="padding: 8px;">v1 s0</td>
+      <td style="padding: 8px;">0.806 (0.030)</td>
+      <td style="padding: 8px;">0.024</td>
+      <td style="padding: 8px;">0.035 (0.043)</td>
+      <td style="padding: 8px;">0.025 / 0.730</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border-subtle);">
+      <td style="padding: 8px; font-weight: 500;">p</td>
+      <td style="padding: 8px;">random init</td>
+      <td style="padding: 8px;">0.541 (0.026)</td>
+      <td style="padding: 8px;">0.022</td>
+      <td style="padding: 8px;">0.034 (0.074)</td>
+      <td style="padding: 8px;">0.140 / 0.621</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; font-weight: 500;">p</td>
+      <td style="padding: 8px;">authors' run (section 4)</td>
+      <td style="padding: 8px;">0.266 (0.021)</td>
+      <td style="padding: 8px;">0.000</td>
+      <td style="padding: 8px;">0.000 (0.040)</td>
+      <td style="padding: 8px;">0.018 / 0.959</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div style="margin: 24px 0;">
+<svg viewBox="0 0 600 180" width="100%" height="180" style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 15px;" aria-label="Cross-world RSA chart for g stream">
+  <rect x="120" y="20" width="24" height="130" fill="var(--border)" opacity="0.4" />
+  <line x1="144" y1="20" x2="144" y2="150" stroke="var(--ink-muted)" stroke-dasharray="4 4" stroke-width="1.5" />
+  <text x="144" y="15" font-size="10" fill="var(--ink-muted)" text-anchor="middle">Null p95 (~0.04)</text>
+
+  <line x1="120" y1="150" x2="560" y2="150" stroke="var(--border)" stroke-width="1.5" />
+
+  <text x="110" y="42" font-size="11" fill="var(--ink)" text-anchor="end">v1 s0 (0.833)</text>
+  <rect x="120" y="30" width="375" height="18" fill="var(--accent)" rx="3" />
+  <text x="500" y="43" font-size="11" fill="var(--ink)" font-family="var(--font-mono)">0.833</text>
+
+  <text x="110" y="72" font-size="11" fill="var(--ink)" text-anchor="end">v2 s0 (0.742)</text>
+  <rect x="120" y="60" width="334" height="18" fill="var(--accent)" rx="3" opacity="0.85" />
+  <text x="460" y="73" font-size="11" fill="var(--ink)" font-family="var(--font-mono)">0.742</text>
+
+  <text x="110" y="102" font-size="11" fill="var(--ink)" text-anchor="end">Random init (0.072)</text>
+  <rect x="120" y="90" width="32" height="18" fill="var(--ink-muted)" rx="3" />
+  <text x="160" y="103" font-size="11" fill="var(--ink)" font-family="var(--font-mono)">0.072</text>
+
+  <text x="110" y="132" font-size="11" fill="var(--ink)" text-anchor="end">Authors' run (0.003)</text>
+  <rect x="120" y="120" width="1" height="18" fill="var(--ink-muted)" rx="1" />
+  <text x="130" y="133" font-size="11" fill="var(--ink)" font-family="var(--font-mono)">0.003</text>
+</svg>
+<figcaption style="font-size: 12px; color: var(--ink-muted); margin-top: 8px;">Cross-world RSA for g stream: v1 (0.833) and v2 (0.742) exceed null p95 (~0.04), while random init and authors' run do not.</figcaption>
+</div>
+
+<p>
+<strong>Reading:</strong>
+</p>
+<ul style="padding-left: 20px; line-height: 1.8;">
+  <li>Position can be decoded within a world from g and from p (well above the shift null).</li>
+  <li><strong>g carries a representational geometry shared across worlds</strong>: cross-world RSA 0.74 (v2) and 0.83 (v1) against a null p95 of about 0.04, while the random-init control (0.07) stays inside its null. The authors' public run showed about 0 on this measure. Different code, worlds and training, so this is not a ranking against the paper.</li>
+  <li>That shared geometry does <strong>not</strong> follow Manhattan grid distance (RSA vs grid about 0) nor sensory identity, so it is <strong>not</strong> a metric, grid-like code. It means g is a consistent, world-independent code for position; it does not show grid cells.</li>
+  <li>p mainly follows sensory identity (RSA vs sensory 0.63 and 0.73), as in the authors' run, and its map correlation across worlds is near zero.</li>
+  <li>Random-init p also decodes position (0.54) because the fast memory binds observations within a world: high within-world decoding alone is not evidence of learned geometry.</li>
+  <li>Spatial information of g and g_gen is about 1e12 because the reference formula accepts signed activations: a diagnostic, not bits per spike. Only p has a usable-looking value.</li>
+  <li><strong>One seed</strong> per model, 8x8 worlds: gridness is not resolvable. Needs seeds 1-2 and 16x16 worlds before any stronger statement.</li>
+</ul>
+</section>
+
 <section id="claims" style="margin-bottom: 50px;">
-<p class="eyebrow">05 / SCIENTIFIC SCOPE</p>
+<p class="eyebrow">06 / SCIENTIFIC SCOPE</p>
 <h2>What We May and May Not Claim</h2>
 <div class="claims-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
   <div style="background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;">
@@ -198,13 +327,13 @@ Their TF2 code run in an isolated venv: 40k iterations, one seed, 8x8 worlds. Pr
 </section>
 
 <section id="live-progress" style="margin-bottom: 50px;">
-<p class="eyebrow">06 / STATUS & SOURCES</p>
+<p class="eyebrow">07 / STATUS & SOURCES</p>
 <h2>Live Now, In Progress & Sources</h2>
 <p>
-<strong>Live now:</strong> <a href="plates/T01.html">TEACHING: position imposed (Plate T01) ↗</a> and the <a href="gallery.html">Atlas gallery ↗</a>.
+<strong>Live now:</strong> <a href="plates/T01.html">TEACHING: position imposed (Plate T01) ↗</a>, the <a href="gallery.html">Atlas gallery ↗</a>, and spatial probe results of our trained models (v2 s0 and v1 s0, Section 6.1).
 </p>
 <p>
-<strong>In progress:</strong> Spatial probe of our own models (retrains running), recorded-run demo, site redesign.
+<strong>In progress:</strong> Spatial probe done for v2 s0 / v1 s0; next: seeds 1-2, 16x16 worlds, recorded-run demo.
 </p>
 <p>
 <strong>Sources:</strong> Paper DOIs (Whittington et al. 2020 Cell, doi:10.1016/j.cell.2020.10.024; Kawahara & Fujisawa 2025, bioRxiv doi:10.1101/2025.10.16.682754), <a href="https://github.com/soroushdeimi/neuroSush/blob/main/docs/TEM.md" target="_blank">docs/TEM.md ↗</a>, and <a href="https://github.com/soroushdeimi/neuroSush" target="_blank">GitHub repository ↗</a>.
