@@ -94,9 +94,7 @@ def record_run(
                     exec_actions = walk.executed_actions
                     actions = walk.actions
                     action = (
-                        exec_actions[t - 1 : t]
-                        if exec_actions is not None
-                        else actions[t - 1 : t]
+                        exec_actions[t - 1 : t] if exec_actions is not None else actions[t - 1 : t]
                     )
                 out, state = model(obs, action, state)
 

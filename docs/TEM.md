@@ -165,4 +165,3 @@ This loads checkpoint weights with restricted unpickling, runs walks across eval
 fresh fast memory per world, selects the most position-informative units for `g` and `p`, and exports
 rate maps, walk coordinates, prediction correctness, and first-visit new edge indicators while ensuring
 the file stays compact (<300 KB).
-
