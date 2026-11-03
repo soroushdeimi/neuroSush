@@ -27,6 +27,7 @@ from studio.config import Config
 from studio.errors import ApiError
 from studio.runner.resources import preflight
 from studio.runner.worker import execute
+from studio.stream.ring import remove_ring
 
 TERMINAL = {"completed", "failed", "cancelled"}
 
@@ -195,6 +196,7 @@ class RunManager:
                 process.kill()
             if not process.is_alive():
                 process.join()
+                remove_ring(self._root(run_id))
                 if run_id in self.cancelling:
                     self._update(run_id, {"status": "cancelled"})
                 elif self.runs[run_id]["status"] not in TERMINAL:

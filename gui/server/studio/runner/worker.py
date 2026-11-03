@@ -13,16 +13,19 @@ from typing import Any
 from neurosush.checkpoint import save
 from neurosush.structure.network_spec import NetworkSpec, build_network, load_spec
 from neurosush.viz.trace import Trace
+from studio.stream.tap import attach
 
 
 def execute(request: dict[str, Any], directory: str, pipe: Connection) -> None:
     """Run chunks, acknowledge controls at boundaries, and persist complete traces."""
     root = Path(directory)
+    tap = None
     try:
         spec = load_spec(json.dumps(request["spec"]))
         if not isinstance(spec, NetworkSpec):
             raise ValueError("Expected NetworkSpec v2")
         built = build_network(spec)
+        tap = attach(built, request, root)
         pipe.send({"status": "running", "step": built.net.iteration})
         mode, speed = request["mode"], request["speed"]
         paused = False
@@ -36,9 +39,13 @@ def execute(request: dict[str, Any], directory: str, pipe: Connection) -> None:
                     )
                 elif control["type"] == "pace":
                     mode, speed = control["mode"], control["speed"]
+                elif control["type"] == "select":
+                    tap.select(control["group"], control["indices"])
             count = min(request["chunk"], request["steps"] - built.net.iteration)
             start = time.monotonic()
+            tap.flags = int(mode == "fast")
             built.net.run(count)
+            tap.flush(last=built.net.iteration == request["steps"])
             pipe.send({"step": built.net.iteration})
             if mode == "watch":
                 delay = count * built.net.dt / (1000 * speed) - (time.monotonic() - start)
@@ -71,4 +78,6 @@ def execute(request: dict[str, Any], directory: str, pipe: Connection) -> None:
             }
         )
     finally:
+        if tap is not None:
+            tap.ring.close()
         pipe.close()
