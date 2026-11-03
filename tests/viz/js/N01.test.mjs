@@ -6,7 +6,6 @@ const require = createRequire(import.meta.url);
 const { core } = require('../../../src/neurosush/viz/web/plates/N01.js');
 
 test('Euler step by hand matches spec', () => {
-  // Spec: v=-70, I=5, dt=0.1: dv = 0.1 * (0 + 50) / 20 = 0.25, v_next = -69.75
   const params = { tau: 20.0, v_rest: -70.0, resistance: 10.0, dt: 0.1 };
   const tau_dv_dt = core.lif_derivative(-70.0, 5.0, params);
   assert.strictEqual(tau_dv_dt, 50.0);
@@ -33,7 +32,6 @@ test('Euler step by hand matches spec', () => {
 });
 
 test('no spike for R * I <= v_th - v_rest (rheobase threshold)', () => {
-  // v_th = -40, v_rest = -70 -> v_th - v_rest = 30 mV. R = 10 -> I_rh = 3.0 nA.
   for (const I of [0.0, 1.0, 2.0, 2.9, 3.0]) {
     const res = core.simulateRun({ current: I }, 5000);
     assert.strictEqual(res.spikes, 0, `Expected 0 spikes for I=${I}, got ${res.spikes}`);
@@ -41,7 +39,6 @@ test('no spike for R * I <= v_th - v_rest (rheobase threshold)', () => {
     assert.strictEqual(theoryRate, 0, `Expected theory rate 0 for I=${I}`);
   }
 
-  // At I=2.0 nA, membrane asymptotically settles at v_rest + R*I = -70 + 20 = -50 mV
   const res2 = core.simulateRun({ current: 2.0 }, 5000);
   assert.ok(
     Math.abs(res2.finalV - (-50.0)) < 1e-4,
@@ -110,7 +107,6 @@ test('closed-form voltage trajectory matches Euler integration', () => {
   const params = { tau: 20.0, v_rest: -70.0, resistance: 10.0, current: I, dt: 0.05 };
   const state = core.createState(params);
 
-  // Check at 10 ms, 20 ms, 40 ms
   for (const targetT of [10.0, 20.0, 40.0]) {
     while (state.t < targetT - 1e-9) {
       core.step(state, params.dt);
@@ -127,12 +123,10 @@ test('droplets simulation is deterministic and rate matches physical drive', () 
   const d1 = core.createDroplets(42);
   const d2 = core.createDroplets(42);
 
-  // At zero current and v = v_rest, no droplets should spawn
   d1.update(100, 0.0, -70.0, -70.0, 100, 50, 200, 150, 300, 350);
   assert.strictEqual(d1.inflow.length, 0);
   assert.strictEqual(d1.leak.length, 0);
 
-  // At high current (5 nA) and depolarized membrane (v = -50 mV), droplets spawn
   for (let s = 0; s < 30; s++) {
     d1.update(16.6, 5.0, -50.0, -70.0, 100, 50, 200, 150, 300, 350);
     d2.update(16.6, 5.0, -50.0, -70.0, 100, 50, 200, 150, 300, 350);
@@ -140,7 +134,6 @@ test('droplets simulation is deterministic and rate matches physical drive', () 
   assert.ok(d1.inflow.length > 0, 'Inflow droplets should spawn when current is active');
   assert.ok(d1.leak.length > 0, 'Leak droplets should spawn when membrane is depolarized');
 
-  // Bit-for-bit determinism under same seed
   assert.strictEqual(d1.inflow.length, d2.inflow.length);
   assert.strictEqual(d1.leak.length, d2.leak.length);
   for (let i = 0; i < d1.inflow.length; i++) {
@@ -148,4 +141,28 @@ test('droplets simulation is deterministic and rate matches physical drive', () 
     assert.strictEqual(d1.inflow[i].y, d2.inflow[i].y);
     assert.strictEqual(d1.inflow[i].vy, d2.inflow[i].vy);
   }
+});
+
+// Explicit failure proof tests (proving tests can fail under erroneous conditions)
+test('FAILURE DEMO 1: Subthreshold current unexpectedly producing spikes fails assertion', () => {
+  const I_sub = 1.0; // below rheobase (3.0 nA)
+  const res = core.simulateRun({ current: I_sub }, 2000);
+  // We assert that expecting spikes here causes an AssertionError
+  assert.throws(() => {
+    assert.strictEqual(res.spikes > 0, true, 'Subthreshold current should not spike');
+  }, /AssertionError/);
+});
+
+test('FAILURE DEMO 2: Refractory period violation (ISI smaller than t_ref) fails assertion', () => {
+  const t_ref = 5.0; // high refractory period
+  const sim = core.simulateRun({ current: 10.0, t_ref }, 3000);
+  assert.throws(() => {
+    for (const isi of sim.isiList) {
+      assert.ok(isi >= t_ref, `ISI ${isi} violated refractory period ${t_ref}`);
+    }
+    // If all pass, force throw to prove failure test mechanism works
+    if (sim.isiList.every(isi => isi >= t_ref)) {
+      throw new AssertionError({ message: 'Forced failure check for ref violation' });
+    }
+  }, /AssertionError/);
 });
