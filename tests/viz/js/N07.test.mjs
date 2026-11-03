@@ -84,3 +84,11 @@ test('10. invalid physical parameters fail early with descriptive error messages
   assert.throws(() => core.tauEff({ ...p, C: 0 }), /C must be positive/);
   assert.throws(() => core.currents(NaN, p), /v must be finite/);
 });
+
+test('11. failure proof edge case: negative capacitance C = -1.0 throws error', () => {
+  assert.throws(() => core.tauEff({ ...p, C: -1.0 }), /C must be positive/);
+});
+
+test('12. failure proof edge case: negative time step dt = -0.5 throws error', () => {
+  assert.throws(() => core.exactStep(-65, p, -0.5), /dt must be non-negative/);
+});
