@@ -1,0 +1,296 @@
+{
+  "path": [
+    {
+      "step": 1,
+      "id": "M03",
+      "why": "Explain why biological membranes maintain a voltage across their lipid bilayer."
+    },
+    {
+      "step": 2,
+      "id": "N01",
+      "why": "Turn that membrane voltage into a simple leaky integrate-and-fire model neuron."
+    },
+    {
+      "step": 3,
+      "id": "N05",
+      "why": "Explore the detailed ion-channel mechanisms that generate an all-or-none spike."
+    },
+    {
+      "step": 4,
+      "id": "Y01",
+      "why": "Discover how synaptic connections learn and adapt based on spike timing."
+    }
+  ],
+  "groups": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "subtitle": "Mathematical and physical principles underpinning neural simulation.",
+      "anchor": "foundations"
+    },
+    {
+      "id": "neurons",
+      "title": "Neuron models",
+      "subtitle": "Single-cell membrane dynamics, ionic currents, and firing behaviors.",
+      "anchor": "neurons"
+    },
+    {
+      "id": "synapses",
+      "title": "Synapses and learning",
+      "subtitle": "Synaptic transmission, reversal potentials, and spike-timing-dependent plasticity.",
+      "anchor": "synapses"
+    },
+    {
+      "id": "memory",
+      "title": "Memory and representation",
+      "subtitle": "Sparse distributed representations and spatial-temporal memory models.",
+      "anchor": "memory"
+    },
+    {
+      "id": "research",
+      "title": "Research and results",
+      "subtitle": "Background documentation, live research pages, and performance reports.",
+      "anchor": "research"
+    },
+    {
+      "id": "tools",
+      "title": "Tools",
+      "subtitle": "Interactive network composition, visual educational demonstrations, and recorded runs.",
+      "anchor": "tools"
+    }
+  ],
+  "items": [
+    {
+      "id": "M01",
+      "group": "foundations",
+      "level": "Beginner",
+      "minutes": 4,
+      "tags": ["maths", "hands-on"],
+      "learn": "Understand why time discretization affects simulation stability and accuracy.",
+      "prerequisite_ids": [],
+      "status": "Teaching model"
+    },
+    {
+      "id": "M02",
+      "group": "foundations",
+      "level": "Beginner",
+      "minutes": 4,
+      "tags": ["maths", "biology"],
+      "learn": "Explore spike train statistics and inter-spike interval distributions.",
+      "prerequisite_ids": [],
+      "status": "Teaching model"
+    },
+    {
+      "id": "M03",
+      "group": "foundations",
+      "level": "Beginner",
+      "minutes": 5,
+      "tags": ["maths", "biology", "hands-on"],
+      "learn": "Calculate resting membrane potential from ion concentration gradients.",
+      "prerequisite_ids": ["M01"],
+      "status": "Live simulation"
+    },
+    {
+      "id": "N01",
+      "group": "neurons",
+      "level": "Beginner",
+      "minutes": 5,
+      "tags": ["biology", "hands-on"],
+      "learn": "Observe how membrane potential integrates current and resets after spiking.",
+      "prerequisite_ids": ["M03"],
+      "status": "Live simulation"
+    },
+    {
+      "id": "N02",
+      "group": "neurons",
+      "level": "Intermediate",
+      "minutes": 6,
+      "tags": ["biology", "hands-on"],
+      "learn": "See exponential threshold dynamics and action potential initiation at rheobase.",
+      "prerequisite_ids": ["N01"],
+      "status": "Live simulation"
+    },
+    {
+      "id": "N03",
+      "group": "neurons",
+      "level": "Intermediate",
+      "minutes": 7,
+      "tags": ["biology", "hands-on"],
+      "learn": "Study spike-frequency adaptation and phase plane trajectories.",
+      "prerequisite_ids": ["N02"],
+      "status": "Live simulation"
+    },
+    {
+      "id": "N04",
+      "group": "neurons",
+      "level": "Intermediate",
+      "minutes": 8,
+      "tags": ["biology", "hands-on"],
+      "learn": "Replicate diverse cortical neuron firing behaviors with two variables.",
+      "prerequisite_ids": ["N01"],
+      "status": "Live simulation"
+    },
+    {
+      "id": "N05",
+      "group": "neurons",
+      "level": "Advanced",
+      "minutes": 10,
+      "tags": ["biology", "maths", "hands-on"],
+      "learn": "Control ionic conductances and gating variables during an action potential.",
+      "prerequisite_ids": ["M03", "N01"],
+      "status": "Live simulation"
+    },
+    {
+      "id": "N08",
+      "group": "neurons",
+      "level": "Intermediate",
+      "minutes": 6,
+      "tags": ["maths", "hands-on"],
+      "learn": "Analyze firing frequency response to varying input current steps.",
+      "prerequisite_ids": ["N01"],
+      "status": "Live simulation"
+    },
+    {
+      "id": "N07",
+      "group": "synapses",
+      "level": "Intermediate",
+      "minutes": 6,
+      "tags": ["biology", "hands-on"],
+      "learn": "Experience the tug of war between excitatory and inhibitory reversal potentials.",
+      "prerequisite_ids": ["N01", "M03"],
+      "status": "Live simulation"
+    },
+    {
+      "id": "Y01",
+      "group": "synapses",
+      "level": "Intermediate",
+      "minutes": 7,
+      "tags": ["biology", "hands-on", "machine-learning link"],
+      "learn": "Build spike pairs and test timing-dependent synaptic weight changes.",
+      "prerequisite_ids": ["N01"],
+      "status": "Live simulation"
+    },
+    {
+      "id": "Y02",
+      "group": "synapses",
+      "level": "Advanced",
+      "minutes": 8,
+      "tags": ["biology", "machine-learning link"],
+      "learn": "Explore frequency-dependent learning rules beyond simple spike pairs.",
+      "prerequisite_ids": ["Y01"],
+      "status": "Live simulation"
+    },
+    {
+      "id": "H01",
+      "group": "memory",
+      "level": "Beginner",
+      "minutes": 5,
+      "tags": ["machine-learning link", "hands-on"],
+      "learn": "Measure overlap and union properties in sparse binary codes.",
+      "prerequisite_ids": [],
+      "status": "Teaching model"
+    },
+    {
+      "id": "T01",
+      "group": "memory",
+      "level": "Advanced",
+      "minutes": 10,
+      "tags": ["machine-learning link", "hands-on"],
+      "learn": "Observe associative binding and sensory retrieval in a Hebbian memory.",
+      "prerequisite_ids": ["H01"],
+      "status": "Research model, one seed, no grid-cell claim"
+    },
+    {
+      "id": "T02",
+      "group": "memory",
+      "level": "Advanced",
+      "minutes": 9,
+      "tags": ["machine-learning link"],
+      "learn": "Inspect spatial remapping with an imposed environmental structure.",
+      "prerequisite_ids": ["T01"],
+      "status": "Research model, one seed, no grid-cell claim"
+    },
+    {
+      "id": "T03",
+      "group": "memory",
+      "level": "Advanced",
+      "minutes": 8,
+      "tags": ["machine-learning link", "hands-on"],
+      "learn": "Test pattern completion and attractor recall from partial cues.",
+      "prerequisite_ids": ["T01"],
+      "status": "Research model, one seed, no grid-cell claim"
+    },
+    {
+      "id": "P01",
+      "group": "tools",
+      "title": "Population raster (recorded run)",
+      "level": "Intermediate",
+      "minutes": 5,
+      "tags": ["biology", "hands-on"],
+      "learn": "View synchronized population spike rasters from recorded network runs.",
+      "prerequisite_ids": ["N01"],
+      "status": "Replay of recorded data",
+      "url": "plates/P01.html"
+    },
+    {
+      "id": "tem",
+      "group": "research",
+      "title": "Live TEM",
+      "level": "Advanced",
+      "minutes": 10,
+      "tags": ["machine-learning link"],
+      "learn": "Interactive inspection of temporal and spatial predictive representations.",
+      "prerequisite_ids": ["T01"],
+      "status": "Research page",
+      "url": "tem.html"
+    },
+    {
+      "id": "results",
+      "group": "research",
+      "title": "Results report",
+      "level": "Intermediate",
+      "minutes": 5,
+      "tags": ["maths", "machine-learning link"],
+      "learn": "Review benchmark comparisons, execution speed, and verification test metrics.",
+      "prerequisite_ids": [],
+      "status": "Research page",
+      "url": "results.html"
+    },
+    {
+      "id": "research",
+      "group": "research",
+      "title": "Research notes",
+      "level": "Intermediate",
+      "minutes": 6,
+      "tags": ["biology", "machine-learning link"],
+      "learn": "Read background literature, architectural rationale, and theoretical foundations.",
+      "prerequisite_ids": [],
+      "status": "Research page",
+      "url": "research.html"
+    },
+    {
+      "id": "studio-live",
+      "group": "tools",
+      "title": "Studio Live",
+      "level": "Beginner",
+      "minutes": 5,
+      "tags": ["hands-on", "machine-learning link"],
+      "learn": "Compose networks interactively and export runnable Python simulation code.",
+      "prerequisite_ids": ["N01"],
+      "status": "Interactive tool",
+      "url": "studio-live.html"
+    },
+    {
+      "id": "talk-demo",
+      "group": "tools",
+      "title": "The Neuron talk demo",
+      "level": "Beginner",
+      "minutes": 5,
+      "tags": ["biology", "hands-on"],
+      "learn": "Follow a visual walkthrough of neuron morphology and action potentials.",
+      "prerequisite_ids": ["N01"],
+      "status": "Interactive tool",
+      "url": "demos/the-neuron/index.html"
+    }
+  ]
+}
