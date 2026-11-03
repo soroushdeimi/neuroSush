@@ -22,8 +22,8 @@
     controls_title: 'Direct Controls',
     faucet_current: 'Injected Current I (Faucet)',
     threshold_slider: 'Threshold v_th (Spill Line)',
-    btn_noise_off: 'Noise: OFF',
-    btn_noise_on: 'Noise: ON',
+    btn_noise_off: 'Independent per-step current noise: OFF',
+    btn_noise_on: 'Independent per-step current noise: ON',
     btn_kick: '⚡ Kick Membrane (+10 mV)',
     btn_theory_off: 'Theory Ghost [T]: OFF',
     btn_theory_on: 'Theory Ghost [T]: ON',
@@ -65,24 +65,24 @@
     ch4_title: '4. Stronger Drive · Faster Spiking',
     ch4_desc:
       'With current at 6.0 nA, inflow pours rapidly, shortening the charging interval. Notice the spilling water and spray. Drag calipers on the trace to measure the shorter inter-spike interval.',
-    ch5_title: '5. The f-I Curve · Logarithmic Saturation',
+    ch5_title: '5. The f-I Curve · Refractory Saturation',
     ch5_desc:
-      'The firing rate curve reveals the transfer function: zero firing below rheobase (3.0 nA), a steep onset bifurcation, and sublinear logarithmic growth bounded by the refractory period.',
+      'The firing rate curve reveals the transfer function: zero firing below rheobase (3.0 nA), a steep onset bifurcation, and nonlinear growth approaching the refractory rate limit.',
 
     predict_title: 'Predict-then-Reveal',
     predict_q: 'Double current from 3.5 nA to 7.0 nA: does the firing rate double?',
     predict_opt1: 'Yes — rate doubles (linear response)',
     predict_opt2: 'No — rate less than doubles (sublinear)',
     predict_opt3: 'No — rate more than doubles (superlinear)',
-    predict_reveal_correct: 'Correct! The LIF firing rate is sublinear.',
-    predict_reveal_wrong: 'Not quite! The LIF firing rate is sublinear.',
+    predict_reveal_correct: 'Correct! Here the firing rate more than doubles: 22.94 to 68.62 Hz.',
+    predict_reveal_wrong: 'Not quite! Here the firing rate more than doubles: 22.94 to 68.62 Hz.',
     predict_reveal_body:
-      'Because T = τ · ln((R·I - (v_reset - v_rest)) / (R·I - (v_th - v_rest))) + t_ref, the rate f = 1/T saturates logarithmically as I increases and is strictly capped by the refractory period (1/t_ref = 500 Hz). The dashed theory curve confirms this.',
+      'Because T = τ · ln((R·I - (v_reset - v_rest)) / (R·I - (v_th - v_rest))) + t_ref, the rate f = 1000/T Hz approaches 500 Hz as current increases. The dashed theory curve confirms this.',
 
     glossary_title: 'Glossary',
     glossary_v: 'Membrane Potential (v): Electrical potential across the cell membrane.',
     glossary_vrest: 'Resting Potential (v_rest): Baseline steady-state voltage without input (-70 mV).',
-    glossary_vth: 'Threshold (v_th): Critical voltage triggering an explosive action potential (-40 mV).',
+    glossary_vth: 'Threshold (v_th): Model event threshold; the action-potential waveform is not simulated (-40 mV).',
     glossary_vreset: 'Reset Potential (v_reset): Hyperpolarized voltage immediately following a spike (-75 mV).',
     glossary_tau: 'Time Constant (τ): Timescale of passive membrane RC charging (τ = R·C = 20 ms).',
     glossary_R: 'Resistance (R): Input impedance opposing transmembrane ion flow (10 MΩ).',
@@ -421,22 +421,11 @@
       }
     }
 
-    // Precomputed empirical f-I points
-    const fiPoints = [
-      { I: 0.0, f: 0 },
-      { I: 1.0, f: 0 },
-      { I: 2.0, f: 0 },
-      { I: 2.9, f: 0 },
-      { I: 3.2, f: 12.5 },
-      { I: 3.5, f: 23.9 },
-      { I: 4.0, f: 33.5 },
-      { I: 5.0, f: 45.0 },
-      { I: 6.0, f: 57.8 },
-      { I: 7.0, f: 69.5 },
-      { I: 8.0, f: 79.2 },
-      { I: 10.0, f: 98.4 },
-      { I: 12.0, f: 116.2 },
-    ];
+    // Computed empirical f-I points
+    const fiPoints = [0, 1, 2, 2.9, 3.2, 3.5, 4, 5, 6, 7, 8, 10, 12].map((I) => ({
+      I,
+      f: simulateRun({ ...simParams, current: I, noise_enabled: false }, 10000).rate,
+    }));
 
     // ---- DOM: Mount Margin Components ----
     if (marginContainer) {
@@ -495,6 +484,16 @@
             </div>
           </div>
         </div>
+
+        <details class="atlas-margin-section" id="n01-learn-section" ${typeof window !== 'undefined' && window.innerWidth >= 560 ? 'open' : ''}>
+          <summary class="atlas-margin-label" style="cursor: pointer; font-weight: 600;">Learn: the math, the brain, the ML analogy</summary>
+          <div style="display: flex; flex-direction: column; gap: 8px; font-size: 11px; line-height: 1.4; margin-top: 6px;">
+            <div><b>1. What you see:</b> A leaky bucket acting as a leaky integrate-and-fire neuron. Inflow is depolarizing current (I), side leakage is passive membrane decay (v - v_rest), and overflow is action potential firing at threshold (v_th) followed by reset to v_reset.</div>
+            <div><b>2. The math:</b> Governed by C · dv/dt = -(v - v_rest)/R + I, or τ · dv/dt = (v_rest - v) + R · I where τ = R·C = 20 ms (R = 10 MΩ, C = 2 nF). Firing period T = τ · ln((R·I - (v_reset - v_rest)) / (R·I - (v_th - v_rest))) + t_ref, with refractory period t_ref = 2 ms limiting rate to 500 Hz.</div>
+            <div><b>3. In the brain:</b> Models cortical pyramidal neurons integrating synaptic currents across dendrites. The membrane time constant τ = 20 ms reflects typical whole-cell capacitance (~2 nF) and leak conductance (~100 nS). Subthreshold voltage balances leak and input until crossing threshold.</div>
+            <div><b>4. Like classic ML:</b> Equivalent to a recurrent leaky integrator (exponential moving average) with a hard activation threshold and reset. Unlike standard static artificial neurons (ReLU/sigmoid), it has temporal memory and spike timing. However, its non-smooth dynamics and refractory states break standard gradient backpropagation.</div>
+          </div>
+        </details>
 
         <div class="atlas-margin-section">
           <div class="atlas-margin-label">${S.glossary_title}</div>
@@ -730,7 +729,7 @@
         }
         const revealEl = document.getElementById('n01-predict-reveal');
         revealEl.style.display = 'block';
-        const isCorrect = predictAnswer === '2';
+        const isCorrect = predictAnswer === '3';
         revealEl.innerHTML = `
           <div style="font-weight: 600; color: ${isCorrect ? 'var(--exc)' : 'var(--inh)'};">
             ${isCorrect ? S.predict_reveal_correct : S.predict_reveal_wrong}
@@ -1543,30 +1542,40 @@
           c2d.rect(traceLeft, traceTop - 4, traceW, traceH + 8);
           c2d.clip();
 
-          // Theory Ghost Exponential Charging Curve on Trace
+          // Theory Ghost Exponential Charging Curve on Trace (omitted until first observed spike anchors segmentT0)
           if (theoryActive) {
-            c2d.strokeStyle = colors.theory;
-            c2d.lineWidth = 1.6;
-            c2d.setLineDash([4, 3]);
-            c2d.beginPath();
-            let started = false;
-            let segmentT0 = traceHistory[0].t;
+            let segmentT0 = null;
             for (let i = 0; i < traceHistory.length; i++) {
-              const h = traceHistory[i];
-              if (h.spiked) segmentT0 = h.t;
-              const dtFromReset = h.t - segmentT0;
-              const vTheory = core.theoryVoltage(dtFromReset, simParams.current, simParams, simParams.v_reset);
-              const gx = tToX(h.t);
-              const gy = vToY(vTheory);
-              if (!started) {
-                c2d.moveTo(gx, gy);
-                started = true;
-              } else {
-                c2d.lineTo(gx, gy);
+              if (traceHistory[i].spiked) {
+                segmentT0 = traceHistory[i].t;
+                break;
               }
             }
-            c2d.stroke();
-            c2d.setLineDash([]);
+            if (segmentT0 !== null) {
+              c2d.strokeStyle = colors.theory;
+              c2d.lineWidth = 1.6;
+              c2d.setLineDash([4, 3]);
+              c2d.beginPath();
+              let started = false;
+              let currentSegT0 = segmentT0;
+              for (let i = 0; i < traceHistory.length; i++) {
+                const h = traceHistory[i];
+                if (h.t < segmentT0) continue;
+                if (h.spiked) currentSegT0 = h.t;
+                const dtFromReset = h.t - currentSegT0;
+                const vTheory = dtFromReset < simParams.t_ref ? simParams.v_reset : core.theoryVoltage(dtFromReset - simParams.t_ref, simParams.current, simParams, simParams.v_reset);
+                const gx = tToX(h.t);
+                const gy = vToY(vTheory);
+                if (!started) {
+                  c2d.moveTo(gx, gy);
+                  started = true;
+                } else {
+                  c2d.lineTo(gx, gy);
+                }
+              }
+              c2d.stroke();
+              c2d.setLineDash([]);
+            }
           }
 
           // Continuous Simulated Voltage Curve with Action Potential Spikes to +20 mV
