@@ -23,8 +23,16 @@ document.querySelector('#scene').dataset.factIds='soma bilayer k_radius na_radiu
 function onState(t,index,playing){const active=engine.active;if(chapter!==active){chapter=active;panelTitle.innerHTML=panels[active].title;panelLabel.textContent='THE NEURON, ZOOMED';panelNote.textContent=panels[active].note;badge.textContent=badges[active];position.textContent=titles[active];play.hidden=![2,4,6,9].includes(active);panelCopy.innerHTML=panels[active].copy;if(!playing)controls.hidden=true;}}
 engine=new ZoomEngine(document.querySelector('#scene'),document.querySelector('#overlay'),f,keys,models,onState);
 const ruler=document.querySelector('#ruler-marks'),ns='http://www.w3.org/2000/svg';
-const marks=[['brain',f.camera_0_log,null],['soma',Math.log10(f.soma*1e-6),'soma'],['axon',f.camera_6_log,null],['cleft',Math.log10(f.synapse_gap*1e-9),'synapse_gap'],['membrane',Math.log10(f.bilayer*1e-9),'bilayer'],['pore',Math.log10(f.filter_width*1e-9),'filter_width'],['K⁺',Math.log10(f.k_radius*1e-9),'k_radius']];
-for(const [name,log,id]of marks){const group=document.createElementNS(ns,'g'),tick=document.createElementNS(ns,'path'),label=document.createElementNS(ns,'text');group.setAttribute('transform',`translate(0 ${(-1-log)/9*180})`);tick.setAttribute('d','M-4 0H0');label.setAttribute('x','-8');label.setAttribute('text-anchor','end');label.setAttribute('y',name==='pore'?'-5':name==='K⁺'?'9':'3');label.textContent=name;if(id){label.dataset.factId=id;const title=document.createElementNS(ns,'title');const fact=ledger.facts.find(row=>row.id===id);title.textContent=`${fact.value} ${fact.unit}`;label.append(title);}group.append(tick,label);ruler.append(group);}
+const marks=[
+  ['brain', f.camera_0_log, null, 0],
+  ['soma', Math.log10(f.soma*1e-6), 'soma', 0],
+  ['axon', f.camera_6_log, null, 0],
+  ['cleft', Math.log10(f.synapse_gap*1e-9), 'synapse_gap', -8],
+  ['membrane', Math.log10(f.bilayer*1e-9), 'bilayer', -2],
+  ['pore', Math.log10(f.filter_width*1e-9), 'filter_width', 6],
+  ['K⁺', Math.log10(f.k_radius*1e-9), 'k_radius', 14]
+];
+for(const [name,log,id,yOffset] of marks){const group=document.createElementNS(ns,'g'),tick=document.createElementNS(ns,'path'),label=document.createElementNS(ns,'text');group.setAttribute('transform',`translate(0 ${(-1-log)/9*180})`);tick.setAttribute('d','M-4 0H0');label.setAttribute('x','-8');label.setAttribute('text-anchor','end');label.setAttribute('y',String(3 + (yOffset || 0)));label.textContent=name;if(id){label.dataset.factId=id;const title=document.createElementNS(ns,'title');const fact=ledger.facts.find(row=>row.id===id);title.textContent=`${fact.value} ${fact.unit}`;label.append(title);}group.append(tick,label);ruler.append(group);}
 let scrollRange=1;function resizeScroll(){scrollRange=document.querySelector('#scroll-track').offsetHeight-innerHeight;}resizeScroll();addEventListener('resize',resizeScroll);
 addEventListener('scroll',()=>{if(!engine.playing)engine.setTarget(scrollY/scrollRange);},{passive:true});
 function navigate(i){if(engine.playing)togglePlay();const target=keys[Math.max(0,Math.min(keys.length-1,i))].t;scrollTo({top:target*scrollRange,behavior:'instant'});engine.setTarget(target);}
