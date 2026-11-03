@@ -55,6 +55,15 @@ test('the pair reference disables both triplet amplitudes', () => {
   close(reference.delta, direct.delta);
 });
 
+test('validation throws when trace tau is less than dt', () => {
+  assert.throws(() => core.step(core.initialState(), true, false, { tau_plus: 0.5, dt: 1.0 }), /trace tau must be at least dt/);
+});
+
+test('validation throws when frequency is zero or negative', () => {
+  assert.throws(() => core.train(0), /frequency must be positive, got 0/);
+  assert.throws(() => core.train(-5), /frequency must be positive, got -5/);
+});
+
 test('seeded demonstration is deterministic and validation rejects invalid rates', () => {
   assert.deepEqual(core.deterministicDemo(42), core.deterministicDemo(42));
   assert.throws(() => core.train(0), /frequency must be positive, got 0/);
