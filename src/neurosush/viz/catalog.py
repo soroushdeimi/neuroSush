@@ -54,6 +54,13 @@ class PlateSpec:
 
 
 PLATES: dict[str, PlateSpec] = {
+    "P01": PlateSpec(
+        id="P01",
+        title_en="Population raster (recorded run)",
+        wave=1,
+        flagship=False,
+        covers=(),
+    ),
     "T01": PlateSpec(
         id="T01",
         title_en="TEM: binding structure and sensation in a Hebbian memory",
