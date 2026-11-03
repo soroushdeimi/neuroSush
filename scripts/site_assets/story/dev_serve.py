@@ -2,8 +2,10 @@
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from functools import partial
+import sys
 
 if __name__ == '__main__':
     root = Path(__file__).resolve().parent.parent
-    print('Story: http://127.0.0.1:8766/story/story.html', flush=True)
-    ThreadingHTTPServer(('127.0.0.1', 8766), partial(SimpleHTTPRequestHandler, directory=str(root))).serve_forever()
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8776
+    print(f'Story: http://127.0.0.1:{port}/story/story.html', flush=True)
+    ThreadingHTTPServer(('127.0.0.1', port), partial(SimpleHTTPRequestHandler, directory=str(root))).serve_forever()
