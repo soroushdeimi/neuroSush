@@ -18,7 +18,83 @@
  const css=()=>getComputedStyle(document.documentElement);
  const colors={};const color=name=>colors[String(light)+name]||(colors[String(light)+name]=css().getPropertyValue(name).trim());
  const rgb=name=>{const hex=color(name).slice(1);return [0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)/255);};
- const canvas=$('#neural');if(!canvas)return;
+ const canvas=$('#neural');if(!canvas){
+  // If not landing page (e.g. atlas or other page), still run atlas init if needed
+  const initAtlas = () => {
+   if (!document.body.classList.contains('atlas-page')) return;
+   const searchInput = document.getElementById('atlas-search');
+   const resultCount = document.getElementById('result-count');
+   const emptyState = document.getElementById('empty-state');
+   const groupChips = document.querySelectorAll('.atlas-group-chip');
+   const levelChips = document.querySelectorAll('.atlas-level-chip');
+   const groups = document.querySelectorAll('.atlas-group-section');
+
+   let activeGroup = 'all';
+   let activeLevel = 'all';
+   let searchQuery = '';
+
+   function filterCards() {
+     let matchCount = 0;
+     const q = searchQuery.toLowerCase().trim();
+
+     groups.forEach(groupSec => {
+       const gId = groupSec.dataset.groupId;
+       const groupMatchesGroup = (activeGroup === 'all' || activeGroup === gId);
+       let groupVisibleCards = 0;
+
+       const groupCards = groupSec.querySelectorAll('.atlas-card');
+       groupCards.forEach(card => {
+         const cLevel = card.dataset.level;
+         const cText = card.textContent.toLowerCase();
+         const matchesGroup = groupMatchesGroup;
+         const matchesLevel = (activeLevel === 'all' || cLevel === activeLevel);
+         const matchesSearch = !q || cText.includes(q);
+
+         const visible = matchesGroup && matchesLevel && matchesSearch;
+         card.hidden = !visible;
+         if (visible) {
+           groupVisibleCards++;
+           matchCount++;
+         }
+       });
+
+       if (groupMatchesGroup && groupVisibleCards > 0) {
+         groupSec.hidden = false;
+       } else {
+         groupSec.hidden = true;
+       }
+     });
+
+     if (resultCount) resultCount.textContent = `Showing ${matchCount} item${matchCount === 1 ? '' : 's'}`;
+     if (emptyState) emptyState.hidden = (matchCount > 0);
+   }
+
+   groupChips.forEach(chip => {
+     chip.addEventListener('click', () => {
+       groupChips.forEach(c => c.setAttribute('aria-pressed', 'false'));
+       chip.setAttribute('aria-pressed', 'true');
+       activeGroup = chip.dataset.group;
+       filterCards();
+     });
+   });
+
+   levelChips.forEach(chip => {
+     chip.addEventListener('click', () => {
+       levelChips.forEach(c => c.setAttribute('aria-pressed', 'false'));
+       chip.setAttribute('aria-pressed', 'true');
+       activeLevel = chip.dataset.level;
+       filterCards();
+     });
+   });
+
+   searchInput?.addEventListener('input', e => {
+     searchQuery = e.target.value;
+     filterCards();
+   });
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initAtlas);else initAtlas();
+  return;
+ }
  let seed=812;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
  const count=innerWidth<650?9000:32000, shapes=Array.from({length:6},()=>new Float32Array(count*3));
  const tau=Math.PI*2;
@@ -128,4 +204,78 @@
  document.addEventListener('visibilitychange',()=>{cancelAnimationFrame(frame);frame=0;if(!document.hidden)start();});function changeMotion(){motionState();cancelAnimationFrame(frame);frame=0;progress=target;drawStatic();start();}
  motion.addEventListener('change',changeMotion);document.addEventListener('scene:motion',changeMotion);
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimationFrame(frame);frame=0;});scroll();drawStatic();start();
+
+ const initAtlas = () => {
+  if (!document.body.classList.contains('atlas-page')) return;
+  const searchInput = document.getElementById('atlas-search');
+  const resultCount = document.getElementById('result-count');
+  const emptyState = document.getElementById('empty-state');
+  const groupChips = document.querySelectorAll('.atlas-group-chip');
+  const levelChips = document.querySelectorAll('.atlas-level-chip');
+  const groups = document.querySelectorAll('.atlas-group-section');
+
+  let activeGroup = 'all';
+  let activeLevel = 'all';
+  let searchQuery = '';
+
+  function filterCards() {
+    let matchCount = 0;
+    const q = searchQuery.toLowerCase().trim();
+
+    groups.forEach(groupSec => {
+      const gId = groupSec.dataset.groupId;
+      const groupMatchesGroup = (activeGroup === 'all' || activeGroup === gId);
+      let groupVisibleCards = 0;
+
+      const groupCards = groupSec.querySelectorAll('.atlas-card');
+      groupCards.forEach(card => {
+        const cLevel = card.dataset.level;
+        const cText = card.textContent.toLowerCase();
+        const matchesGroup = groupMatchesGroup;
+        const matchesLevel = (activeLevel === 'all' || cLevel === activeLevel);
+        const matchesSearch = !q || cText.includes(q);
+
+        const visible = matchesGroup && matchesLevel && matchesSearch;
+        card.hidden = !visible;
+        if (visible) {
+          groupVisibleCards++;
+          matchCount++;
+        }
+      });
+
+      if (groupMatchesGroup && groupVisibleCards > 0) {
+        groupSec.hidden = false;
+      } else {
+        groupSec.hidden = true;
+      }
+    });
+
+    if (resultCount) resultCount.textContent = `Showing ${matchCount} item${matchCount === 1 ? '' : 's'}`;
+    if (emptyState) emptyState.hidden = (matchCount > 0);
+  }
+
+  groupChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      groupChips.forEach(c => c.setAttribute('aria-pressed', 'false'));
+      chip.setAttribute('aria-pressed', 'true');
+      activeGroup = chip.dataset.group;
+      filterCards();
+    });
+  });
+
+  levelChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      levelChips.forEach(c => c.setAttribute('aria-pressed', 'false'));
+      chip.setAttribute('aria-pressed', 'true');
+      activeLevel = chip.dataset.level;
+      filterCards();
+    });
+  });
+
+  searchInput?.addEventListener('input', e => {
+    searchQuery = e.target.value;
+    filterCards();
+  });
+ };
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initAtlas);else initAtlas();
 })();

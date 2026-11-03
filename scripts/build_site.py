@@ -1,5 +1,6 @@
 import argparse
 import html
+import json
 import shutil
 from pathlib import Path
 
@@ -93,19 +94,12 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         '<nav aria-label="Atlas"><strong>Atlas</strong><a href="'
         + prefix
         + 'gallery.html">All plates</a>'
-        '<a href="' + prefix + 'research.html">Research</a>'
-        '<a href="' + prefix + 'results.html">Results</a>'
-        '<a href="' + prefix + 'tem.html">Live TEM</a>'
-        '<a href="'
-        + prefix
-        + 'gallery.html#neurons">Neurons</a><a href="'
-        + prefix
-        + 'gallery.html#synapses">Synapses</a>'
-        '<a href="'
-        + prefix
-        + 'gallery.html#htm">HTM</a><a href="'
-        + prefix
-        + 'gallery.html#maths">Maths</a></nav>'
+        '<a href="' + prefix + 'gallery.html#foundations">Foundations</a>'
+        '<a href="' + prefix + 'gallery.html#neurons">Neurons</a>'
+        '<a href="' + prefix + 'gallery.html#synapses">Synapses</a>'
+        '<a href="' + prefix + 'gallery.html#memory">Memory</a>'
+        '<a href="' + prefix + 'gallery.html#research">Research</a>'
+        '<a href="' + prefix + 'gallery.html#tools">Tools</a></nav>'
         '<nav aria-label="Project"><strong>Project</strong><a href="' + repo + '">GitHub ↗</a>'
         '<a href="'
         + repo
@@ -119,22 +113,144 @@ def chrome(prefix: str = "") -> tuple[str, str]:
     return header, footer
 
 
-def build_gallery(plates: list[tuple[str, str]], version: str) -> str:
-    page = build_index(plates, version)
-    head = page[: page.index("<body>")]
+def build_gallery(version: str) -> str:
+    atlas_data = json.loads((_ASSETS / "atlas.json").read_text(encoding="utf-8"))
     header, footer = chrome()
-    catalog_start = page.index('<section class="catalog ')
-    catalog = page[catalog_start : page.index("</section>", catalog_start) + 10]
-    return (
-        head.replace("neuroSush — Neural circuits, written in PyTorch.", "neuroSush Atlas")
-        + '<body class="atlas-page">'
-        + header
-        + '<main id="main">'
-        + catalog.replace("Teaching plates you can perturb.", "Atlas")
-        + "</main>"
-        + footer
-        + "</body></html>"
+
+    step_html = []
+    for step_item in atlas_data["path"]:
+        pid = step_item["id"]
+        why = step_item["why"]
+        title = PLATES[pid].title_en if pid in PLATES else pid
+        url = f"plates/{pid}.html"
+        step_html.append(
+            f'<a class="step-card" href="{url}">'
+            f'<span class="step-num">Step {step_item["step"]}</span>'
+            f'<span class="step-id">{html.escape(pid)}</span>'
+            f'<strong>{html.escape(title)}</strong>'
+            f'<p>{html.escape(why)}</p>'
+            f'</a>'
+        )
+
+    group_chips = '<button class="atlas-group-chip button" data-group="all" aria-pressed="true">All groups</button>'
+    for g in atlas_data["groups"]:
+        group_chips += f'<button class="atlas-group-chip button" data-group="{g["id"]}" aria-pressed="false">{html.escape(g["title"])}</button>'
+
+    level_chips = (
+        '<button class="atlas-level-chip button" data-level="all" aria-pressed="true">All levels</button>'
+        '<button class="atlas-level-chip button" data-level="Beginner" aria-pressed="false">Beginner</button>'
+        '<button class="atlas-level-chip button" data-level="Intermediate" aria-pressed="false">Intermediate</button>'
+        '<button class="atlas-level-chip button" data-level="Advanced" aria-pressed="false">Advanced</button>'
     )
+
+    group_sections = []
+    items_by_group = {}
+    for item in atlas_data["items"]:
+        items_by_group.setdefault(item["group"], []).append(item)
+
+    for g in atlas_data["groups"]:
+        g_id = g["id"]
+        g_items = items_by_group.get(g_id, [])
+        if not g_items:
+            continue
+        cards_html = []
+        for item in g_items:
+            pid = item["id"]
+            title = item.get("title") or (PLATES[pid].title_en if pid in PLATES else pid)
+            url = item.get("url") or f"plates/{pid}.html"
+            level = item["level"]
+            minutes = item["minutes"]
+            status = item["status"]
+            learn = item["learn"]
+            prereqs = item.get("prerequisite_ids", [])
+            prereq_links = " · ".join(f'<a href="plates/{p}.html">{p}</a>' for p in prereqs)
+            prereq_html = f'<div class="prereq"><small>Prerequisite: {prereq_links}</small></div>' if prereqs else ''
+            tags_html = "".join(f'<span class="chip tag">{html.escape(t)}</span>' for t in item.get("tags", []))
+
+            cards_html.append(
+                f'<div class="atlas-card" data-level="{html.escape(level)}" data-group="{html.escape(g_id)}">'
+                f'<span class="id">{html.escape(pid if not item.get("url") else title[:3].upper())}</span>'
+                f'<h3><a href="{url}">{html.escape(title)}</a></h3>'
+                f'<p class="learn">“{html.escape(learn)}”</p>'
+                f'<div class="chips">'
+                f'<span class="chip level">{html.escape(level)}</span>'
+                f'<span class="chip time">{minutes} min</span>'
+                f'<span class="chip status">{html.escape(status)}</span>'
+                f'{tags_html}'
+                f'</div>'
+                f'{prereq_html}'
+                f'</div>'
+            )
+
+        group_sections.append(
+            f'<section class="atlas-group-section" id="{g["anchor"]}" data-group-id="{g_id}">'
+            f'<h2>{html.escape(g["title"])}</h2>'
+            f'<p class="group-subtitle">{html.escape(g["subtitle"])}</p>'
+            f'<div class="grid">{"".join(cards_html)}</div>'
+            f'</section>'
+        )
+
+    return f"""<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Atlas of neural circuits, simulation plates and educational models in neuroSush.">
+<title>neuroSush Atlas</title>
+{favicon_links()}
+<link rel="preload" href="assets/fonts/SourceSerif4-Display-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/site.css">
+<script defer src="assets/site.js"></script>
+</head>
+<body class="atlas-page">
+{header}
+<main id="main">
+<div class="atlas-container">
+<section class="atlas-hero">
+<p class="eyebrow">Atlas · v{html.escape(version)}</p>
+<h1>Atlas of Neural Circuits & Models</h1>
+<p class="lead">The neuroSush Atlas is a curated catalog of interactive teaching plates and simulation models. Explore core equations, perturb parameters, and trace neural dynamics from foundational biophysics to network memory.</p>
+</section>
+
+<section class="atlas-path-section">
+<h2>Start here: a 4-step path</h2>
+<p class="lead">Follow this guided sequence from membrane biophysics to synaptic plasticity.</p>
+<div class="stepper">
+{"".join(step_html)}
+</div>
+</section>
+
+<section class="atlas-filter-bar">
+<div class="search-box">
+<label for="atlas-search">Search Atlas</label>
+<input id="atlas-search" type="search" placeholder="Search plates, equations, tags, models…">
+</div>
+<div class="filter-group-row">
+<span class="filter-label">Group:</span>
+<div class="chip-row">{group_chips}</div>
+</div>
+<div class="filter-level-row">
+<span class="filter-label">Level:</span>
+<div class="chip-row">{level_chips}</div>
+</div>
+<div id="result-count" class="result-count" role="status" aria-live="polite">Showing {len(atlas_data["items"])} items</div>
+</section>
+
+<div class="atlas-content">
+{"".join(group_sections)}
+<div id="empty-state" class="empty-state" hidden>
+<h3>No matching plates or models found</h3>
+<p>Try adjusting your search terms or clearing active group and level filters.</p>
+</div>
+</div>
+
+</div>
+</main>
+{footer}
+</body>
+</html>
+"""
 
 
 _ASSETS = Path(__file__).resolve().parent / "site_assets"
@@ -219,12 +335,11 @@ def main():
 
     # 5. Landing assets and gallery
     shutil.copytree(_ASSETS, out_dir / "assets", dirs_exist_ok=True)
+    shutil.copy(_ASSETS / "atlas.json", out_dir / "assets" / "atlas.json")
     (out_dir / "assets" / "index.html").unlink(missing_ok=True)
     (out_dir / "assets" / "results.html").unlink(missing_ok=True)
     (out_dir / "assets" / "research.html").unlink(missing_ok=True)
     (out_dir / "assets" / "studio-live.html").unlink(missing_ok=True)
-
-    # 6. Index, Results, Research & Studio Live
     (out_dir / "assets" / "tem.html").unlink(missing_ok=True)
 
     # 6. Data copy
@@ -243,10 +358,7 @@ def main():
     )
     (out_dir / "index.html").write_text(index_content, encoding="utf-8")
     (out_dir / "gallery.html").write_text(
-        build_gallery(
-            [(p, PLATES[p].title_en if p in PLATES else p) for p in all_plates if p != "demo"],
-            __version__,
-        ),
+        build_gallery(__version__),
         encoding="utf-8",
     )
     results_template = (_ASSETS / "results.html").read_text(encoding="utf-8")

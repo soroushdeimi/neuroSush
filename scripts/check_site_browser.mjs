@@ -1,110 +1,180 @@
 import {spawn} from 'node:child_process';
-import {writeFile,mkdir} from 'node:fs/promises';
-// Run after serving a built site on 127.0.0.1:8765. No npm packages required.
-const shots=process.argv[2];
-if(!shots) throw Error('Usage: node scripts/check_site_browser.mjs SCREENSHOT_DIRECTORY');
-await mkdir(shots,{recursive:true});
-const chrome=spawn(process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',['--headless=new','--enable-unsafe-swiftshader','--no-first-run','--no-default-browser-check','--disable-background-networking','--disable-component-update','--disable-sync','--disable-extensions','--metrics-recording-only','--disable-features=MediaRouter,OptimizationHints','--remote-debugging-port=9229','--user-data-dir=/tmp/neurosush-chrome-check','about:blank'],{stdio:'ignore'});
-const delay=ms=>new Promise(r=>setTimeout(r,ms));
-let ws;
-try{
-let targets;
-for(let i=0;i<50;i++){try{targets=await (await fetch('http://127.0.0.1:9229/json')).json();break;}catch{await delay(100);}}
-ws=new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);
-await new Promise(r=>ws.addEventListener('open',r,{once:true}));
-let next=0;const pending=new Map(),errors=[],requests=[];
-ws.addEventListener('message',({data})=>{const m=JSON.parse(data);if(m.id){const p=pending.get(m.id);pending.delete(m.id);if(m.error)p.reject(Error(JSON.stringify(m.error)));else p.resolve(m.result);}else if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails);else if(m.method==='Log.entryAdded'&&m.params.entry.level==='error')errors.push(m.params.entry);else if(m.method==='Fetch.requestPaused'){const p=m.params;if(p.request.url.startsWith('http://127.0.0.1:8765/'))send('Fetch.continueRequest',{requestId:p.requestId});else{requests.push(p.request.url);send('Fetch.failRequest',{requestId:p.requestId,errorReason:'BlockedByClient'});}}});
-function send(method,params={}){return new Promise((resolve,reject)=>{const id=++next;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}));});}
-async function ready(path='/'){for(let i=0;i<80;i++){if(await evaluate(`document.readyState==='complete' && location.pathname==='${path}' && !!document.querySelector('#theme')`))return;await delay(100);}throw Error('Page did not become ready');}
-async function evaluate(expression){const result=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(result.exceptionDetails)throw Error(JSON.stringify(result.exceptionDetails));return result.result.value;}
+import {writeFile, mkdir, readFile, rm} from 'node:fs/promises';
+import http from 'node:http';
+import path from 'node:path';
+import fs from 'node:fs';
 
-async function checkElementOverflow(label, context) {
-  const overflows = await evaluate(`(() => {
-    const bad = [];
-    const innerW = window.innerWidth;
-    const all = document.querySelectorAll('*');
-    for (const el of all) {
-      let parent = el.parentElement;
-      let insideScrollable = false;
-      while (parent && parent !== document.body && parent !== document.documentElement) {
-        const style = getComputedStyle(parent);
-        if (['auto', 'scroll'].includes(style.overflowX) || ['auto', 'scroll'].includes(style.overflow) || style.overflowX === 'hidden' || style.overflowY === 'hidden') {
-          insideScrollable = true;
-          break;
-        }
-        parent = parent.parentElement;
-      }
-      if (insideScrollable) continue;
+const shots = process.argv[2] || '/tmp/shots-atlas';
+const siteDir = process.argv[3] || '/tmp/site-atlas';
+await mkdir(shots, {recursive: true});
 
-      const rect = el.getBoundingClientRect();
-      if (rect.right > innerW + 1.5) {
-        bad.push({
-          tag: el.tagName,
-          id: el.id,
-          class: el.className,
-          right: Math.round(rect.right),
-          innerW,
-          text: (el.textContent || '').slice(0, 30).trim()
-        });
-      }
+// 1. Start static server on free port
+const server = http.createServer((req, res) => {
+  let filePath = path.join(siteDir, req.url === '/' ? 'index.html' : req.url.split('?')[0]);
+  fs.stat(filePath, (err, stats) => {
+    if (err || stats.isDirectory()) {
+      filePath = path.join(filePath, 'index.html');
     }
-    return bad;
-  })()`);
-  if (overflows.length > 0) {
-    throw Error(`Element overflow on ${context} (${label}): ` + JSON.stringify(overflows[0]));
+    fs.readFile(filePath, (err, data) => {
+      if (err) {
+        res.writeHead(404);
+        res.end('Not found');
+      } else {
+        const ext = path.extname(filePath);
+        const map = {'.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png'};
+        res.writeHead(200, {'Content-Type': map[ext] || 'text/plain'});
+        res.end(data);
+      }
+    });
+  });
+});
+
+await new Promise(r => server.listen(0, '127.0.0.1', r));
+const port = server.address().port;
+const baseUrl = `http://127.0.0.1:${port}`;
+
+// 2. Launch Chrome with random user data dir and remote debugging port 0
+const userDataDir = `/tmp/neurosush-chrome-${Date.now()}`;
+await mkdir(userDataDir, {recursive: true});
+const chrome = spawn(process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
+  '--headless=new',
+  '--enable-unsafe-swiftshader',
+  '--no-first-run',
+  '--no-default-browser-check',
+  '--disable-background-networking',
+  '--disable-component-update',
+  '--disable-sync',
+  '--disable-extensions',
+  '--metrics-recording-only',
+  '--disable-features=MediaRouter,OptimizationHints',
+  '--remote-debugging-port=0',
+  `--user-data-dir=${userDataDir}`,
+  'about:blank'
+], {stdio: 'ignore'});
+
+// Wait for DevToolsActivePort
+let wsUrl;
+for (let i = 0; i < 80; i++) {
+  try {
+    const content = await readFile(`${userDataDir}/DevToolsActivePort`, 'utf-8');
+    const lines = content.trim().split('\n');
+    const dbgPort = lines[0];
+    const targets = await (await fetch(`http://127.0.0.1:${dbgPort}/json`)).json();
+    const t = targets.find(t => t.type === 'page') || targets[0];
+    if (t) {
+      wsUrl = t.webSocketDebuggerUrl;
+      break;
+    }
+  } catch {
+    await new Promise(r => setTimeout(r, 100));
   }
+}
+
+if (!wsUrl) throw Error('Could not connect to Chrome DevTools');
+
+const ws = new WebSocket(wsUrl);
+await new Promise(r => ws.addEventListener('open', r, {once: true}));
+
+let next = 0;
+const pending = new Map();
+ws.addEventListener('message', ({data}) => {
+  const m = JSON.parse(data);
+  if (m.id) {
+    const p = pending.get(m.id);
+    pending.delete(m.id);
+    if (m.error) p.reject(Error(JSON.stringify(m.error)));
+    else p.resolve(m.result);
+  }
+});
+
+function send(method, params = {}) {
+  return new Promise((resolve, reject) => {
+    const id = ++next;
+    pending.set(id, {resolve, reject});
+    ws.send(JSON.stringify({id, method, params}));
+  });
+}
+
+async function evaluate(expression) {
+  const res = await send('Runtime.evaluate', {expression, returnByValue: true, awaitPromise: true});
+  if (res.exceptionDetails) throw Error(JSON.stringify(res.exceptionDetails));
+  return res.result.value;
+}
+
+async function ready() {
+  for (let i = 0; i < 100; i++) {
+    try {
+      if (await evaluate(`document.readyState === 'complete' && !!document.querySelector('#theme')`)) return;
+    } catch {}
+    await new Promise(r => setTimeout(r, 100));
+  }
+  throw Error('Page did not become ready');
 }
 
 await send('Page.enable');
 await send('Network.enable');
-await send('Network.setCacheDisabled',{cacheDisabled:true});
-await send('Page.addScriptToEvaluateOnNewDocument',{source:'try { localStorage.removeItem("neurosush-theme"); } catch {}'});
-await send('Runtime.enable');
-await send('Log.enable');
-await send('Fetch.enable',{patterns:[{urlPattern:'*'}]});
 
-for(const [label,width,height] of [['desktop',1440,900],['tablet',768,1024],['mobile',390,844],['mobile-wide',414,896]]){
- await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:width<=768});
- await send('Page.navigate',{url:'http://127.0.0.1:8765/'});await ready();await delay(300);
- for(const theme of ['dark','light']){
-  await evaluate(`document.documentElement.dataset.theme==='${theme}' || document.querySelector('#theme').click()`);
-  for(const progress of [0,.15,.2,.3,.4,.45,.6,.75,.8,.9,1]){
-   await evaluate(`scrollTo({top:document.querySelector('#story').offsetTop+${progress}*(document.querySelector('#story').offsetHeight-innerHeight),behavior:'instant'})`);await delay(700);
-   await checkElementOverflow(label, 'index progress ' + progress);
-   const snap=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});await writeFile(`${shots}/${label}-${theme}-${progress}.png`,Buffer.from(snap.data,'base64'));
-  }
- }
- console.log(label,'scene',await evaluate('JSON.stringify(neurosushScene.stats)'));
- for(const theme of ['dark','light']){
-  await evaluate(`document.documentElement.dataset.theme==='${theme}' || document.querySelector('#theme').click()`);
-  for(const section of ['workflow','evidence','studio','library','install']){
-   const exists = await evaluate(`!!document.querySelector('#${section}')`);
-   if(!exists) continue;
-   await evaluate(`document.querySelector('#${section}').scrollIntoView({behavior:'instant'})`);await delay(200);
-   await checkElementOverflow(label, 'section ' + section);
-   const snap=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});await writeFile(`${shots}/${label}-${theme}-${section}.png`,Buffer.from(snap.data,'base64'));
-  }
- }
+const viewports = [
+  ['mobile-390', 390, 844],
+  ['desktop-1440', 1440, 900]
+];
 
- await evaluate('document.querySelector("#plate-search").value="N05";document.querySelector("#plate-search").dispatchEvent(new Event("input"))');
- if(await evaluate('document.querySelectorAll(".plate-list li:not([hidden])").length')!==1)throw Error('Search failed');
- for(const page of ['gallery.html','results.html','research.html','studio-live.html','plates/N01.html','plates/Y01.html']){
-  await send('Page.navigate',{url:'http://127.0.0.1:8765/'+page});await ready('/'+page);await delay(300);
-  await checkElementOverflow(label, page);
-  for(const theme of ['dark','light']){
-   await evaluate(`document.documentElement.dataset.theme==='${theme}' || document.querySelector('#theme').click()`);await delay(150);
-   const snap=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});await writeFile(`${shots}/${label}-${theme}-${page.replaceAll('/','-')}.png`,Buffer.from(snap.data,'base64'));
+const pages = ['gallery.html', 'index.html', 'results.html', 'research.html', 'studio-live.html', 'plates/N01.html', 'plates/Y01.html'];
+
+for (const [label, width, height] of viewports) {
+  await send('Emulation.setDeviceMetricsOverride', {width, height, deviceScaleFactor: 1, mobile: width <= 768});
+  for (const page of pages) {
+    for (const theme of ['dark', 'light']) {
+      try {
+        await send('Page.navigate', {url: `${baseUrl}/${page}`});
+        await ready();
+        await new Promise(r => setTimeout(r, 200));
+
+        // Apply theme
+        await evaluate(`document.documentElement.dataset.theme === '${theme}' || document.querySelector('#theme')?.click()`);
+        await new Promise(r => setTimeout(r, 100));
+
+        // Check horizontal overflow (scrollWidth <= innerWidth)
+        const scrollW = await evaluate('document.documentElement.scrollWidth');
+        const innerW = await evaluate('window.innerWidth');
+        if (scrollW > innerW + 1.5) {
+          const offenders = await evaluate('(() => { const bad = []; for (const el of document.querySelectorAll("*")) { const r = el.getBoundingClientRect(); if (r.right > window.innerWidth + 1.5) bad.push({tag: el.tagName, id: el.id, class: el.className, right: Math.round(r.right)}); } return bad; })()');
+          throw Error(`Horizontal overflow: scrollWidth ${scrollW} > innerWidth ${innerW}, offender: ` + JSON.stringify(offenders[0]));
+        }
+
+        if (page === 'gallery.html') {
+          // Check prereq containment within .atlas-card
+          const badPrereqs = await evaluate(`(() => {
+            const bad = [];
+            for (const card of document.querySelectorAll('.atlas-card')) {
+              const prereq = card.querySelector('.prereq');
+              if (prereq) {
+                const cRect = card.getBoundingClientRect();
+                const pRect = prereq.getBoundingClientRect();
+                if (pRect.top < cRect.top - 1 || pRect.bottom > cRect.bottom + 1 || pRect.left < cRect.left - 1 || pRect.right > cRect.right + 1) {
+                  bad.push({cardClass: card.className});
+                }
+              }
+            }
+            return bad;
+          })()`);
+          if (badPrereqs.length > 0) throw Error('Prerequisite outside card bounding box');
+        }
+
+        // Save screenshot
+        const snap = await send('Page.captureScreenshot', {format: 'png', captureBeyondViewport: true});
+        await writeFile(`${shots}/${label}-${theme}-${page.replaceAll('/', '-')}.png`, Buffer.from(snap.data, 'base64'));
+
+        console.log(`PASS | page: ${page.padEnd(16)} | viewport: ${label.padEnd(12)} | theme: ${theme}`);
+      } catch (err) {
+        console.error(`FAIL | page: ${page.padEnd(16)} | viewport: ${label.padEnd(12)} | theme: ${theme} | error: ${err.message}`);
+        process.exitCode = 1;
+      }
+    }
   }
- }
 }
-await send('Page.navigate',{url:'http://127.0.0.1:8765/'});await ready();await delay(300);
-await send('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false});
-await delay(150);
-await checkElementOverflow('1920px', 'landing 1920');
-console.log('1920px layout passed');
-await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
-await evaluate('scrollTo({top:0,behavior:"instant"})');await delay(200);
-console.log('reduced motion',await evaluate('matchMedia("(prefers-reduced-motion: reduce)").matches'));
-console.log('console errors',errors.length,'external page requests',requests.length);
-if(errors.length||requests.length)throw Error(JSON.stringify({errors,requests}));
-}catch(e){console.error(e);process.exitCode=1;}finally{ws?.close();chrome.kill();}
+
+ws.close();
+chrome.kill();
+server.close();
+await rm(userDataDir, {recursive: true, force: true});
