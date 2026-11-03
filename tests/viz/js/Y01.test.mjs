@@ -184,6 +184,14 @@ test('theory_dw matches continuous exponential and converges to discrete trace a
   );
 });
 
+test('parameter validation throws on non-positive time constant', () => {
+  assert.throws(() => core.trace_step(1.0, 0, { tau: -5 }), /tau must be positive/);
+});
+
+test('Bernoulli sampler throws when rate exceeds maximum frequency (p > 1)', () => {
+  assert.throws(() => core.poisson_spike(2000, 1.0, () => 0.5), /rate\*dt\/1000 must be <= 1/);
+});
+
 test('parameter validation throws on non-positive time constants and step', () => {
   assert.throws(() => core.trace_step(1.0, 0, { tau: -5 }));
   assert.throws(() => core.trace_step(1.0, 0, { dt: 0 }));

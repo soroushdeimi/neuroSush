@@ -1,6 +1,6 @@
 /**
  * PLATE Y02 — Triplet STDP and frequency dependence.
- * A live JavaScript port of neurosush.synapses.triplet.TripletSTDP.
+ * A live JavaScript port of neurosush.synapses.triplet.TripletSTDP (with added weight clipping).
  */
 (function (root) {
   'use strict';
@@ -10,7 +10,7 @@
     id: 'PLATE Y02',
     title: 'Triplet STDP: frequency leaves a memory',
     source: 'live',
-    mirrors: 'neurosush.synapses.triplet.TripletSTDP · trace_decay · trace_increment',
+    mirrors: 'neurosush.synapses.triplet.TripletSTDP · trace_decay · trace_increment (with added weight clipping)',
 
     // Chapters
     chapter: 'Chapter',
@@ -56,7 +56,7 @@
     axisPairings: 'Pairings (1 to 24)',
     legendTriplet: 'Triplet STDP',
     legendPair: 'Pair STDP',
-    legendGhost: 'Theory ghost',
+    legendGhost: 'Isolated-pair approximation',
 
     // Plot 2: Frequency sweep
     plot2Title: 'Frequency sweep · Δw vs frequency',
@@ -67,11 +67,11 @@
 
     // Predict-then-reveal
     predictTitle: 'Predict, then reveal',
-    predictQuestion: 'At 40 Hz, will triplet STDP potentiate more or less than at 5 Hz?',
-    btnMore: '▲ More potentiation',
-    btnLess: '▼ Less potentiation',
-    answerCorrect: 'Correct! At 40 Hz the interval (25 ms) is much shorter than slow trace τ_y (125 ms). o₂ stays elevated and multiplies the next LTP term.',
-    answerIncorrect: 'Not quite. Because τ_y (125 ms) is long, post spikes at 40 Hz leave o₂ elevated, multiplying the next LTP term and producing more potentiation.',
+    predictQuestion: 'At 40 Hz, is Δw at 40 Hz greater or smaller than at 5 Hz?',
+    btnMore: '▲ Greater',
+    btnLess: '▼ Smaller',
+    answerCorrect: 'Correct! At 40 Hz, net Δw is smaller (.0531 versus .08295) because inter-pair depression grows faster than triplet potentiation.',
+    answerIncorrect: 'Not quite. Net Δw is smaller at 40 Hz (.0531 versus .08295) because inter-pair depression and overlapping negative intervals outweigh the triplet LTP gain.',
 
     // Marginalia
     eqTitle: 'Governing Equations',
@@ -103,9 +103,9 @@
     ch3t: '3. A slow trace remembers',
     ch3b: 'Watch the violet halo around the post cell. o₂ remains after each post spike and is sampled before the next one.',
     ch4t: '4. The third spike matters',
-    ch4b: 'At 40 Hz, r₁ at a post spike is multiplied by a₂⁺ + a₃⁺o₂. Higher frequency produces dramatically more potentiation.',
+    ch4b: 'At 40 Hz, r₁ at a post spike is multiplied by a₂⁺ + a₃⁺o₂. Frequency changes both potentiation and depression; net change need not increase monotonically.',
     ch5t: '5. Sweep the frequencies',
-    ch5b: 'Run the sweep across 1–50 Hz. Each dot is a simulated train; the dashed line is the frequency-independent pair reference.'
+    ch5b: 'Run the sweep across 1–50 Hz. Each dot is a simulated train; the dashed line is the isolated-pair approximation, which omits interactions between successive pairs.'
   };
 
   function mulberry32(seed) {
@@ -129,6 +129,7 @@
   }
 
   const core = {
+    // Illustrative amplitudes, not a fitted Pfister–Gerstner parameter set.
     DEFAULT: {
       a2_plus: 0.005,
       a3_plus: 0.006,
@@ -156,7 +157,8 @@
 
     traceStep(trace, spike, options = {}) {
       const p = { ...core.DEFAULT, ...options };
-      return core.traceIncrement(core.traceDecay(trace, p.tau, p.dt), spike, p.interaction || 'all');
+      const tau = p.tau ?? p.tau_plus;
+      return core.traceIncrement(core.traceDecay(trace, tau, p.dt), spike, p.interaction || 'all');
     },
 
     initialState(w = core.DEFAULT.w0) {
@@ -177,6 +179,9 @@
     step(state, pre, post, options = {}) {
       const p = { ...core.DEFAULT, ...options };
       ['tau_plus', 'tau_minus', 'tau_x', 'tau_y', 'dt'].forEach((k) => requirePositive(k, p[k]));
+      if (Math.min(p.tau_plus, p.tau_minus, p.tau_x, p.tau_y) < p.dt) {
+        throw new Error('trace tau must be at least dt');
+      }
 
       const interaction = p.interaction || 'all';
       const r2Before = core.traceDecay(state.r2, p.tau_x, p.dt);
@@ -219,20 +224,21 @@
 
       const p = { ...core.DEFAULT, ...options };
       const lag = p.lag ?? 10;
-      const period = Math.max(lag + 1, Math.round(1000 / frequency));
+      const lagSteps = Math.round(lag / p.dt);
+      const period = Math.max(lagSteps + 1, Math.round(1000 / (frequency * p.dt)));
 
       let s = core.initialState(p.w0);
       const history = [{ t: 0, ...s }];
       const events = [];
 
-      for (let t = 0; t < (pairs - 1) * period + lag + 1; t += 1) {
+      for (let t = 0; t < (pairs - 1) * period + lagSteps + 1; t += 1) {
         const pre = t % period === 0 && t / period < pairs;
-        const post = t >= lag && (t - lag) % period === 0 && (t - lag) / period < pairs;
+        const post = t >= lagSteps && (t - lagSteps) % period === 0 && (t - lagSteps) / period < pairs;
 
         s = core.step(s, pre, post, p);
-        history.push({ t: t + 1, ...s });
+        history.push({ t: (t + 1) * p.dt, ...s });
         if (pre || post) {
-          events.push({ t, pre, post, dw: s.dw, ...s });
+          events.push({ t: t * p.dt, pre, post, dw: s.dw, ...s });
         }
       }
 
@@ -419,6 +425,22 @@
     section.insertBefore(banner, host);
     section.insertBefore(predictCard, host);
     section.insertBefore(controls, host);
+
+    const learnCard = document.createElement('section');
+    learnCard.className = 'y02-learn-card';
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 600;
+    learnCard.innerHTML = `
+      <details class="y02-learn-panel" ${isDesktop ? 'open' : ''} style="background:var(--paper-card); border:1px solid var(--border); border-radius:var(--radius, 3px); padding:8px 12px; font-size:12px; margin-bottom:6px;">
+        <summary style="font-family:var(--font-serif); font-weight:600; cursor:pointer; color:var(--ink);">Learn: the math, the brain, the ML analogy</summary>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:8px; margin-top:8px; line-height:1.4; color:var(--ink);">
+          <div><strong>(a) What you see:</strong> Pre and post-soma neurons with fast/slow exponential spike traces (r₁, r₂, o₁, o₂), synaptic boutons, and interactive frequency sweep and pairing train plots showing triplet STDP.</div>
+          <div><strong>(b) The math:</strong> Decayed traces r, o at time constants τ₊ = 16.8 ms, τ₋ = 33.7 ms, τ_x = 101 ms, τ_y = 125 ms. LTP = r₁ · post · (a₂⁺ + a₃⁺ o₂_before). LTD = o₁ · pre · (a₂⁻ + a₃⁻ r₂_before).</div>
+          <div><strong>(c) In the brain:</strong> Triplet STDP accounts for frequency-dependent spike train data in visual cortex (Pfister & Gerstner 2006), where slow postsynaptic calcium-mediated traces (o₂) gate potentiation at higher frequencies.</div>
+          <div><strong>(d) Like classic ML:</strong> Multiplicative gating of eligibility traces (similar to higher-order feature interactions or second-order RNN updates). Breaks down because it lacks global loss gradients and error backpropagation.</div>
+        </div>
+      </details>
+    `;
+    section.insertBefore(learnCard, host);
 
     const canvas = document.createElement('canvas');
     canvas.className = 'atlas-canvas';
@@ -981,10 +1003,19 @@
       sText('1 Hz', ax2 + 2, plot2.y + plot2.h + 16, c.inkMuted, 12);
       sText('50 Hz', ax2 + pw2 - 2, plot2.y + plot2.h + 16, c.inkMuted, 12, 'right');
 
-      const pairTheoryDelta = core.pairDelta() * 24;
-      const pairLineY = plot2.y + plot2.h - (pairTheoryDelta / maxDelta) * plot2.h;
       if (showTheory) {
-        sLine(ax2, pairLineY, ax2 + pw2, pairLineY, c.theory, 1.5, [5, 4]);
+        const pairSweep = sweepFrequencies.map((f) => core.pairTrain(f, 24, protocol).delta);
+        staticCtx.beginPath();
+        staticCtx.setLineDash([4, 3]);
+        staticCtx.strokeStyle = c.theory;
+        staticCtx.lineWidth = 1.5;
+        sweepFrequencies.forEach((f, i) => {
+          const px = ax2 + ((f - 1) / 49) * pw2;
+          const py = plot2.y + plot2.h - (pairSweep[i] / maxDelta) * plot2.h;
+          if (i === 0) staticCtx.moveTo(px, py);
+          else staticCtx.lineTo(px, py);
+        });
+        staticCtx.stroke();
       }
 
       // 4. Dial row background track and static text
