@@ -1647,7 +1647,7 @@
     render();
   }
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = { core };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { core, S };
   if (typeof Atlas !== 'undefined' && Atlas.Plate) {
     Atlas.Plate.register({ id: 'M01', title: { en: S.title }, source: 'live', mount });
   }

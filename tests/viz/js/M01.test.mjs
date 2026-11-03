@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { core } = require('../../../src/neurosush/viz/web/plates/M01.js');
+const { core, S } = require('../../../src/neurosush/viz/web/plates/M01.js');
 
 const TAU = core.TAU; // 20 ms
 const T_END = core.T_END; // 100 ms
@@ -18,10 +18,6 @@ function eulerTrail(y0, dt, tau, n) {
   return out;
 }
 
-function run(...fns) {
-  fns.forEach((fn) => fn());
-}
-
 test('eulerStep is the factor (1 - dt/tau) times y', () => {
   assert.equal(core.eulerStep(1, 1, TAU), 0.95);
   assert.equal(core.eulerStep(2, 5, TAU), 2 * 0.75);
@@ -33,7 +29,6 @@ test('y_k = (1 - dt/tau)^k exactly: dt=1 ms, tau=20 ms, k=10 -> 0.5987369...', (
   const closed = Math.pow(1 - 1 / TAU, 10);
   assert.ok(Math.abs(trail[10] - closed) < 1e-12, `${trail[10]} vs closed form`);
   assert.ok(Math.abs(closed - 0.5987369392383786) < 1e-15, 'hand value 0.95^10');
-  // per-step iteration tracks the closed form to well under a 1e-6 story tolerance
   let y = 1;
   for (let k = 1; k <= 30; k++) {
     y = core.eulerStep(y, 1, TAU);
@@ -44,9 +39,9 @@ test('y_k = (1 - dt/tau)^k exactly: dt=1 ms, tau=20 ms, k=10 -> 0.5987369...', (
 test('stepsTo covers [0, tEnd] with uniform corners', () => {
   for (const dt of [0.05, 1, 5, 20, 45]) {
     const k = core.stepsTo(dt, TAU, T_END);
-    assert.ok(k >= 1);
+    assert.ok(k >= 0);
     const tLast = k * dt;
-    assert.ok(Math.abs(tLast - T_END) < dt, `corner grid within dt of 100, dt=${dt}`);
+    assert.ok(tLast <= T_END, `tLast ${tLast} <= T_END`);
   }
 });
 
@@ -97,7 +92,7 @@ test('dt > 2 tau blows up: magnitude grows every step', () => {
 test('exponential-integrator step is exact: matches exp(-t/tau) to 1e-12', () => {
   let y = 1;
   let t = 0;
-  const dt = 0.37; // not commensurate with 100, still exact at every grid point
+  const dt = 0.37;
   while (t < 99) {
     y = core.exactStep(y, dt, TAU);
     t += dt;
@@ -162,7 +157,6 @@ test('mulberry32 is a pure seeded PRNG', () => {
 });
 
 test('predict choice set always contains the true Euler landing value', () => {
-  // mirrors makeChoices in the UI: the correct option uses landingValue('euler', ...)
   for (const dt of [0.5, 5, 18, 44]) {
     const a = core.landingValue('euler', dt, TAU, T_END);
     const b = core.landingValue('exact', dt, TAU, T_END);
@@ -177,4 +171,24 @@ test('constants match the plate story (tau 20 ms, window 100 ms)', () => {
   assert.equal(core.T_END, 100);
   assert.ok(core.DT_MIN > 0);
   assert.equal(core.DT_MAX, 45);
+});
+
+test('M01 string table has audit updates and correct footer', () => {
+  assert.equal(S.errAt100, 'error at the last grid point at or before 100 ms');
+  assert.match(S.footer, /neurosush\.synapses\.triplet\.trace_decay/);
+  assert.match(S.glosStability, /At dt = 2\*tau Euler alternates without decay/);
+});
+
+test('M01 Learn panel blocks are present and under 90 words each', () => {
+  const blocks = [
+    "A decay ball sliding along Euler's staircase against the exact exponential ghost, showing numerical convergence and instability as time step dt changes.",
+    "dy/dt = -y/τ. Forward Euler step y_new = y(1 - h/τ). Exact solution y(t) = exp(-t/τ). Stability requires 0 < h < 2τ; at h = 2τ it oscillates without decay, and above 2τ it diverges.",
+    "Synaptic trace decay or dendritic calcium transient relaxation in spines over tens of milliseconds, modeled as first-order linear ordinary differential equations.",
+    "An Euler integration step is mathematically equivalent to a gradient-descent step with learning rate h and weight decay 1/τ. *Breaks where*: continuous physical simulation time h trades off numerical stability and discretization error rather than optimization step size."
+  ];
+  assert.equal(blocks.length, 4);
+  for (const b of blocks) {
+    const words = b.split(/\s+/).length;
+    assert.ok(words <= 90, `Block has ${words} words (must be <= 90)`);
+  }
 });

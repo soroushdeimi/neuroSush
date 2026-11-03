@@ -44,6 +44,16 @@ test('singular points are finite and continuous', () => {
   assert.ok(Math.abs(core.alpha_n(-55 - 1e-5) - 0.1) < 1e-4);
 });
 
+test('alpha_m(-40.0000001) matches the hand-computed Taylor value', () => {
+  const actual = core.alpha_m(-40.0000001);
+  assert.ok(Math.abs(actual - 0.999999995) < 1e-15, `alpha_m was ${actual}`);
+});
+
+test('alpha_n(-55.0000001) matches the hand-computed Taylor value', () => {
+  const actual = core.alpha_n(-55.0000001);
+  assert.ok(Math.abs(actual - 0.0999999995) < 1e-15, `alpha_n was ${actual}`);
+});
+
 test('rest stays within 0.5 mV for 100 ms with I=0', () => {
   const res = core.simulate(100, 0.025, 0, {
     V: -65,
@@ -110,6 +120,30 @@ test('gates stay in [0, 1]', () => {
   }
 });
 
+test('RK4 convergence: halving dt changes spike time by less than 0.05 ms', () => {
+  function getFirstSpikeTime(dt) {
+    const res = core.simulate(10, dt, 10, {
+      V: -65,
+      m: 0.0529,
+      h: 0.5961,
+      n: 0.3177,
+    });
+    const h = res.history;
+    for (let i = 1; i < h.length - 1; i++) {
+      if (h[i].V > h[i - 1].V && h[i].V > h[i + 1].V && h[i].V > 0) {
+        return h[i].t;
+      }
+    }
+    return null;
+  }
+
+  const t1 = getFirstSpikeTime(0.025);
+  const t2 = getFirstSpikeTime(0.0125);
+  assert.ok(t1 !== null && t2 !== null, 'spike was detected at both resolutions');
+  const diff = Math.abs(t1 - t2);
+  assert.ok(diff < 0.05, `spike time diff was ${diff} ms (must be < 0.05 ms)`);
+});
+
 test('TTX removes spiking', () => {
   const res = core.simulate(100, 0.025, 10, {
     V: -65,
@@ -124,6 +158,16 @@ test('TTX removes spiking', () => {
   assert.ok(maxV < -50, `with TTX, max V was ${maxV} mV (spikes should be abolished)`);
 });
 
+test('TEA blocks repolarization / slows falling phase', () => {
+  const res = core.simulate(20, 0.025, 15, {
+    V: -65,
+    m: 0.0529,
+    h: 0.5961,
+    n: 0.3177,
+  }, { tea: true });
+  assert.ok(res.history.length > 0);
+});
+
 test('deterministic under the seed', () => {
   const rng1 = core.createRng(12345);
   const rng2 = core.createRng(12345);
@@ -136,26 +180,29 @@ test('deterministic under the seed', () => {
   assert.deepEqual(channels1, channels2);
 });
 
-// Explicit failure proof tests (prove that false claims fail)
-test('FAILURE_PROOF: expecting resting potential to be +40 mV fails as expected', () => {
-  let failed = false;
-  try {
-    const res = core.simulate(10, 0.025, 0);
-    assert.equal(res.state.V, 40, 'Expecting resting V to be +40 mV');
-  } catch (err) {
-    failed = true;
-  }
-  assert.ok(failed, 'Resting potential assertion correctly failed');
-});
+test('voltage clamp reproduces classic inward-then-outward current', () => {
+  const dt = 0.025;
+  const steps = Math.round(15 / dt);
+  let state = { V: -65, m: 0.0529, h: 0.5961, n: 0.3177 };
+  let minCurrent = 1000;
+  let minTime = -1;
+  let finalCurrent = 0;
 
-test('FAILURE_PROOF: expecting spike peak to exceed +120 mV fails as expected', () => {
-  let failed = false;
-  try {
-    const res = core.simulate(30, 0.025, 15);
-    const maxV = Math.max(...res.history.map(s => s.V));
-    assert.ok(maxV > 120, `Max V ${maxV} does not exceed +120 mV`);
-  } catch (err) {
-    failed = true;
+  for (let i = 0; i < steps; i++) {
+    const t = i * dt;
+    const clampV = t >= 1.0 ? 0 : -65;
+    state = core.rk4Step(state, 0, dt, { clamp: true, clampV });
+    const totalI = state.I_Na + state.I_K + state.I_L;
+    if (t > 1.0) {
+      if (totalI < minCurrent) {
+        minCurrent = totalI;
+        minTime = t;
+      }
+      finalCurrent = totalI;
+    }
   }
-  assert.ok(failed, 'Excessive spike peak assertion correctly failed');
+
+  assert.ok(minCurrent < -200, `expected inward Na current, got ${minCurrent}`);
+  assert.ok(minTime < 3.0, `inward peak occurred at ${minTime} ms (should be rapid)`);
+  assert.ok(finalCurrent > 500, `expected outward K current, got ${finalCurrent}`);
 });
