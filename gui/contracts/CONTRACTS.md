@@ -4,7 +4,10 @@
 - `Issue = {"path": "<JSON pointer>", "message": str, "fix": str}`. This is the existing shape.
 - Error body for every non-2xx except FastAPI's own 422: `{"error": {"code": str, "message": str, "issues": [Issue]}}`.
   Codes: `not_implemented`(501), `not_found`(404), `conflict`(409), `invalid_spec`(422), `memory_budget`(422),
-  `too_many_steps`(422), `bad_transition`(409).
+  `too_many_steps`(422), `bad_transition`(409), `busy`(503), `probe_timeout`(504), `probe_failed`(500).
+  `/probe`: `t[k] = k*dt` ms and `v[k]` is the voltage after k completed steps (`v[0]` initial, `steps+1` samples);
+  `spikes` lists the completed-step index k of each spike. One warm worker, queue of 8, execution timeout 10 s,
+  queue wait at most 30 s (then 503 `busy`, without interrupting the running probe).
 - IDs: project `p_` + 16 hex characters, run `r_` + 16 hex characters (`secrets.token_hex(8)`).
   Times: ISO-8601 UTC strings with a `Z` suffix.
 - Data root: `NS_DATA` (default `/data` in Docker, `./.studio-data` otherwise).
