@@ -771,6 +771,7 @@
       };
     }
 
+    let L = null;
     let drag = null;
     function evPos(e) {
       const rect = cv.getBoundingClientRect();
