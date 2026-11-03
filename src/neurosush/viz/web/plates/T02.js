@@ -1,4 +1,4 @@
-/** T02: Same map, new world - remapping with an imposed structure. */
+/** T02: imposed position-indexed associative lookup; mirrors neurosush.memory.hebbian.hebbian_update and attractor. */
 (function () {
   'use strict';
   const zeros = n => Array(n).fill(0);
@@ -93,6 +93,7 @@
     w.scores = zeros(3);
     w.last = null;
     w.steps = 0;
+    w.m = Array.from({length: 144}, () => zeros(144));
     observe(w, memory, iterations);
     return w;
   }
@@ -122,28 +123,39 @@
     </style><div class="t02">
       <span class="t02-badge">TEACHING: structure imposed, not learned; no grid-cell claim</span>
       <h2>Same map, new world: remapping with an imposed structure</h2>
-      <p>Walk the 6 × 6 graph. Switch between World A and World B. Does the shared structure g enable generalisation across sensory layouts?</p>
+      <p>Walk the 6 × 6 graph. Switch between World A and World B. How does a position-indexed memory retrieve sensory observations at previously visited locations?</p>
       <div class="t02-controls">
         <button data-step aria-label="Step one random edge">Step</button><button data-run aria-pressed="false">Run</button>
         <label>Speed <select data-speed aria-label="Steps per second"><option>1</option><option selected>3</option><option>6</option></select></label>
         <button data-world>Switch to World B</button>
         <button data-reset>Reset World</button>
         <label><input type="checkbox" data-memory checked> Memory on</label>
-        <label><input type="checkbox" data-shared checked> Shared structure g</label>
+        <label><input type="checkbox" data-shared disabled checked> Structure is fixed (no structure ablation implemented)</label>
         <label>Iterations <select data-iterations aria-label="Attractor iterations">${[0,1,3,5].map(n => `<option ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
       </div>
       <div class="t02-panels">
         <section><h3>World (6 × 6) · <span data-world-label>World A</span></h3><svg viewBox="0 0 360 360" role="img" aria-label="6 by 6 graph with agent and revealed sensory symbols"></svg><p data-position></p></section>
-        <section><h3>(a) Structure g · Imposed 36-dim</h3><p>Actions path-integrate an exact position across 36 nodes. Same map geometry shared or shuffled.</p><code data-g></code><h3>(b) Sensory x</h3><p data-x></p><code data-filter></code></section>
+        <section><h3>(a) Structure g · Imposed 36-dim</h3><p>Actions path-integrate an exact position across 36 nodes.</p><code data-g></code><h3>(b) Sensory x</h3><p data-x></p><code data-filter></code></section>
         <section><h3>(c) Conjunction p = g ⊗ filtered x</h3><p>36 rows × 4 sensory channels (144 dims).</p><canvas data-p width="4" height="36" role="img" aria-label="Conjunctive pattern"></canvas></section>
-        <section><h3>(d) Hebbian Memory M · 144 × 144</h3><canvas data-m width="144" height="144" role="img" aria-label="Hebbian matrix"></canvas><p>Positive: excitation; negative: inhibition.</p></section>
-        <section style="grid-column:1/-1"><h3>(e) Prediction comparison on new edges</h3><p data-last aria-live="polite"></p><table><thead><tr><th>Predictor</th><th>Correct / eligible</th><th>Accuracy</th></tr></thead><tbody data-scores></tbody></table><p>Eligible = first traversal of a directed edge to a seen node. Structure+memory binds g with sensation; sensory-only uses symbol transition counts; frequency uses symbol base rates.</p></section>
-      </div><p>TEACHING: structure imposed, not learned; no grid-cell claim. Switching worlds resets memory and sensory bindings while preserving or shuffling structure g.</p>
+        <section><h3>(d) Hebbian Memory M · 144 × 144</h3><canvas data-m width="144" height="144" role="img" aria-label="Hebbian matrix"></canvas><p>Positive and negative abstract couplings; individual biological cell types are not represented.</p></section>
+        <section style="grid-column:1/-1"><h3>(e) Prediction comparison on new edges</h3><p data-last aria-live="polite"></p><table><thead><tr><th>Predictor</th><th>Correct / eligible</th><th>Accuracy</th></tr></thead><tbody data-scores></tbody></table><p>Eligible = first traversal of a directed edge to a seen node. Position-indexed memory retrieves previously observed sensations; all predictors are evaluated before observing the destination; sensory-only uses symbol transition counts; frequency uses symbol base rates.</p></section>
+      </div><p>TEACHING: structure imposed, not learned; no grid-cell claim. Switching worlds resets memory and sensory bindings while preserving the imposed position code.</p>
       <a href="https://github.com/soroushdeimi/neuroSush/blob/main/docs/TEM.md">Read docs/TEM.md</a>
     </div>`;
     ctx.margin.innerHTML = `<h3>Remapping & Generalisation</h3><p>The same spatial code g binds new sensory observations in World B.</p>
       <p><code>M ← clamp(λM + η(p − p̂)(p + p̂)ᵀ, −1, 1)</code></p>
-      <p>When structure g is shared, memory helps predict transitions in new worlds even with different sensory layouts.</p>`;
+      <p>Exact position cues retrieve within-world sensory associations at familiar destinations; this does not test learned structural transfer.</p>
+      <div class="atlas-margin-section" id="t02-margin-learn">
+        <details ${window.innerWidth >= 640 ? 'open' : ''} style="font-size: 11px; line-height: 1.4; margin-top: 12px;">
+          <summary style="font-weight: 600; cursor: pointer; margin-bottom: 6px;">Learn: the math, the brain, the ML analogy</summary>
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+            <div><b>What you see:</b> A 6×6 graph world with 36 position locations and 4 sensory symbols, conjunctive position-sensory pattern p (144 dims), Hebbian memory M (144×144), and prediction accuracy scores.</div>
+            <div><b>The math:</b> M_new = clip(λM + η(p - p̂)(p + p̂)ᵀ, -c, c). Retrieval: h_new = min(cap, leakyReLU(κh + Mh, α)). Here λ = 0.9999 per observation, η = 0.5, κ = 0.8, all states and weights are dimensionless.</div>
+            <div><b>In the brain:</b> Inspired by Tolman-Eichenbaum Machine (TEM) models of hippocampus and entorhinal cortex, illustrating position-indexed associative lookup across environments.</div>
+            <div><b>Like classic ML:</b> Associative key-value memory keyed by exact position. Break: supplying the key bypasses learning spatial structure, localization, and cross-world transfer.</div>
+          </div>
+        </details>
+      </div>`;
     const q = s => el.querySelector(s), symbols = ['A','B','C','D'];
     let w = createWorld(Math.random, {memory:q('[data-memory]').checked, iterations:Number(q('[data-iterations]').value), sharedStructure:q('[data-shared]').checked}), timer = null;
     const opts = () => ({memory:q('[data-memory]').checked, iterations:Number(q('[data-iterations]').value), sharedStructure:q('[data-shared]').checked});
@@ -184,13 +196,6 @@
       const nextType = w.worldType === 'A' ? 'B' : 'A';
       q('[data-world]').textContent = nextType === 'A' ? 'Switch to World B' : 'Switch to World A';
       switchWorld(w, nextType, q('[data-memory]').checked, Number(q('[data-iterations]').value));
-      render();
-    };
-    q('[data-shared]').onchange=()=>{
-      w.sharedStructure = q('[data-shared]').checked;
-      if (!w.sharedStructure) {
-        w.symbolsB = w.symbolsB.sort(() => Math.random() - 0.5);
-      }
       render();
     };
     for(const s of ['[data-memory]','[data-iterations]']) q(s).onchange=()=>{w.trials=0;w.scores=zeros(3);w.last=null;render();};

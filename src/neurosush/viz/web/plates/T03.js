@@ -1,4 +1,4 @@
-/** T03: Recall from a partial cue in a Hebbian attractor memory. */
+/** T03: Recall from a partial cue in a Hebbian attractor memory. Mirrors neurosush.memory.hebbian.hebbian_update and attractor; all states and weights are dimensionless. */
 (function () {
   'use strict';
   const zeros = n => Array(n).fill(0);
@@ -86,11 +86,11 @@
     </style><div class="t03">
       <span class="t03-badge">TEACHING · Fast Hebbian attractor memory & partial cue recall</span>
       <h2>Recall from a partial cue</h2>
-      <p>Store binary sparse patterns into a Hebbian matrix. Corrupt or occlude a cue and watch attractor iterations recover the pattern—or fail when capacity is exceeded.</p>
+      <p>Store binary sparse patterns into a Hebbian matrix. Corrupt or occlude a cue and watch attractor iterations recover the pattern—or show interference depending on the stored patterns and retained cue.</p>
       <div class="t03-controls">
         <label>Patterns K <select data-patterns>${[1,2,3,4,5,6,7,8].map(n => `<option ${n===4?'selected':''}>${n}</option>`).join('')}</select></label>
         <label>Test target <select data-target><option value="0">Pattern 1</option></select></label>
-        <label>Corruption <input type="range" data-corruption min="0" max="0.9" step="0.1" value="0.5" aria-label="Cue corruption fraction"><span data-corruption-val>50%</span></label>
+        <label>Corruption <input type="range" data-corruption min="0" max="0.9" step="0.1" value="0.5" aria-label="Probability of deleting each active cue bit"><span data-corruption-val>50%</span></label>
         <label>Iterations <select data-iterations>${[0,1,2,3,5,8,10].map(n => `<option ${n===5?'selected':''}>${n}</option>`).join('')}</select></label>
         <button data-reset>New random patterns</button>
       </div>
@@ -108,20 +108,31 @@
           <p><strong>Retrieved state h:</strong> <code data-retrieved-str></code></p>
         </section>
         <section style="grid-column:1/-1">
-          <h3>(c) Overlap with target over attractor iterations (k = 0 .. N)</h3>
+          <h3>(c) Cosine similarity with target over attractor iterations (k = 0 .. N)</h3>
           <div class="t03-bars" data-overlap-bars role="img" aria-label="Overlap curve over iterations"></div>
           <p data-overlap-desc></p>
         </section>
       </div>
-      <p style="margin-top:16px">Real: the library’s Hebbian update and attractor retrieval equations (<code>HebbianMemory</code>, <code>hebbian_update</code>, <code>attractor</code>). Simplified: 16 units, sparse binary patterns, fixed retention and cap. This is a teaching model of the memory component only and makes no claim about grid cells.</p>
+      <p style="margin-top:16px">Implemented exactly: the library’s abstract Hebbian update and attractor retrieval equations (<code>HebbianMemory</code>, <code>hebbian_update</code>, <code>attractor</code>). Simplified: 16 units, sparse binary patterns, fixed retention and cap. This is a teaching model of the memory component only and makes no claim about grid cells.</p>
       <a href="https://github.com/soroushdeimi/neuroSush/blob/main/docs/TEM.md">Read docs/TEM.md</a>
     </div>`;
 
     ctx.margin.innerHTML = `<h3>Hebbian attractor retrieval</h3>
       <p>Store: <code>M ← clamp(λM + η(p)(p)ᵀ, −1, 1)</code></p>
       <p>Attractor: <code>h^{(k+1)} ← min(1, leaky_relu(0.8h^{(k)} + Mh^{(k)}, 0.01))</code></p>
-      <p>A partial or occluded cue starts the network state. Asymmetric Hebbian weights store associations. Iterative recurrent feedback reconstructs the clean pattern.</p>
-      <p><strong>Capacity limit:</strong> Associative networks have a storage capacity (~0.15 × units). Storing too many dense patterns causes crosstalk interference, preventing convergence.</p>`;
+      <p>A partial or occluded cue starts the network state. With predicted pattern zero, storage creates symmetric nonnegative weights. Recurrent feedback may complete a cue or spread activity into other stored patterns; exact recovery is not guaranteed.</p>
+      <p><strong>Interference:</strong> Recall depends on pattern overlap, cue size, weight clipping and recurrence settings. No universal K/units capacity law is established for this model.</p>
+      <div class="atlas-margin-section" id="t03-margin-learn">
+        <details ${window.innerWidth >= 640 ? 'open' : ''} style="font-size: 11px; line-height: 1.4; margin-top: 12px;">
+          <summary style="font-weight: 600; cursor: pointer; margin-bottom: 6px;">Learn: the math, the brain, the ML analogy</summary>
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+            <div><b>What you see:</b> Sparse binary patterns (4 active out of 16 units), Hebbian weight matrix M (16×16), corrupted cue c, retrieved state h, and cosine similarity over attractor iterations.</div>
+            <div><b>The math:</b> M_new = clip(λM + η·p·pᵀ, -1, 1). Retrieval: h_new = min(cap, leakyReLU(κh + Mh, α)). Here λ = 0.9999, η = 0.5, κ = 0.8, all states and weights are dimensionless.</div>
+            <div><b>In the brain:</b> Recurrent autoassociative memory model of hippocampal CA3 pattern completion and partial cue recall.</div>
+            <div><b>Like classic ML:</b> Recurrent autoassociative pattern completion, related to Hopfield memory and denoising autoencoders. Break: no trained denoising loss, learned inhibitory competition, or guaranteed energy descent; 5 iterations do not prove stable convergence.</div>
+          </div>
+        </details>
+      </div>`;
 
     const q = s => el.querySelector(s);
     let seed = 42;
@@ -172,10 +183,10 @@
       }
 
       heat(q('[data-m]'), m);
-      q('[data-capacity]').textContent = `Stored: ${K} patterns in 16 units. Theoretical capacity ~ 3–4 patterns.`;
+      q('[data-capacity]').textContent = `Stored: ${K} patterns in 16 units.`;
       const warningEl = q('[data-warning]');
       if (K >= 6) {
-        warningEl.innerHTML = `<div class="t03-warning">⚠️ Capacity Overloaded (${K} patterns): Crosstalk and interference prevent clean retrieval! Overlap drops significantly.</div>`;
+        warningEl.innerHTML = `<div class="t03-warning">Inspect retrieved state and cosine similarity; interference varies with patterns and cue.</div>`;
       } else {
         warningEl.innerHTML = '';
       }
@@ -193,7 +204,7 @@
         </div>
       `).join('');
 
-      q('[data-overlap-desc]').textContent = `Final overlap with target after ${iterations} iterations: ${overlaps[overlaps.length - 1].toFixed(3)} (${overlaps[overlaps.length - 1] > 0.85 ? 'Successful recall' : 'Failed / partial recovery'}).`;
+      q('[data-overlap-desc]').textContent = `Final cosine similarity with target after ${iterations} iterations: ${overlaps[overlaps.length - 1].toFixed(3)} (${overlaps[overlaps.length - 1] > 0.85 ? 'High cosine similarity (not necessarily exact recall)' : 'Partial recovery'}).`;
     }
 
     q('[data-reset]').onclick = () => { seed = Math.floor(Math.random() * 10000); render(); };
