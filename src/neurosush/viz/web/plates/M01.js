@@ -26,14 +26,14 @@
       },
       {
         name: 'Many steps: the staircase',
-        cap: 'With dt = 5 ms the tangent segments form a staircase: each corner lands on (1 - dt/tau)^k. The corners sit just above the exact curve.',
+        cap: 'With dt = 5 ms the tangent segments form a staircase: each corner lands on (1 - dt/tau)^k. For positive initial y and dt < tau, the corners sit below the exact curve.',
         dt: 5,
         mode: 'euler',
         pin: null,
       },
       {
         name: 'Smaller dt, smaller error',
-        cap: 'The error after 100 ms is proportional to dt: halve dt and the error halves too. The pane below shows the fitted slope ~= 1 (first order).',
+        cap: 'For small dt, error near 100 ms is approximately proportional to dt; halving dt approximately halves it. The pane below shows the fitted slope ~= 1 (first order).',
         dt: 1,
         mode: 'euler',
         pin: 'error-pane',
@@ -58,7 +58,7 @@
     eqExact: 'exact',
     liveTitle: 'live values',
     glossTitle: 'glossary',
-    footer: 'source: live · mirrors neurosush.neurons.dynamics.euler_step and the trace decay (1 - dt/tau)^k',
+    footer: 'source: live · mirrors neurosush.neurons.dynamics.euler_step and neurosush.synapses.triplet.trace_decay with no new spikes',
     btnPlay: 'Play',
     btnPause: 'Pause',
     btnHalve: 'Halve dt',
@@ -69,7 +69,7 @@
     btnNext: 'Next',
     btnBack: 'Back',
     chapterOf: 'Chapter',
-    predictQuestion: 'With dt = {dt} ms, where does the Euler staircase land on its last corner in [0, 100] ms?',
+    predictQuestion: 'With dt = {dt} ms, where does the Euler staircase land on its last corner at or before 100 ms?',
     predictHint: 'Pick a value, commit, then watch the reveal.',
     predictCorrect: 'the staircase corner lands there.',
     predictOff: 'the staircase lands on {euler}; the exact decay is {exact} (difference {diff}).',
@@ -92,10 +92,10 @@
     glosEuler: 'Euler step: follow the tangent line for one step dt, take the landing point, repeat.',
     glosGhost: 'theory ghost: the exact answer y = exp(-t/tau), dashed. Toggle with T.',
     glosOrder: 'first order: the error after a fixed total time shrinks in proportion to dt.',
-    glosStability: 'stability: Euler explodes once dt >= 2*tau; between tau and 2*tau it only swings sign.',
+    glosStability: 'stability: At dt = 2*tau Euler alternates without decay; above 2*tau its magnitude grows. Between tau and 2*tau it alternates while decaying.',
     glosExact: 'exact step: multiplying by e^(-dt/tau) solves this ODE exactly at the grid points.',
     ariaCanvas: 'Animated decay: Euler staircase of y(t) against the exact exponential exp(-t/tau); drag the dt ruler or scrub the playhead.',
-    errAt100: 'error at t = 100 ms',
+    errAt100: 'error at the last grid point at or before 100 ms',
     axisT: 't (ms)',
     axisY: 'y',
     axisDt: 'dt (ms, log)',
@@ -146,9 +146,9 @@
       return y * Math.exp(-dt / tau);
     },
 
-    /** Number of uniform steps whose corner grid covers [0, tEnd]. */
+    /** Number of complete uniform steps at or before tEnd. */
     stepsTo(dt, tau, tEnd) {
-      return Math.max(1, Math.round(tEnd / dt));
+      return Math.max(0, Math.floor(tEnd / dt));
     },
 
     /** Landing value on the corner grid near tEnd: (1 - dt/tau)^k or e^(-k dt/tau). */
@@ -158,7 +158,7 @@
       return Math.pow(1 - dt / tau, k);
     },
 
-    /** |corner value - exact value| at the corner covering tEnd. */
+    /** |corner value - exact value| at the last corner at or before tEnd. */
     errorAt(dt, tau, tEnd) {
       const k = core.stepsTo(dt, tau, tEnd);
       const y = Math.pow(1 - dt / tau, k);
@@ -216,7 +216,6 @@
     if (!doc || typeof document === 'undefined') return;
     const TA = core.TAU;
     const T0 = core.T_END;
-    // fixed viewing window for the hero plot: blow-up is clipped, never zoomed
     const YCLIP = 1.5;
     const YMIN = -1.62;
     const YMAX = 1.62;
@@ -274,8 +273,6 @@
       doc.head.appendChild(styleEl);
     }
 
-    // Marginalia live in the shell's own margin column when the shell provides one;
-    // otherwise the plate falls back to an internal margin column.
     const marginHost = (ctx && ctx.margin) || (typeof doc.getElementById === 'function' ? doc.getElementById('atlas-margin') : null) || null;
     const hostMode = Boolean(marginHost);
     const marginEl = doc.createElement('div');
@@ -293,8 +290,38 @@
       rootEl.appendChild(wrap);
     }
 
-    // On narrow screens the shell's fixed-aspect figure box is too shallow for the
-    // stacked bands; there the plate lets the box grow with the content instead.
+    // Learn Panel (Collapsible: default open on desktop >= 768px, closed on mobile)
+    let learnPanel = document.getElementById('m01-learn-panel');
+    if (!learnPanel) {
+      learnPanel = doc.createElement('details');
+      learnPanel.id = 'm01-learn-panel';
+      const isOpen = typeof window !== 'undefined' && window.innerWidth >= 768;
+      if (isOpen) learnPanel.setAttribute('open', '');
+      learnPanel.style.cssText = 'background:var(--paper-card); border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px; margin-bottom:8px; font-size:12px;';
+      learnPanel.innerHTML = `
+        <summary style="font-weight:600; cursor:pointer; color:var(--volt); outline:none;">Learn: the math, the brain, the ML analogy</summary>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-top:8px; line-height:1.4; color:var(--ink);">
+          <div>
+            <div style="font-weight:600; margin-bottom:2px; color:var(--volt);">1. What you see</div>
+            <p style="margin:0;">A decay ball sliding along Euler's staircase against the exact exponential ghost, showing numerical convergence and instability as time step dt changes.</p>
+          </div>
+          <div>
+            <div style="font-weight:600; margin-bottom:2px; color:var(--exc);">2. The math</div>
+            <p style="margin:0;">dy/dt = -y/τ. Forward Euler step y_new = y(1 - h/τ). Exact solution y(t) = exp(-t/τ). Stability requires 0 < h < 2τ; at h = 2τ it oscillates without decay, and above 2τ it diverges.</p>
+          </div>
+          <div>
+            <div style="font-weight:600; margin-bottom:2px; color:var(--inh);">3. In the brain</div>
+            <p style="margin:0;">Synaptic trace decay or dendritic calcium transient relaxation in spines over tens of milliseconds, modeled as first-order linear ordinary differential equations.</p>
+          </div>
+          <div>
+            <div style="font-weight:600; margin-bottom:2px; color:var(--mod);">4. Like classic ML</div>
+            <p style="margin:0;">An Euler integration step is mathematically equivalent to a gradient-descent step with learning rate h and weight decay 1/τ. *Breaks where*: continuous physical simulation time h trades off numerical stability and discretization error rather than optimization step size.</p>
+          </div>
+        </div>
+      `;
+      stage.insertBefore(learnPanel, stage.firstChild);
+    }
+
     const win = doc.defaultView;
     const mqNarrow = win && typeof win.matchMedia === 'function' ? win.matchMedia('(max-width: 720px)') : null;
     function applySizeMode() {
@@ -325,7 +352,6 @@
     cv.setAttribute('role', 'img');
     cv.setAttribute('aria-label', S.ariaCanvas);
 
-    // margin: equations with hoverable terms, live values, glossary, honest footer
     marginEl.innerHTML = `
       <div class="atlas-margin-section">
         <div class="atlas-margin-label">${S.eqTitle.toUpperCase()}</div>
@@ -398,7 +424,6 @@
     vEls['m01-stair-exp'] = marginEl.querySelector('#m01-stair-exp');
     vEls['m01-vexq'] = marginEl.querySelector('#m01-vexq');
 
-    // chapter bar
     const btnBack = doc.createElement('button');
     btnBack.className = 'm01-btn';
     btnBack.innerHTML = '&larr; ' + S.btnBack;
@@ -422,13 +447,11 @@
     stage.appendChild(chapRow);
     stage.appendChild(capEl);
 
-    // predict panel
     const predictEl = doc.createElement('div');
     predictEl.className = 'm01-predict';
     predictEl.style.display = 'none';
     stage.appendChild(predictEl);
 
-    // control row
     const btnPlay = doc.createElement('button');
     btnPlay.className = 'm01-btn';
     btnPlay.setAttribute('aria-label', 'Play or pause: Space');
@@ -463,7 +486,6 @@
     ctrlRow.appendChild(readoutEl);
     stage.appendChild(ctrlRow);
 
-    // ---- state ----
     const st = {
       dt: 5,
       mode: 'euler',
@@ -494,7 +516,6 @@
       return fmtSig(v);
     }
 
-    // ---- predict choices (deterministic shuffle from dt) ----
     function makeChoices(dt) {
       const a = core.landingValue('euler', dt, TA, T0);
       const b = core.landingValue('exact', dt, TA, T0);
@@ -518,21 +539,19 @@
       return arr;
     }
 
-    // ---- chapters ----
     const CH = S.chapters;
     function refreshButtons() {
-      btnPlay.textContent = ctx.clock && ctx.clock.isPlaying ? '\u275A\u275A ' + S.btnPause : '\u25B6 ' + S.btnPlay;
+      btnPlay.textContent = ctx.clock && ctx.clock.isPlaying ? '❚❚ ' + S.btnPause : '▶ ' + S.btnPlay;
       btnEuler.classList.toggle('m01-on', st.mode === 'euler');
       btnEuler.setAttribute('aria-pressed', String(st.mode === 'euler'));
       btnExact.classList.toggle('m01-on', st.mode === 'exact');
       btnExact.setAttribute('aria-pressed', String(st.mode === 'exact'));
       btnTheory.classList.toggle('m01-on', st.theory);
       btnTheory.setAttribute('aria-pressed', String(st.theory));
-      btnTheory.textContent = st.theory ? S.btnTheory + ' \u2713' : S.btnTheory;
+      btnTheory.textContent = st.theory ? S.btnTheory + ' ✓' : S.btnTheory;
     }
 
     function simulate() {
-      // the staircase for the current settings; cached until inputs change
       const n = core.stepsTo(st.dt, TA, T0);
       if (st.n === n && st.mode === st.ysMode && st.dt === st.dtAt) return;
       const f = st.mode === 'exact' ? core.exactStep : core.eulerStep;
@@ -659,7 +678,7 @@
         const pick = p.choices[p.picked];
         const eu = core.landingValue('euler', st.dt, TA, T0);
         const ex = core.landingValue('exact', st.dt, TA, T0);
-        const mark = pick.ok ? '\u2713' : '\u2717';
+        const mark = pick.ok ? '✓' : '✗';
         const txt = pick.ok
           ? S.predictCorrect
           : S.predictOff
@@ -689,7 +708,6 @@
       }
     }
 
-    // hover a marginalia term to highlight where it acts in the figure
     marginEl.querySelectorAll('.m01-term').forEach((el) => {
       el.addEventListener('mouseenter', () => {
         st.hover = el.dataset.term;
@@ -703,7 +721,6 @@
       });
     });
 
-    // the shell's T key / Theory button broadcasts here
     if (typeof window !== 'undefined') {
       window.addEventListener('atlas:theory', (e) => {
         const active = e.detail && typeof e.detail.active === 'boolean' ? e.detail.active : !st.theory;
@@ -715,10 +732,7 @@
       });
     }
 
-    // ---- logical layout: five stacked bands, each with its own margins ----
-    //   [ scrub-hint heard ][ hero plot ][ x-tick strip ][ dt ruler band ][ log-log error band ]
-    let L = { cssW: 800, cssH: 500, scale: 1, orientWide: true, geom: null };
-    let dtFromX = null; // inverse maps installed each render
+    let dtFromX = null;
 
     function installMaps() {
       dtFromX = (x, r) => {
@@ -735,13 +749,13 @@
     }
 
     function layout(lw, lh, wide) {
-      const gutter = wide ? 58 : 46;          // left gutter: y tick labels + axis titles
-      const padR = Math.max(gutter, 16);      // symmetric right margin
-      const hintH = 26;                       // scrub-hint heard above the plot
-      const tickH = 30;                       // x tick strip under the hero
-      const rulerH = 78;                      // dt ruler band
+      const gutter = wide ? 58 : 46;
+      const padR = Math.max(gutter, 16);
+      const hintH = 26;
+      const tickH = 30;
+      const rulerH = 78;
       const errH = Math.round(Math.max(122, Math.min(170, lh * 0.22)));
-      const errCap = 16;                      // caption strip under the error pane
+      const errCap = 16;
       const gap = 8;
       const heroY = hintH + 2;
       const heroH = Math.max(170, lh - heroY - tickH - rulerH - gap - errH - errCap - gap - 4);
@@ -757,7 +771,6 @@
       };
     }
 
-    // ---- pointer interaction: dt ruler drag + playhead scrub ----
     let drag = null;
     function evPos(e) {
       const rect = cv.getBoundingClientRect();
@@ -822,7 +835,6 @@
       return f * tMax;
     }
 
-    // ---- ball along the polygon path ----
     function ballState(tp) {
       const n = st.n;
       const dt = st.dt;
@@ -836,7 +848,6 @@
       return { k, t: tc, y, frac };
     }
 
-    // ---- live values in margin ----
     function updateReadouts() {
       const b = ballState(st.tp);
       const yExact = core.expDecay(b.t, TA);
@@ -859,14 +870,13 @@
     }
 
     let fitCache = 1;
-    let fitPointAt1 = core.errorAt(1, TA, T0); // anchor C for the fitted line err = C dt^slope
+    let fitPointAt1 = core.errorAt(1, TA, T0);
     function fitSlopeCache() {
       fitCache = core.fitSlopeLogLog(core.errorSweep(0.05, 2, TA, T0, 41).dts, core.errorSweep(0.05, 2, TA, T0, 41).errs);
       return fitCache;
     }
     fitCache = fitSlopeCache();
 
-    // ---- shared drawing helpers ----
     function rounded(g2, x, y, w, h, rad) {
       g2.beginPath();
       if (g2.roundRect) g2.roundRect(x, y, w, h, rad);
@@ -918,14 +928,13 @@
       g2.fillText(text, x, y);
     }
 
-    // ---- rendering ----
     function render() {
       simulate();
       const cssW = Math.max(300, Math.round(canvasBox.clientWidth || 800) - 2);
       const cssH = Math.max(260, Math.round(canvasBox.clientHeight || 500) - 2);
       const dpr = Math.min(2.5, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
       const wide = cssW >= 620;
-      const scale = 1; // logical units = CSS px, so every font is drawn at its real size
+      const scale = 1;
       cv.style.width = cssW + 'px';
       cv.style.height = cssH + 'px';
       const bw = Math.round(cssW * dpr);
@@ -950,7 +959,6 @@
       const fontS = (n) => `${px(n)} ui-serif, Georgia, serif`;
       void fontS;
 
-      // scrub-hint heard: its own strip above the plot
       g2.fillStyle = c.inkMuted;
       g2.font = fontM(12);
       g2.textAlign = 'right';
@@ -986,19 +994,15 @@
       return { step: nice, ticks: out };
     }
 
-    // the Euler staircase is the hero: corner-to-corner steps, an animated tangent arm,
-    // the drop into the next point, sign flips past tau, clipped blow-up past 2tau
     function drawHero(g2, o) {
       const { hr, geom, c, fontM, X, Y, tMaxView } = o;
       const unstableFactor = st.mode === 'euler' && st.dt > TA;
       const blown = st.mode === 'euler' && !core.isStable(st.dt, TA);
 
-      // frame
       g2.strokeStyle = c.ink;
       g2.lineWidth = 1;
       g2.strokeRect(hr.x, hr.y, hr.w, hr.h);
 
-      // y grid + ticks (labels live in the left gutter, the rotated axis title at the far left)
       const yTicks = gridTicks(YMIN, YMAX, 6);
       g2.font = fontM(12);
       g2.fillStyle = c.inkMuted;
@@ -1016,7 +1020,7 @@
         g2.fillStyle = c.inkMuted;
         g2.fillText(v.toFixed(Math.abs(v) < 10 && v !== Math.round(v) ? 1 : 0), hr.x - 7, Y(v));
       }
-      // zero axis: heavier so sign flips past tau read as crossings
+
       g2.save();
       g2.strokeStyle = c.inkMuted;
       g2.globalAlpha = unstableFactor ? 0.8 : 0.4;
@@ -1027,6 +1031,7 @@
       g2.lineTo(hr.x + hr.w, Y(0));
       g2.stroke();
       g2.restore();
+
       g2.save();
       g2.translate(hr.x - 40, hr.y + hr.h / 2);
       g2.rotate(-Math.PI / 2);
@@ -1037,13 +1042,11 @@
       g2.fillText(S.axisY, 0, 0);
       g2.restore();
 
-      // clip: nothing drawn inside the plot may escape the frame (blow-up is cut, not zoomed)
       g2.save();
       g2.beginPath();
       g2.rect(hr.x, hr.y, hr.w, hr.h);
       g2.clip();
 
-      // ghost curve (theory); hover 'fix' forces it visible
       if (st.theory || st.hover === 'fix') {
         g2.strokeStyle = c.theory;
         g2.globalAlpha = st.theory ? 1 : 0.45;
@@ -1063,7 +1066,6 @@
         g2.globalAlpha = 1;
       }
 
-      // full staircase path, faint
       g2.strokeStyle = c.volt;
       g2.lineWidth = 2;
       g2.lineJoin = 'round';
@@ -1079,7 +1081,6 @@
       g2.stroke();
       g2.globalAlpha = 1;
 
-      // played steps, solid; the current tangent arm extended past its landing
       const b = ballState(st.tp);
       const kp = Math.min(st.n, b.k + (b.frac > 1e-9 ? 1 : 0));
       g2.lineWidth = 2.6;
@@ -1091,8 +1092,6 @@
       }
       g2.stroke();
 
-      // tangent arm: from the current corner, the slope -y/tau extended 1.45 dt,
-      // then a dashed drop from the arm's tip down into the next corner
       const showTangent = st.pin === 'tangent' || st.hover === 'dt' || (st.mode === 'euler' && st.n <= 12);
       if (showTangent && st.mode === 'euler' && st.n >= 2) {
         const kC = Math.min(st.n - 1, kp);
@@ -1111,7 +1110,7 @@
           g2.moveTo(x0, y0);
           g2.lineTo(x1, y1);
           g2.stroke();
-          // the drop to the landed corner
+
           g2.lineWidth = 1.4;
           g2.setLineDash([2.5, 2.5]);
           g2.beginPath();
@@ -1121,12 +1120,11 @@
           g2.restore();
           if (st.n <= 4) {
             note(g2, (x0 + X(st.ts[kC] + st.dt)) / 2, Y(yk + slope * 0.62) - 14,
-              `slope\u00b7dt = ${fmtSig(slope)}`, c.exc, fontM, hr, c);
+              `slope·dt = ${fmtSig(slope)}`, c.exc, fontM, hr, c);
           }
         }
       }
 
-      // drop ticks from every few corners to the ghost (accumulating local error)
       if (st.n <= 64 && st.theory) {
         g2.strokeStyle = c.inkMuted;
         g2.lineWidth = 1;
@@ -1141,7 +1139,6 @@
         g2.globalAlpha = 1;
       }
 
-      // sign glyphs past dt = tau: every corner flips side of the zero axis
       if (unstableFactor && st.n <= 8) {
         g2.font = fontM(13);
         g2.fillStyle = c.mod;
@@ -1149,7 +1146,7 @@
         g2.textBaseline = 'middle';
         for (let i = 2; i <= st.n; i++) {
           const off = st.ys[i] >= 0 ? -11 : 11;
-          g2.fillText(st.ys[i] >= 0 ? '+' : '\u2212', X(st.ts[i]), Y(st.ys[i]) + off);
+          g2.fillText(st.ys[i] >= 0 ? '+' : '−', X(st.ts[i]), Y(st.ys[i]) + off);
         }
         g2.font = fontM(12);
         g2.fillStyle = c.mod;
@@ -1158,7 +1155,6 @@
         g2.fillText(S.signFlipNote, hr.x + 8, hr.y + hr.h - 6);
       }
 
-      // clipped blow-up: open arrows where corners leave the window
       if (blown) {
         g2.strokeStyle = c.inh;
         g2.lineWidth = 2;
@@ -1177,7 +1173,6 @@
         }
       }
 
-      // corner dots
       const dotSkip = Math.max(1, Math.round(st.n / 110));
       for (let i = 0; i <= st.n; i += dotSkip) {
         g2.fillStyle = c.volt;
@@ -1186,7 +1181,6 @@
         g2.fill();
       }
 
-      // difference gauge: drop line from the ball to the ghost at the playhead
       const yGho = Y(core.expDecay(b.t, TA));
       const gapHot = st.hover === 'err' || st.pin === 'error-pane';
       const gapVal = Math.abs(b.y - core.expDecay(b.t, TA));
@@ -1208,9 +1202,8 @@
         }
       }
 
-      g2.restore(); // end clip
+      g2.restore();
 
-      // legend (top-left, wraps under the status chip reserved on the right)
       let chipText = null;
       let chipColor = c.exc;
       if (st.mode === 'euler') {
@@ -1232,7 +1225,6 @@
       let lx = hr.x + 10;
       let ly = hr.y + 12;
       const legends = [[c.volt, null, S.legStair], [c.theory, [4, 3], S.legGhost]];
-      // a narrow plot pushes the legend below the status chip instead of under it
       const firstNeed = 27 + g2.measureText(legends[0][2]).width + 14;
       if (chipText && lx + firstNeed > chipX - 8) ly = hr.y + 36;
       const wrapW = hr.x + hr.w - 6 - chipW;
@@ -1257,10 +1249,8 @@
         g2.fillText(lbl, lx + 27, ly);
         lx += need;
       }
-      // status chip (top-right): stable / swinging / blown up
       if (chipText) drawChip(g2, hr.x + hr.w - 5, hr.y + 8, chipText, chipColor, fontM, c);
 
-      // chapter 2: numbers on the single giant step
       if (st.pin === 'numbers' && st.n >= 2) {
         note(g2, X((st.ts[0] + st.ts[1]) / 2) - 46, Y((st.ys[0] + st.ys[1]) / 2) - 16,
           `y1 = (1 - ${fmtSig(st.dt)}/${TA}) x 1 = ${fmtSig(st.ys[1])}`, c.exc, fontM, hr, c);
@@ -1268,24 +1258,20 @@
           `exact e^-1 = ${fmtSig(core.expDecay(st.ts[1], TA))}`, c.theory, fontM, hr, c);
       }
 
-      // hover 'factor': label the multiplier at the played corner
       if (st.hover === 'factor' && st.n >= 1) {
         const kC = Math.min(st.n - 1, Math.max(0, kp - 1));
         note(g2, X(st.ts[kC] + st.dt / 2), Y(Math.min(st.ys[kC], st.ys[kC + 1]) - 0.12),
           `${S.valFactor} = ${fmtSig(core.eulerStep(1, st.dt, TA))}`, c.mod, fontM, hr, c);
       }
-      // hover 'k': highlight the corner count
       if (st.hover === 'k' && st.n >= 1) {
         const kC = Math.min(st.n, kp);
         note(g2, X(st.ts[kC]), Y(st.ys[kC]) - 16,
           `k = ${kC}  y_k = ${fmtSig(st.ys[kC])}`, c.mod, fontM, hr, c);
       }
-      // hover 'tau': annotate the slope law at the ball
       if (st.hover === 'tau') {
         note(g2, X(b.t + st.dt / 2), Y(b.y) - 18, `slope = -y/tau = ${fmtSig(-b.y / TA)}`, c.exc, fontM, hr, c);
       }
 
-      // predict reveal markers
       const p = st.predict;
       if (p && p.picked !== -1) {
         const tLand = st.ts[st.n];
@@ -1321,7 +1307,6 @@
         if (st.theory) marker(Y(core.landingValue('exact', st.dt, TA, T0)), c.theory, `${S.lblExactLanding}: ${fmtSig(core.landingValue('exact', st.dt, TA, T0))}`, [3, 3], 13);
       }
 
-      // ball with halo
       const xBall = X(b.t);
       const yBall = Y(b.y);
       g2.save();
@@ -1337,7 +1322,6 @@
       g2.beginPath();
       g2.arc(xBall, yBall, 6, 0, Math.PI * 2);
       g2.stroke();
-      // corner-arrival pulse: a ring while the ball has just crossed a corner
       if (b.frac > 0 && b.frac < 0.2 && b.k >= 1) {
         const ph = b.frac / 0.2;
         g2.strokeStyle = c.volt;
@@ -1350,7 +1334,6 @@
       }
     }
 
-    // x tick strip: its own band between the hero and the ruler
     function drawXTicks(g2, xt, X, tMaxView, c, fontM) {
       const xStep = tMaxView > 160 ? 40 : tMaxView > 80 ? 20 : 10;
       g2.font = fontM(12);
@@ -1373,7 +1356,6 @@
     }
 
     function drawRuler(g2, r, c, fontM) {
-      // band anatomy: dt label (top) | track | decade ticks | captions (bottom)
       const trackX = r.x + 2;
       const trackW = r.w - 4;
       const trackY = r.y + 30;
@@ -1381,7 +1363,6 @@
       r.trackX = trackX;
       r.trackW = trackW;
 
-      // dt readout label, above the handle inside the band
       const hx = dtToX(r, st.dt);
       const flash = performance.now() - st.dtFlash < 500;
       g2.fillStyle = c.volt;
@@ -1391,7 +1372,6 @@
       const labelX = Math.min(trackX + trackW - 40, Math.max(trackX + 40, hx));
       g2.fillText(`dt = ${fmtSig(st.dt)} ms`, labelX, trackY - 9);
 
-      // track with stability tint + zone names (never color-only)
       g2.fillStyle = c.paper;
       g2.strokeStyle = c.border;
       g2.lineWidth = 1;
@@ -1405,7 +1385,7 @@
       g2.fillStyle = c.inh;
       g2.fillRect(xLimit, trackY, trackX + trackW - xLimit, trackH);
       g2.globalAlpha = 1;
-      // zone name inside the tinted band, on whichever side clears the handle
+
       g2.fillStyle = c.exc;
       g2.font = fontM(12);
       g2.textBaseline = 'middle';
@@ -1421,7 +1401,6 @@
         g2.fillText(S.zoneSafe, xLimit - 9, trackY + trackH / 2);
       }
 
-      // the dt = 2tau boundary
       const bHot = st.pin === 'stability' || st.hover === 'stability' || st.dt > 2 * TA;
       g2.strokeStyle = c.inh;
       g2.lineWidth = bHot ? 2 : 1.4;
@@ -1436,7 +1415,6 @@
       g2.stroke();
       if (bHot) g2.restore();
 
-      // log decade ticks under the track
       g2.fillStyle = c.inkMuted;
       g2.font = fontM(12);
       g2.strokeStyle = c.inkMuted;
@@ -1452,16 +1430,14 @@
         g2.fillText(String(dv), Math.min(trackX + trackW - 12, Math.max(trackX + 12, x)), trackY + trackH + 4);
       }
 
-      // band captions, bottom line (left title, right stability note)
       g2.textAlign = 'left';
       g2.textBaseline = 'bottom';
       g2.fillStyle = c.inkMuted;
       g2.fillText(S.axisDt, trackX + 2, r.y + r.h - 1);
       g2.textAlign = 'right';
       g2.fillStyle = c.inh;
-      g2.fillText(r.w < 420 ? `2tau = ${2 * TA} ms` : `2tau = ${2 * TA} ms \u00b7 blow-up beyond`, trackX + trackW, r.y + r.h - 1);
+      g2.fillText(r.w < 420 ? `2tau = ${2 * TA} ms` : `2tau = ${2 * TA} ms · blow-up beyond`, trackX + trackW, r.y + r.h - 1);
 
-      // draggable handle at dt
       g2.save();
       if (flash || st.hover === 'dt' || (drag && drag.kind === 'ruler')) {
         g2.shadowColor = c.volt;
@@ -1479,7 +1455,6 @@
       g2.stroke();
       g2.restore();
 
-      // halve-flash ring on the track
       const now2 = performance.now();
       if (now2 - st.halveFlash < 600) {
         const ph = (now2 - st.halveFlash) / 600;
@@ -1502,7 +1477,6 @@
       const eHi = Math.log(6);
       const YE = (err) => r.y + r.h - ((Math.log(Math.max(err, 2e-6)) - eLo) / (eHi - eLo)) * r.h;
 
-      // frame
       const hot = st.pin === 'error-pane' || st.hover === 'staircase';
       if (hot) {
         g2.strokeStyle = c.mod;
@@ -1513,7 +1487,6 @@
       g2.lineWidth = 1;
       g2.strokeRect(r.x, r.y, r.w, r.h);
 
-      // pane title, top-left inside the frame
       g2.fillStyle = c.ink;
       const title = S.errAt100;
       g2.font = fontM(12);
@@ -1521,7 +1494,6 @@
       g2.textBaseline = 'top';
       g2.fillText(title, r.x + 8, r.y + 6);
 
-      // unstable band past dt = 2tau, tagged with rotated text so it never collides
       const xl = XE(2 * TA);
       if (xl < r.x + r.w - 1) {
         g2.fillStyle = c.inh;
@@ -1547,7 +1519,6 @@
         g2.restore();
       }
 
-      // decade labels under their ticks, bottom edge (clear of the sweep)
       g2.font = fontM(12);
       for (const dv of [0.1, 1, 10]) {
         if (dv < core.DT_MIN || dv > core.DT_MAX) continue;
@@ -1565,7 +1536,6 @@
         g2.textBaseline = 'bottom';
         g2.fillText(String(dv), x, r.y + r.h - 2);
       }
-      // y tick labels in the left gutter, rotated axis title at the far left
       g2.textAlign = 'right';
       g2.textBaseline = 'middle';
       for (let e = -6; e <= 0; e++) {
@@ -1584,7 +1554,6 @@
         g2.fillText('1e' + e, r.x - 5, yv + (yv > r.y + 8 ? 0 : 8));
       }
 
-      // sweep points; rose where the method explodes
       const sw = core.errorSweep(core.DT_MIN, core.DT_MAX, TA, T0, 60);
       for (let i = 0; i < sw.dts.length; i++) {
         const stablePt = core.isStable(sw.dts[i], TA);
@@ -1596,7 +1565,6 @@
       }
       g2.globalAlpha = 1;
 
-      // fitted line err(dt) = err(1) * dt^slope over the fit window [0.05, 2]
       g2.strokeStyle = c.exc;
       g2.lineWidth = 1.6;
       g2.setLineDash([5, 3]);
@@ -1606,8 +1574,6 @@
       g2.stroke();
       g2.setLineDash([]);
 
-      // caption strip below the frame: x caption (left) and the fitted slope (right,
-      // colour-matched to the fit line so the note cannot collide with the sweep)
       g2.fillStyle = c.inkMuted;
       g2.font = fontM(12);
       g2.textAlign = 'left';
@@ -1615,14 +1581,13 @@
       g2.fillText(S.axisDt, r.x + 2, r.y + r.h + 14);
       const slopeTxt = r.w < 420
         ? `${S.valSlope} = ${fitCache.toFixed(2)}`
-        : `${S.valSlope} = ${fitCache.toFixed(2)} \u2014 ${S.valFirstOrder}`;
+        : `${S.valSlope} = ${fitCache.toFixed(2)} — ${S.valFirstOrder}`;
       g2.fillStyle = c.exc;
       g2.textAlign = 'right';
       let slw = g2.measureText(slopeTxt).width;
       if (slw > r.w - 100) g2.font = fontM(Math.max(12, (12 * (r.w - 100)) / slw));
       g2.fillText(slopeTxt, r.x + r.w, r.y + r.h + 14);
 
-      // the student's dt marker
       const mX = Math.min(r.x + r.w, Math.max(r.x, XE(st.dt)));
       const mY = YE(core.errorAt(st.dt, TA, T0));
       const now3 = performance.now();
@@ -1654,7 +1619,6 @@
       g2.fillText(yourTxt, lyx, Math.min(mY + 6, r.y + r.h - 18));
     }
 
-    // ---- playhead animation (simulated time advances ~24 ms per wall second) ----
     const TPLAY = 24;
     function frame() {
       const now = performance.now();
@@ -1683,7 +1647,7 @@
     render();
   }
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = { core };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { core, S };
   if (typeof Atlas !== 'undefined' && Atlas.Plate) {
     Atlas.Plate.register({ id: 'M01', title: { en: S.title }, source: 'live', mount });
   }
