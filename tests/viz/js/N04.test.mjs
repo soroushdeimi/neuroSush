@@ -145,7 +145,7 @@ test('pattern fingerprint classifies all 8 canonical patterns correctly from ISI
     CH: 'Chattering (CH)',
     FS: 'Fast Spiking (FS)',
     LTS: 'Low-Threshold Spiking (LTS)',
-    RZ: 'Resonator (RZ)',
+    RZ: 'High-rate firing',
     RE: 'Rebound Spiker (RE)',
     MM: 'Mixed Mode (MM)',
   };
