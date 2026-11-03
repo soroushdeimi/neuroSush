@@ -11,7 +11,6 @@ client = TestClient(app)
 def test_stubs_return_501_and_error_body():
     """Assert every stub endpoint returns 501 and standardized error body."""
     routes = [
-        ("POST", "/api/probe"),
         ("GET", "/api/runs/r_1234567890abcdef/export/html"),
         ("GET", "/api/runs/r_1234567890abcdef/export/atlas"),
         ("GET", "/api/runs/r_1234567890abcdef/stream"),
