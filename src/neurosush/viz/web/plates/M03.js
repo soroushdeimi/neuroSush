@@ -4,8 +4,8 @@
  * Ions random-walk (Brownian) and cross as illustrative markers driven by an imposed
  * RC relaxation toward the Nernst voltage; the escaping charge separates across
  * the bilayer until electric drift cancels diffusion at
- * E = (RT/zF) · ln([out]/[in]). The voltage bookkeeping is the continuum leak ODE
- * C dV/dt = −g (V − E) with E the Nernst potential of the live mM values;
+ * E = (RT/zF) · ln([out]/[in]). The voltage bookkeeping is the continuum leak
+ * ODE  C dV/dt = −g (V − E)  with E the Nernst potential of the live mM values;
  * the 200 markers are the picture of the flux, not the bookkeeping.
  * Source: live — mirrors the Nernst arithmetic behind the reversal potentials
  * (e_exc / e_inh) that neurosush.neurons.dendrite.conductance_step consumes.
@@ -39,7 +39,7 @@
       diffusion: 'Diffusion — ions wander from crowded to empty with no force pushing; a purely statistical walk.',
       anion: 'Fixed anions — large immobile negative proteins stay inside; they cannot follow the cation out, so charge separates.',
       drift: 'Electric drift — a charge in the membrane field feels qE and is steered back or forward.',
-      nernst: 'Nernst potential — the voltage at which drift exactly cancels diffusion: zero net flux.',
+      nernst: 'Nernst potential — the voltage at which drift exactly cancels diffusion: zero net flux. Zero net flux permits continuing equal inward and outward microscopic fluxes; the markers show net transfer only.',
       decade: 'Decade slope — each tenfold ratio adds RT/zF·ln 10 per unit charge: 61.5 mV at 37 °C, 58.2 mV at 20 °C.'
     },
     chapters: [
@@ -140,8 +140,7 @@
     // C·dV/dt = −g(V−E) says how much charge leaked this tick (dV) and which
     // way it flowed (outward for a cation iff z·dV < 0). base is the marker
     // rate from that dV (fraction fate decided by the seeded coin); it is 0
-    // exactly when V = E. Zero net flux permits continuing equal inward and
-    // outward microscopic fluxes; the markers show net transfer only. Pure.
+    // exactly when V = E. Pure.
     fluxDemand: function (V_mV, E_mV, g_nS, C_uF, dt_ms, z) {
       const st = core.odeStep(V_mV, E_mV, g_nS, C_uF, dt_ms);
       const base = Math.abs(st.dV) * 0.3; // picture scale: markers per mV of leak
@@ -199,42 +198,54 @@
         const sigma = nearPore ? sigPore : sigFree;
         const drift = nearPore && open ? driftPerMv : 0;
         q.y = core.particleStep(q.y, sim.rand, sigma, drift, V);
-        if (q.inside) {
-          if (q.y > inBot) q.y = inBot - (q.y - inBot);
-          if (q.y < g.mid + g.membH / 2 + 2) q.y = g.mid + g.membH / 2 + 2;
-        } else {
-          if (q.y < g.y0 + 10) q.y = g.y0 + 10 + (g.y0 + 10 - q.y);
-          if (q.y > outBot) q.y = outBot;
-        }
+        q.x += (sim.rand() - 0.5) * 2 * sigma;
+        if (q.inside) q.y = Math.max(g.mid + g.membH / 2 + 2, Math.min(inBot, q.y));
+        else q.y = Math.max(g.y0 + 20, Math.min(outBot, q.y));
+        q.x = Math.max(g.x0 + 10, Math.min(g.x1 - 10, q.x));
       }
-      let outN = 0, inN = 0, dV = 0;
-      if (open) {
-        const demand = core.fluxDemand(V, p.E_mV || 0, p.g_nS || 0, p.C_uF || 1, dt, p.z || 1);
-        dV = demand.dV;
-        let quota = Math.floor(demand.base) + (sim.rand() < (demand.base % 1) ? 1 : 0);
-        const candidates = sim.particles.filter(q => q.x > g.ch0 + 6 && q.x < g.ch1 - 6 &&
-          (demand.outward ? q.inside : !q.inside));
-        for (let tries = 0; tries < quota && candidates.length > 0; tries++) {
-          const idx = Math.floor(sim.rand() * candidates.length);
-          const q = candidates.splice(idx, 1)[0];
-          q.inside = !q.inside;
-          q.x = g.ch0 + 10 + sim.rand() * (g.ch1 - g.ch0 - 20);
-          q.y = q.inside ? g.mid + g.membH / 2 + 10 : g.mid - g.membH / 2 - 10;
-          sim.flashes.push({ x: q.x, y: q.y, r: 2, alpha: 1.0, outward: demand.outward });
-          if (q.inside) inN++; else outN++;
+      // the ODE's own demand of crossings this tick: the shut gate carries
+      // no current, so the book is also silent when open is false
+      const fd = open
+        ? core.fluxDemand(V, p.E_mV || 0, p.g_nS || 0, p.C_uF || 1, dt, p.z || 1)
+        : { dV: 0, base: 0, outward: false };
+      let n = Math.min(6, Math.floor(fd.base));
+      if (sim.rand() < fd.base - Math.floor(fd.base)) n++;
+      let outFlip = 0, inFlip = 0;
+      const sourceInside = fd.outward; // outward always exits the inside pool
+      for (let k = 0; k < n; k++) {
+        // prefer the marker nearest an open pore-mouth on the source side
+        let best = -1, bestD = Infinity;
+        for (let i = 0; i < sim.particles.length; i++) {
+          const qq = sim.particles[i];
+          if (qq.inside !== sourceInside) continue;
+          if (qq.x < g.ch0 || qq.x > g.ch1) continue;
+          const d = Math.abs(qq.y - g.mid);
+          if (d < bestD) { bestD = d; best = i; }
         }
+        if (best < 0) {
+          // fall back to any source-side marker; the picture is a picture
+          for (let i = 0; i < sim.particles.length; i++) {
+            if (sim.particles[i].inside === sourceInside) { best = i; break; }
+          }
+        }
+        if (best < 0) continue;
+        const qq = sim.particles[best];
+        qq.inside = !qq.inside;
+        qq.x = g.ch0 + 8 + sim.rand() * (g.ch1 - g.ch0 - 16);
+        // land just past the membrane on the destination side
+        qq.y = g.mid + (qq.inside ? 1 : -1) * (g.membH / 2 + 6 + sim.rand() * 6);
+        if (fd.outward) outFlip++; else inFlip++;
+        sim.flashes.push({ x: qq.x, y: qq.y, age: 0 });
       }
       core.ageFlashes(sim, dt);
-      return { outN, inN, dV };
+      return { outN: outFlip, inN: inFlip, dV: fd.dV };
     },
     ageFlashes: function (sim, dtMs) {
-      for (let i = sim.flashes.length - 1; i >= 0; i--) {
-        const f = sim.flashes[i];
-        f.alpha -= dtMs / 480;
-        f.r += dtMs * 0.03;
-        if (f.alpha <= 0) sim.flashes.splice(i, 1);
-      }
+      for (const f of sim.flashes) f.age += dtMs;
+      while (sim.flashes.length && sim.flashes[0].age > 480) sim.flashes.shift();
     },
+    // Nudge the marker pool toward the fraction the reported mM imply when the
+    // student drags concentration bars: at most one swap per call, seeded.
     rebalance: function (sim, cIn, cOut) {
       const wantIn = Math.round(sim.N * cIn / (cIn + cOut));
       let haveIn = 0;
@@ -247,7 +258,7 @@
           if (sim.particles[k].inside !== (d > 0)) break;
           k = (k + 1) % sim.N;
         }
-        sim.particles[k].inside = (d > 0);
+        sim.particles[k].inside = d > 0;
         return true;
       }
       return false;
@@ -276,25 +287,15 @@
     };
 
     const styleEl = document.createElement('style');
-    styleEl.textContent = `
-      .m03-wrap { font-family: var(--font-sans, system-ui, sans-serif); color: var(--ink, #1b1a17); padding: 4px 2px; }
-      .m03-eqlabel { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-muted, #57534e); margin-bottom: 4px; }
-      .m03-live { font-weight: 400; text-transform: none; color: var(--volt, #b45309); }
-      .m03-eq { font-family: var(--font-mono, monospace); font-size: 12px; background: var(--paper-card, #eeeae0); border: 1px solid var(--border, #d6cfbf); border-radius: 4px; padding: 6px 8px; margin-bottom: 6px; }
-      .m03-explain { font-size: 11.5px; line-height: 1.4; color: var(--ink-muted, #57534e); margin-bottom: 8px; }
-      .m03-gloss { font-size: 11.5px; line-height: 1.4; background: var(--paper-inset, #f4f0e6); border-left: 3px solid var(--exc, #0f766e); padding: 6px 8px; margin-bottom: 10px; border-radius: 0 4px 4px 0; min-height: 44px; }
-      .m03-ctl { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border, #d6cfbf); padding-top: 8px; }
-      .m03-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 12px; }
-      .m03-lab { font-weight: 600; font-size: 11.5px; min-width: 64px; }
-      .m03-btn { font-size: 11.5px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 3px; background: var(--paper-card); cursor: pointer; }
-      .m03-btn.active { background: var(--volt); color: #fff; border-color: var(--volt); }
-      .m03-range { flex: 1; accent-color: var(--volt); }
-      .m03-val { font-family: var(--font-mono); font-size: 11.5px; min-width: 52px; text-align: right; }
-      .m03-footer { font-size: 11px; color: var(--ink-muted); margin-top: 6px; padding: 2px 4px; line-height: 1.3; }
-      .m03-foot-src { font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em; }
-    `;
+    styleEl.textContent = CSS_TEXT;
     fig.appendChild(styleEl);
 
+    // -- state ---------------------------------------------------------------
+    const ionData = {
+      K:  { name: 'K⁺',  in: 140, out: 5,   z: 1,  color: 'inh' },
+      Na: { name: 'Na⁺', in: 15,  out: 145, z: 1,  color: 'exc' },
+      Cl: { name: 'Cl⁻', in: 10,  out: 150, z: -1, color: 'trace' }
+    };
     const st = {
       playing: !reducedMotion(),
       chapter: 0,
@@ -405,110 +406,239 @@
       return '<div class="m03-ctl">' +
         '<div class="m03-row"><span class="m03-lab">channel</span>' +
         ['K', 'Na', 'Cl'].map(k =>
-          '<button class="m03-btn" data-ion="' + k + '" id="m03-ion-' + k + '">' + k + '</button>'
-        ).join('') +
-        '<button class="m03-btn" id="m03-freeze">Freeze [F]</button>' +
+          '<button class="m03-btn m03-ion" data-ion="' + k + '" aria-pressed="false" ' +
+          'title="selective channel for ' + ionData[k].name + '">' + ionData[k].name + '</button>').join('') +
         '</div>' +
-        '<div class="m03-row"><span class="m03-lab">OUT [out]</span>' +
-        '<input type="range" class="m03-range" id="m03-out-rng" min="1" max="150" step="1" value="5">' +
-        '<span class="m03-val" id="m03-out-val">5 mM</span></div>' +
-        '<div class="m03-row"><span class="m03-lab">IN [in]</span>' +
-        '<input type="range" class="m03-range" id="m03-in-rng" min="1" max="200" step="1" value="140">' +
-        '<span class="m03-val" id="m03-in-val">140 mM</span></div>' +
-        '<div class="m03-row"><span class="m03-lab">temp °C</span>' +
-        '<input type="range" class="m03-range" id="m03-temp-rng" min="0" max="45" step="1" value="37">' +
-        '<span class="m03-val" id="m03-temp-val">37 °C</span></div>' +
-        '<div class="m03-row"><span class="m03-lab">pore g</span>' +
-        '<input type="range" class="m03-range" id="m03-g-rng" min="0" max="30" step="1" value="10">' +
-        '<span class="m03-val" id="m03-g-val">10 nS</span></div>' +
-        '<div class="m03-row"><button class="m03-btn" id="m03-play">Pause</button>' +
-        '<button class="m03-btn" id="m03-reset">Reset trace</button>' +
-        '<button class="m03-btn" id="m03-theory-btn">Theory [T]</button></div>' +
+        '<div class="m03-row"><span class="m03-lab">temp</span>' +
+        '<input type="range" id="m03-temp" min="5" max="40" step="1" value="37" aria-label="temperature in degrees celsius">' +
+        '<span class="m03-val" id="m03-temp-v">37 °C</span></div>' +
+        '<div class="m03-row"><span class="m03-lab">conductance</span>' +
+        '<input type="range" id="m03-g" min="0" max="60" step="1" value="10" aria-label="channel conductance in nanosiemens">' +
+        '<span class="m03-val" id="m03-g-v">10 nS</span></div>' +
+        '<div class="m03-row m03-btns">' +
+        '<button class="m03-btn" id="m03-play" aria-label="play or pause">❚❚ pause</button>' +
+        '<button class="m03-btn" id="m03-freeze" aria-label="freeze diffusion">freeze diffusion (F)</button>' +
+        '<button class="m03-btn" id="m03-reset" aria-label="reset">reset</button>' +
+        '</div>' +
+        '<div class="m03-note">Drag the thin bars near OUTSIDE / INSIDE to add or remove ions · click the pore to open or shut the gate · click inside a pool to add ions.</div>' +
         '</div>';
     }
 
-    const ionData = {
-      K:  { z: 1,  out: 5,   in: 140, name: 'Potassium (K⁺)' },
-      Na: { z: 1,  out: 145, in: 15,  name: 'Sodium (Na⁺)' },
-      Cl: { z: -1, out: 110, in: 10,  name: 'Chloride (Cl⁻)' }
-    };
+    function wireControls() {
+      marginEl.querySelectorAll('.m03-ion').forEach(b => {
+        b.addEventListener('click', () => switchIon(b.dataset.ion));
+      });
+      const temp = marginEl.querySelector('#m03-temp');
+      temp.addEventListener('input', () => {
+        st.tempC = Number(temp.value);
+        marginEl.querySelector('#m03-temp-v').textContent = st.tempC + ' °C';
+      });
+      const gsl = marginEl.querySelector('#m03-g');
+      gsl.addEventListener('input', () => {
+        st.g_nS = Number(gsl.value);
+        marginEl.querySelector('#m03-g-v').textContent = st.g_nS + ' nS';
+        if (st.g_nS > 0 && S.chapters[st.chapter].open) st.channelOpen = true;
+      });
+      marginEl.querySelector('#m03-play').addEventListener('click', () => {
+        st.playing = !st.playing; syncPlay();
+      });
+      marginEl.querySelector('#m03-freeze').addEventListener('click', () => {
+        st.frozen = !st.frozen;
+        marginEl.querySelector('#m03-freeze').textContent =
+          st.frozen ? 'unfreeze diffusion (F)' : 'freeze diffusion (F)';
+      });
+      marginEl.querySelector('#m03-reset').addEventListener('click', reset);
+    }
 
-    function setIon(k) {
-      if (!ionData[k]) return;
+    function syncPlay() {
+      const b = marginEl && marginEl.querySelector('#m03-play');
+      if (b) b.textContent = st.playing ? '❚❚ pause' : '▶ play';
+    }
+
+    function switchIon(k) {
       st.ion = k;
       const d = ionData[k];
-      st.outside = d.out;
       st.inside = d.in;
-      const oR = document.getElementById('m03-out-rng');
-      const iR = document.getElementById('m03-in-rng');
-      if (oR) { oR.value = st.outside; oR.max = k === 'Cl' ? 150 : 160; }
-      if (iR) { iR.value = st.inside; iR.max = k === 'Cl' ? 140 : 200; }
+      st.outside = d.out;
+      st.V_mV = 0;
+      st.t_ms = 0;
+      st.trace = [];
       reseedParticles();
-      ['K', 'Na', 'Cl'].forEach(id => {
-        const b = document.getElementById('m03-ion-' + id);
-        if (b) b.classList.toggle('active', id === k);
+      marginEl.querySelectorAll('.m03-ion').forEach(b => {
+        const on = b.dataset.ion === k;
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
-      st.V_mV = E_of();
-      st.trace = [{ t: st.t_ms, V: st.V_mV, E: E_of() }];
     }
 
-    function wireControls() {
-      ['K', 'Na', 'Cl'].forEach(k => {
-        document.getElementById('m03-ion-' + k).onclick = () => setIon(k);
+    function reset() {
+      st.predictChoice = null;
+      st.revealed = false;
+      st.verify = null;
+      const rev = chapterBar.querySelector('.m03-reveal');
+      if (rev) rev.remove();
+      applyChapter(st.chapter);
+      updatePredict();
+    }
+
+    // -- chapters ---------------------------------------------------------------
+    const chapterBar = document.createElement('div');
+    chapterBar.className = 'm03-chapters';
+    chapterBar.setAttribute('role', 'group');
+    chapterBar.setAttribute('aria-label', 'chapters');
+    chapterBar.innerHTML =
+      '<div class="m03-ch-top"><span class="m03-ch-code" id="m03-ch-code"></span>' +
+      '<span class="m03-ch-hint" id="m03-ch-hint"></span></div>' +
+      '<div class="m03-ch-row">' +
+      '<button class="m03-btn" id="m03-prev" aria-label="previous chapter">← back</button>' +
+      '<div class="m03-ch-cap" id="m03-ch-cap"></div>' +
+      '<button class="m03-btn" id="m03-next" aria-label="next chapter">next →</button>' +
+      '</div>';
+    fig.parentElement.insertBefore(chapterBar, fig);
+    chapterBar.querySelector('#m03-prev').addEventListener('click', () => applyChapter(st.chapter - 1));
+    chapterBar.querySelector('#m03-next').addEventListener('click', () => applyChapter(st.chapter + 1));
+
+    function applyChapter(i) {
+      st.chapter = Math.max(0, Math.min(S.chapters.length - 1, i));
+      const ch = S.chapters[st.chapter];
+      // the story always restarts from its canonical numbers; play continues freely
+      st.ion = ch.ion;
+      const d = ionData[st.ion];
+      st.inside = d.in;
+      st.outside = d.out;
+      st.V_mV = 0;
+      st.t_ms = 0;
+      st.trace = [];
+      st.channelOpen = ch.open && st.g_nS > 0;
+      st.frozen = false;
+      if (marginEl) marginEl.querySelector('#m03-freeze').textContent = 'freeze diffusion (F)';
+      reseedParticles();
+      syncIonButtons();
+      syncPlay();
+      renderChapterBar();
+      updatePredict();
+    }
+
+    function syncIonButtons() {
+      if (!marginEl) return;
+      marginEl.querySelectorAll('.m03-ion').forEach(b => {
+        b.setAttribute('aria-pressed', b.dataset.ion === st.ion ? 'true' : 'false');
       });
-      document.getElementById('m03-freeze').onclick = () => {
-        st.frozen = !st.frozen;
-        document.getElementById('m03-freeze').classList.toggle('active', st.frozen);
-      };
-      const oR = document.getElementById('m03-out-rng');
-      const iR = document.getElementById('m03-in-rng');
-      const tR = document.getElementById('m03-temp-rng');
-      const gR = document.getElementById('m03-g-rng');
-      oR.oninput = e => { st.outside = parseFloat(e.target.value); };
-      iR.oninput = e => { st.inside = parseFloat(e.target.value); };
-      tR.oninput = e => { st.tempC = parseFloat(e.target.value); };
-      gR.oninput = e => { st.g_nS = parseFloat(e.target.value); };
-
-      document.getElementById('m03-play').onclick = () => {
-        st.playing = !st.playing;
-        document.getElementById('m03-play').textContent = st.playing ? 'Pause' : 'Play';
-      };
-      document.getElementById('m03-reset').onclick = () => {
-        st.t_ms = 0;
-        st.V_mV = 0;
-        st.trace = [{ t: 0, V: 0, E: E_of() }];
-      };
-      document.getElementById('m03-theory-btn').onclick = () => {
-        st.showTheory = !st.showTheory;
-        document.getElementById('m03-theory-btn').classList.toggle('active', st.showTheory);
-      };
-      setIon('K');
     }
 
-    function onTermOver(e) {
-      const el = e.target.closest('[data-term]');
-      if (!el) return;
-      st.hoverTerm = el.getAttribute('data-term');
-      updateGlossary();
-    }
-    function onTermOut(e) {
-      if (e.target.closest('[data-term]')) {
-        st.hoverTerm = null;
-        updateGlossary();
-      }
+    function renderChapterBar() {
+      const ch = S.chapters[st.chapter];
+      chapterBar.querySelector('#m03-ch-code').textContent =
+        'chapter ' + (st.chapter + 1) + '/' + S.chapters.length;
+      chapterBar.querySelector('#m03-ch-cap').textContent = ch.caption;
+      chapterBar.querySelector('#m03-ch-hint').textContent = ch.watch;
     }
 
-    function updateGlossary() {
-      const g = document.getElementById('m03-gloss');
-      if (!g) return;
-      const t = st.hoverTerm;
-      if (t && S.glossary[t]) {
-        g.innerHTML = '<b>' + t + ':</b> ' + S.glossary[t];
+    // -- predict-then-reveal -----------------------------------------------------
+    const predictBox = document.createElement('div');
+    predictBox.className = 'm03-predict';
+    predictBox.innerHTML =
+      '<div class="m03-q">PREDICT — raise the outside ' + ionData.K.name +
+      ' by ten times. Which way does the equilibrium voltage move, and how far per decade at ' +
+      st.tempC + ' °C?</div>' +
+      '<div class="m03-ch-row" id="m03-dir-row"><span class="m03-lab">direction</span>' +
+      '<button class="m03-btn m03-dir" data-dir="up" aria-label="it goes up">⬆ goes up</button>' +
+      '<button class="m03-btn m03-dir" data-dir="down" aria-label="it goes down">⬇ goes down</button>' +
+      '</div>' +
+      '<div class="m03-ch-row" id="m03-mag-row"><span class="m03-lab">per 10×</span></div>' +
+      '<div class="m03-ch-row"><button class="m03-btn" id="m03-commit" disabled ' +
+      'aria-label="commit prediction">commit</button>' +
+      '<span class="m03-pr-msg" id="m03-pr-msg"></span></div>';
+    predictBox.style.display = 'none';
+    chapterBar.appendChild(predictBox);
+
+    function magnitudeButtons() {
+      const row = predictBox.querySelector('#m03-mag-row');
+      while (row.childNodes.length > 1) row.removeChild(row.lastChild);
+      const truth = core.perDecade_mV(st.tempC, 1);
+      [truth / 2, truth, truth * 2].sort(() => sim.rand() - 0.5).forEach(v => {
+        const b = document.createElement('button');
+        b.className = 'm03-btn m03-mag';
+        b.dataset.mag = v;
+        b.textContent = v.toFixed(1) + ' mV';
+        b.setAttribute('aria-label', 'magnitude ' + v.toFixed(1) + ' millivolt per decade');
+        b.addEventListener('click', () => {
+          predictBox.querySelectorAll('.m03-mag').forEach(x =>
+            x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+          st.predictSel.mag = v;
+          syncCommit();
+        });
+        row.appendChild(b);
+      });
+    }
+
+    function syncCommit() {
+      const ok = st.predictSel && st.predictSel.dir && st.predictSel.mag !== null;
+      const b = marginEl && predictBox.querySelector('#m03-commit');
+      if (b) b.disabled = !ok;
+      const msg = predictBox.querySelector('#m03-pr-msg');
+      if (msg) msg.textContent = st.predictSel && st.predictSel.dir && st.predictSel.mag !== null
+        ? 'committed — drag the OUT bar after the reveal to see the dashed line move.'
+        : 'pick a direction and a magnitude, then commit.';
+    }
+
+    predictBox.querySelectorAll('.m03-dir').forEach(b => {
+      b.addEventListener('click', () => {
+        predictBox.querySelectorAll('.m03-dir').forEach(x =>
+          x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+        st.predictSel.dir = b.dataset.dir;
+        syncCommit();
+      });
+    });
+
+    function updatePredict() {
+      const ch = S.chapters[st.chapter];
+      if (ch.predict && !st.revealed) {
+        st.predictSel = { dir: null, mag: null };
+        predictBox.style.display = 'block';
+        magnitudeButtons();
+        syncCommit();
       } else {
-        g.innerHTML = '<b>Tip:</b> Hover over terms in the equations above (or symbols on the canvas) to inspect them.';
+        predictBox.style.display = 'none';
       }
     }
-    updateGlossary();
+
+    function commitPredict() {
+      const sel = st.predictSel;
+      if (st.revealed || !sel || !sel.dir || sel.mag === null) return;
+      st.predictChoice = { dir: sel.dir, mag: sel.mag };
+      st.revealed = true;
+      predictBox.style.display = 'none';
+      const slope = core.perDecade_mV(st.tempC, 1);
+      const dirTrue = slope > 0 ? 'up' : 'down';
+      const magOk = Math.abs(sel.mag - slope) < 0.75;
+      const dirOk = sel.dir === dirTrue;
+      const good = dirOk && magOk;
+      const rev = document.createElement('div');
+      rev.className = 'm03-reveal ' + (good ? '' : 'm03-bad');
+      rev.setAttribute('role', 'status');
+      rev.innerHTML =
+        (good ? '✔ correct. ' :
+          (dirOk ? '✔ direction right, magnitude off — ' : '✖ not quite — ')) +
+        'E = (RT/zF)·ln([out]/[in]): a tenfold [out] adds ln 10 to the log, so E moves <b>' +
+        slope.toFixed(1) + ' mV ' + dirTrue + '</b> per decade for a z = 1 ion at ' +
+        st.tempC + ' °C — now watch the dashed line. ';
+      const demo = document.createElement('button');
+      demo.className = 'm03-btn';
+      demo.textContent = 'verify: OUT ×10';
+      demo.setAttribute('aria-label', 'multiply outside concentration by ten');
+      demo.addEventListener('click', () => {
+        const out0 = st.outside;
+        st.outside = Math.min(300, st.outside * 10);
+        st.verify = { out0: out0, E0: core.nernst(out0, st.inside, ionData[st.ion].z, st.tempC) };
+        demo.disabled = true;
+        st.playing = true;
+        syncPlay();
+      });
+      rev.appendChild(demo);
+      chapterBar.insertBefore(rev, predictBox);
+    }
+
+    predictBox.querySelector('#m03-commit').addEventListener('click', commitPredict);
 
     // -- physics -----------------------------------------------------------------
     function physicsStep(dtMs) {
@@ -543,247 +673,567 @@
       });
     }
 
-    // chapter wiring
-    const chBar = document.createElement('div');
-    chBar.className = 'm03-chapter';
-    chBar.style.cssText = 'background:var(--paper-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:8px;font-family:var(--font-sans);';
-    fig.insertBefore(chBar, cvs);
-
-    function setChapter(n) {
-      st.chapter = Math.max(0, Math.min(S.chapters.length - 1, n));
-      const c = S.chapters[st.chapter];
-      st.channelOpen = !!c.open;
-      const d = document.getElementById('m03-chapter-content');
-      if (d) d.innerHTML = '<b>Chapter ' + (st.chapter + 1) + ' of ' + S.chapters.length + ':</b> ' + c.caption + '<br><span style="color:var(--volt);font-size:11.5px">' + c.watch + '</span>';
-      const prev = document.getElementById('m03-ch-prev');
-      const next = document.getElementById('m03-ch-next');
-      if (prev) prev.disabled = st.chapter === 0;
-      if (next) next.disabled = st.chapter === S.chapters.length - 1;
-      buildPredictionBox();
+    // -- drawing -----------------------------------------------------------------
+    function draw() {
+      const g2 = cvs.getContext('2d');
+      const c = colors();
+      const dpr = (typeof devicePixelRatio !== 'undefined' ? devicePixelRatio : 1) || 1;
+      const pw = Math.round(GEOM.W * dpr), ph = Math.round(GEOM.H * dpr);
+      if (cvs.width !== pw || cvs.height !== ph) { cvs.width = pw; cvs.height = ph; }
+      g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g2.fillStyle = c.paper;
+      g2.fillRect(0, 0, GEOM.W, GEOM.H);
+      drawTrace(g2, c);
+      drawCompartments(g2, c);
+      drawAnions(g2, c);
+      drawChannel(g2, c);
+      drawParticles(g2, c);
+      drawElectricArrows(g2, c);
+      drawBalanceArrows(g2, c);
+      drawDragBars(g2, c);
+      drawVoltmeter(g2, c);
+      drawReadouts(g2, c);
     }
 
-    chBar.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
-      '<div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.04em">Chapter Journey</div>' +
-      '<div><button class="m03-btn" id="m03-ch-prev">← Back</button> <button class="m03-btn" id="m03-ch-next">Next →</button></div></div>' +
-      '<div id="m03-chapter-content" style="font-size:12px;line-height:1.4"></div>' +
-      '<div id="m03-predict-box"></div>';
-
-    document.getElementById('m03-ch-prev').onclick = () => setChapter(st.chapter - 1);
-    document.getElementById('m03-ch-next').onclick = () => setChapter(st.chapter + 1);
-
-    function buildPredictionBox() {
-      const box = document.getElementById('m03-predict-box');
-      if (!box) return;
-      const c = S.chapters[st.chapter];
-      if (!c.predict) { box.innerHTML = ''; return; }
-      box.innerHTML = '<div style="margin-top:8px;padding:8px;background:var(--paper-inset);border:1px solid var(--border);border-radius:4px;font-size:11.5px">' +
-        '<b>Predict-then-reveal:</b> If you increase outside K⁺ from 5 mM to 50 mM (a 10-fold jump), by how many mV does E shift?<br>' +
-        '<label><input type="radio" name="m03-p" value="a"> +61.5 mV (more positive)</label><br>' +
-        '<label><input type="radio" name="m03-p" value="b"> −61.5 mV (more negative)</label><br>' +
-        '<button class="m03-btn" id="m03-commit" style="margin-top:4px">Commit prediction</button>' +
-        '<div id="m03-reveal" style="margin-top:4px;display:none;font-weight:600;color:var(--volt)"></div></div>';
-      document.getElementById('m03-commit').onclick = () => {
-        const sel = box.querySelector('input[name="m03-p"]:checked');
-        const rev = document.getElementById('m03-reveal');
-        if (!sel || !rev) return;
-        rev.style.display = 'block';
-        if (sel.value === 'a') {
-          rev.textContent = 'Correct! A 10-fold ratio increase adds +61.5 mV, shifting E from −89 mV to −28 mV.';
-        } else {
-          rev.textContent = 'Not quite! Tenfold out/in ratio increases E by +61.5 mV at 37 °C.';
-        }
-      };
+    // adaptive voltage scale: never clips the theory line for extreme drags
+    function vRange() {
+      let m = 60;
+      const E = E_of();
+      m = Math.max(m, Math.abs(E) * 1.2 + 10);
+      for (const p of st.trace) m = Math.max(m, Math.abs(p.V) * 1.15, Math.abs(p.E) * 1.15);
+      return Math.ceil(m / 10) * 10 + 10;
     }
 
-    setChapter(0);
+    function VtoY(V, yMax) {
+      const y0 = GEOM.traceY + 26, y1 = GEOM.traceY + GEOM.traceH - 18;
+      return y1 - (Math.max(-yMax, Math.min(yMax, V)) + yMax) / (2 * yMax) * (y1 - y0);
+    }
 
-    // -- render loop ------------------------------------------------------------
-    const ctx2d = cvs.getContext('2d');
-    let lastT = performance.now();
+    function drawTrace(g2, c) {
+      const yMax = vRange();
+      g2.strokeStyle = c.border; g2.lineWidth = 1;
+      g2.strokeRect(GEOM.traceX, GEOM.traceY, GEOM.traceW, GEOM.traceH);
+      g2.fillStyle = c.inkMuted;
+      g2.font = '12px ui-monospace, monospace';
+      g2.textAlign = 'left';
+      g2.fillText('membrane voltage V(t), mV — window ' + (Math.min(12000, Math.max(1, st.t_ms)) / 1000).toFixed(1) + ' s', GEOM.traceX + 8, GEOM.traceY + 15);
+      g2.textAlign = 'right';
+      g2.fillText('+' + yMax, GEOM.traceX + GEOM.traceW - 6, GEOM.traceY + 34);
+      g2.fillText('−' + yMax, GEOM.traceX + GEOM.traceW - 6, GEOM.traceY + GEOM.traceH - 20);
+      g2.textAlign = 'left';
 
-    function frame(now) {
-      const dt = Math.min(50, now - lastT);
-      lastT = now;
-      physicsStep(dt);
-      particlesStep(dt);
+      // window grows with the run until the full 12 s is showing, then scrolls
+      const winMs = Math.max(1, Math.min(12000, st.t_ms));
+      const X = t => GEOM.traceX + 8 +
+        Math.max(0, Math.min(1, (t - Math.max(0, st.t_ms - winMs)) / winMs)) * (GEOM.traceW - 16);
 
-      // sync UI inputs
-      const oV = document.getElementById('m03-out-rng');
-      const iV = document.getElementById('m03-in-rng');
-      const tV = document.getElementById('m03-temp-rng');
-      const gV = document.getElementById('m03-g-rng');
-      if (oV) { oV.value = st.outside; document.getElementById('m03-out-val').textContent = st.outside.toFixed(0) + ' mM'; }
-      if (iV) { iV.value = st.inside; document.getElementById('m03-in-val').textContent = st.inside.toFixed(0) + ' mM'; }
-      if (tV) { tV.value = st.tempC; document.getElementById('m03-temp-val').textContent = st.tempC.toFixed(0) + ' °C'; }
-      if (gV) { gV.value = st.g_nS; document.getElementById('m03-g-val').textContent = st.g_nS.toFixed(0) + ' nS'; }
+      // zero line
+      g2.strokeStyle = c.border; g2.setLineDash([2, 4]);
+      g2.beginPath(); g2.moveTo(GEOM.traceX + 8, VtoY(0, yMax)); g2.lineTo(GEOM.traceX + GEOM.traceW - 8, VtoY(0, yMax)); g2.stroke();
+      g2.setLineDash([]);
 
       const E = E_of();
-      const eqN = document.getElementById('m03-eq-nernst');
-      const eqO = document.getElementById('m03-eq-ode');
-      if (eqN) eqN.innerHTML = '<span data-term="nernst">E = ' + E.toFixed(1) + ' mV</span> = (<span data-term="RToverF">RT/' + Math.abs(ionData[st.ion].z) + 'F</span>) · ln(<span data-term="ratio">' + st.outside + '/' + st.inside + '</span>)';
-      if (eqO) eqO.innerHTML = 'C·dV/dt = −<span data-term="g">g</span>(' + st.V_mV.toFixed(1) + ' − ' + E.toFixed(1) + ') · <span data-term="drive">driving force</span>';
-
-      drawCanvas(ctx2d, st, sim, anions, colors());
-      onFrame();
-      requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
-  }
-
-  function drawCanvas(c, st, sim, anions, co) {
-    const W = GEOM.W, H = GEOM.H;
-    c.fillStyle = co.paper;
-    c.fillRect(0, 0, W, H);
-
-    // 1. Trace Panel (top)
-    c.save();
-    c.fillStyle = co.paperCard;
-    c.strokeStyle = co.border;
-    c.lineWidth = 1;
-    c.fillRect(GEOM.traceX, GEOM.traceY, GEOM.traceW, GEOM.traceH);
-    c.strokeRect(GEOM.traceX, GEOM.traceY, GEOM.traceW, GEOM.traceH);
-
-    const tMin = 0, tMax = Math.max(5000, st.t_ms);
-    const vMin = -120, vMax = 80;
-    const tToX = t => GEOM.traceX + 10 + ((t - tMin) / (tMax - tMin || 1)) * (GEOM.traceW - 20);
-    const vToY = v => GEOM.traceY + GEOM.traceH - 15 - ((v - vMin) / (vMax - vMin)) * (GEOM.traceH - 30);
-
-    // Grid lines
-    for (const gv of [-89, -50, 0, 50]) {
-      const gy = vToY(gv);
-      c.strokeStyle = co.border;
-      c.setLineDash([2, 4]);
-      c.beginPath(); c.moveTo(GEOM.traceX + 10, gy); c.lineTo(GEOM.traceX + GEOM.traceW - 10, gy); c.stroke();
-      c.setLineDash([]);
-      c.fillStyle = co.inkMuted;
-      c.font = '10px var(--font-mono, monospace)';
-      c.fillText(gv + ' mV', GEOM.traceX + 14, gy - 3);
-    }
-
-    // Theory Nernst line
-    const E = core.nernst(st.outside, st.inside, ionData[st.ion].z, st.tempC);
-    if (st.showTheory && st.trace.length > 0) {
-      const ey = vToY(E);
-      c.strokeStyle = co.volt;
-      c.lineWidth = 1.5;
-      c.setLineDash([4, 4]);
-      c.beginPath();
-      c.moveTo(GEOM.traceX + 10, ey);
-      c.lineTo(GEOM.traceX + GEOM.traceW - 10, ey);
-      c.stroke();
-      c.setLineDash([]);
-      c.fillStyle = co.volt;
-      c.font = '600 10.5px var(--font-sans)';
-      c.fillText('Nernst E = ' + E.toFixed(1) + ' mV', GEOM.traceX + GEOM.traceW - 130, ey - 5);
-    }
-
-    // Voltage trace polyline
-    if (st.trace.length > 1) {
-      c.strokeStyle = co.trace;
-      c.lineWidth = 2;
-      c.beginPath();
-      for (let i = 0; i < st.trace.length; i++) {
-        const pt = st.trace[i];
-        const px = tToX(pt.t);
-        const py = vToY(pt.V);
-        if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+      // theory ghost
+      if (st.showTheory) {
+        g2.save();
+        g2.setLineDash([6, 4]); g2.strokeStyle = c.theory; g2.lineWidth = 1.5;
+        const hy = VtoY(E, yMax);
+        g2.beginPath(); g2.moveTo(GEOM.traceX + 8, hy); g2.lineTo(GEOM.traceX + GEOM.traceW - 8, hy); g2.stroke();
+        g2.setLineDash([]);
+        g2.fillStyle = c.theory;
+        g2.fillText('theory  E = ' + E.toFixed(1) + ' mV', GEOM.traceX + 10, hy - 5);
+        g2.restore();
       }
-      c.stroke();
-    }
-    c.restore();
 
-    // 2. Compartment chambers (Bottom)
-    c.save();
-    c.fillStyle = co.paperCard;
-    c.strokeStyle = co.border;
-    c.lineWidth = 1.5;
-    // Outside compartment (top)
-    c.fillRect(GEOM.x0, GEOM.y0, GEOM.x1 - GEOM.x0, GEOM.mid - GEOM.membH / 2 - GEOM.y0);
-    c.strokeRect(GEOM.x0, GEOM.y0, GEOM.x1 - GEOM.x0, GEOM.mid - GEOM.membH / 2 - GEOM.y0);
-    // Inside compartment (bottom)
-    c.fillRect(GEOM.x0, GEOM.mid + GEOM.membH / 2, GEOM.x1 - GEOM.x0, GEOM.y1 - (GEOM.mid + GEOM.membH / 2));
-    c.strokeRect(GEOM.x0, GEOM.mid + GEOM.membH / 2, GEOM.x1 - GEOM.x0, GEOM.y1 - (GEOM.mid + GEOM.membH / 2));
+      // sim trace
+      g2.strokeStyle = c.volt; g2.lineWidth = 1.8;
+      g2.beginPath();
+      let started = false;
+      for (const p of st.trace) {
+        const x = X(p.t), y = VtoY(p.V, yMax);
+        if (!started) { g2.moveTo(x, y); started = true; } else g2.lineTo(x, y);
+      }
+      g2.stroke();
 
-    // Membrane bilayer bar in center
-    c.fillStyle = co.paper;
-    c.fillRect(GEOM.x0, GEOM.mid - GEOM.membH / 2, GEOM.x1 - GEOM.x0, GEOM.membH);
-    c.strokeRect(GEOM.x0, GEOM.mid - GEOM.membH / 2, GEOM.x1 - GEOM.x0, GEOM.membH);
+      // honest difference readout
+      if (st.trace.length > 3 && st.showTheory) {
+        const a = st.trace[st.trace.length - 1];
+        const diff = a.V - a.E;
+        g2.fillStyle = Math.abs(diff) < 1 ? c.inkMuted : c.volt;
+        g2.fillText('Δ sim − theory = ' + diff.toFixed(2) + ' mV', GEOM.traceX + 8, GEOM.traceY + GEOM.traceH - 6);
+      }
 
-    // Pore / Channel opening
-    const gateW = GEOM.ch1 - GEOM.ch0;
-    const openFrac = st.gateAnim;
-    c.clearRect(GEOM.ch0 + 2, GEOM.mid - GEOM.membH / 2 - 1, gateW - 4, GEOM.membH + 2);
-    c.fillStyle = co.paperCard;
-    c.fillRect(GEOM.ch0 + 2, GEOM.mid - GEOM.membH / 2 - 1, gateW - 4, GEOM.membH + 2);
-    c.strokeStyle = co.volt;
-    c.lineWidth = 2;
-    // gate shutter lines
-    if (openFrac < 0.99) {
-      const sh = (1 - openFrac) * (gateW / 2 - 2);
-      c.fillRect(GEOM.ch0 + 2, GEOM.mid - GEOM.membH / 2, sh, GEOM.membH);
-      c.fillRect(GEOM.ch1 - 2 - sh, GEOM.mid - GEOM.membH / 2, sh, GEOM.membH);
-    }
-
-    // Compartment Labels & Concentrations
-    c.fillStyle = co.ink;
-    c.font = 'bold 12px var(--font-sans)';
-    c.fillText('OUTSIDE (extracellular) — [out] = ' + st.outside.toFixed(0) + ' mM ' + st.ion, GEOM.x0 + 16, GEOM.y0 + 22);
-    c.fillText('INSIDE (cytoplasm) — [in] = ' + st.inside.toFixed(0) + ' mM ' + st.ion, GEOM.x0 + 16, GEOM.mid + GEOM.membH / 2 + 22);
-
-    // Draw fixed anions in cytoplasm
-    c.fillStyle = co.inh;
-    c.font = '12px var(--font-mono)';
-    for (const an of anions) {
-      c.fillText('−', an.x, an.y);
+      // per-decade verification chip
+      if (st.verify && st.showTheory) {
+        const E1 = E_of();
+        const dE = E1 - st.verify.E0;
+        const ratio = st.outside / st.verify.out0;
+        if (ratio >= 9.5) {
+          g2.fillStyle = c.exc;
+          g2.fillRect(GEOM.traceX + GEOM.traceW - 320, GEOM.traceY + 22, 312, 20);
+          g2.fillStyle = c.paper;
+          g2.textAlign = 'right';
+          g2.fillText('E moved ' + (dE >= 0 ? '+' : '−') + Math.abs(dE).toFixed(1) +
+            ' mV for ×' + ratio.toFixed(1) + ' in [out]', GEOM.traceX + GEOM.traceW - 14, GEOM.traceY + 36);
+          g2.textAlign = 'left';
+        }
+      }
     }
 
-    // Draw particles (ions)
-    const ionColor = st.ion === 'Na' ? co.exc : (st.ion === 'Cl' ? co.inh : co.volt);
-    c.fillStyle = ionColor;
-    for (const q of sim.particles) {
-      c.beginPath();
-      c.arc(q.x, q.y, 4.5, 0, Math.PI * 2);
-      c.fill();
-      c.strokeStyle = co.paper;
-      c.lineWidth = 1;
-      c.stroke();
+    function drawCompartments(g2, c) {
+      const hover = st.hoverTerm;
+      const midT = GEOM.mid - GEOM.membH / 2, midB = GEOM.mid + GEOM.membH / 2;
+      // pools
+      g2.fillStyle = c.paperCard;
+      g2.fillRect(GEOM.x0, GEOM.y0, GEOM.x1 - GEOM.x0, midT - GEOM.y0);
+      g2.fillRect(GEOM.x0, midB, GEOM.x1 - GEOM.x0, GEOM.y1 - midB);
+      // membranes
+      g2.fillStyle = c.border;
+      g2.fillRect(GEOM.x0, midT, GEOM.x1 - GEOM.x0, GEOM.membH);
+      g2.strokeStyle = c.inkMuted; g2.lineWidth = 1;
+      g2.strokeRect(GEOM.x0, GEOM.y0, GEOM.x1 - GEOM.x0, midT - GEOM.y0);
+      g2.strokeRect(GEOM.x0, midB, GEOM.x1 - GEOM.x0, GEOM.y1 - midB);
+      g2.strokeRect(GEOM.x0, midT, GEOM.x1 - GEOM.x0, GEOM.membH);
+      // bilayer ticks
+      g2.strokeStyle = c.paper; g2.lineWidth = 1;
+      for (let x = GEOM.x0 + 10; x < GEOM.x1 - 8; x += 26) {
+        g2.beginPath(); g2.moveTo(x, midT + 4); g2.lineTo(x + 12, midT + 4); g2.stroke();
+        g2.beginPath(); g2.moveTo(x + 6, midB - 4); g2.lineTo(x + 18, midB - 4); g2.stroke();
+      }
+
+      // labels + concentrations
+      g2.font = '13px ui-serif, Georgia, serif';
+      g2.fillStyle = c.ink;
+      g2.textAlign = 'left';
+      const labOut = 'OUTSIDE — ' + ionData[st.ion].name + ' ' + st.outside.toFixed(1) + ' mM';
+      g2.fillText(labOut, GEOM.x0 + 14, GEOM.y0 + 22);
+      g2.font = '12px ui-monospace, monospace';
+      g2.fillStyle = c.inkMuted;
+      g2.fillText('ratio [out]/[in] = ' + (st.outside / st.inside).toFixed(3), GEOM.x0 + 14, GEOM.y0 + 40);
+      g2.font = '13px ui-serif, Georgia, serif';
+      g2.fillStyle = c.ink;
+      g2.fillText('INSIDE — ' + ionData[st.ion].name + ' ' + st.inside.toFixed(1) +
+        ' mM  +  fixed anions (−)', GEOM.x0 + 14, GEOM.y1 - 12);
+
+      // hover highlights per term (never colour alone: dashed outline + label)
+      if (hover === 'ratio') {
+        g2.save();
+        g2.setLineDash([5, 3]); g2.strokeStyle = c.volt; g2.lineWidth = 1.5;
+        g2.strokeRect(GEOM.x0 + 2, GEOM.y0 + 2, GEOM.x1 - GEOM.x0 - 4, midT - GEOM.y0 - 4);
+        g2.strokeRect(GEOM.x0 + 2, midB + 2, GEOM.x1 - GEOM.x0 - 4, GEOM.y1 - midB - 4);
+        g2.setLineDash([]);
+        g2.fillStyle = c.volt; g2.font = '12px ui-monospace, monospace';
+        g2.fillText('ratio term acts here [out]/[in]', GEOM.x1 - 240, GEOM.y0 + 40);
+        g2.restore();
+      } else if (hover === 'RToverF') {
+        g2.save();
+        g2.setLineDash([5, 3]); g2.strokeStyle = c.mod; g2.lineWidth = 1.5;
+        g2.strokeRect(GEOM.x0 + 2, GEOM.y0 + 2, GEOM.x1 - GEOM.x0 - 4, midT - GEOM.y0 - 4);
+        g2.strokeRect(GEOM.x0 + 2, midB + 2, GEOM.x1 - GEOM.x0 - 4, GEOM.y1 - midB - 4);
+        g2.setLineDash([]);
+        g2.fillStyle = c.mod; g2.font = '12px ui-monospace, monospace';
+        g2.fillText('RT/zF: jitter speed ∝ √T at ' + st.tempC + ' °C', GEOM.x1 - 300, GEOM.y0 + 40);
+        g2.restore();
+      }
     }
 
-    // Draw crossing flashes
-    for (const f of sim.flashes) {
-      c.strokeStyle = f.outward ? co.exc : co.volt;
-      c.globalAlpha = Math.max(0, f.alpha);
-      c.beginPath();
-      c.arc(f.x, f.y, f.r, 0, Math.PI * 2);
-      c.stroke();
-      c.globalAlpha = 1.0;
+    function drawAnions(g2, c) {
+      g2.fillStyle = c.inkMuted;
+      for (const a of anions) {
+        g2.beginPath(); g2.arc(a.x, a.y, 7, 0, Math.PI * 2); g2.fill();
+      }
+      g2.strokeStyle = c.paper; g2.lineWidth = 1.4;
+      for (const a of anions) {
+        g2.beginPath(); g2.moveTo(a.x - 3.5, a.y); g2.lineTo(a.x + 3.5, a.y); g2.stroke();
+      }
     }
 
-    // Voltmeter badge
-    c.save();
-    c.translate(GEOM.meterX, GEOM.meterY);
-    c.fillStyle = co.paperCard;
-    c.strokeStyle = co.volt;
-    c.lineWidth = 2;
-    c.beginPath(); c.arc(0, 0, GEOM.meterR, 0, Math.PI * 2); c.fill(); c.stroke();
-    c.fillStyle = co.ink;
-    c.font = 'bold 11px var(--font-mono)';
-    c.textAlign = 'center';
-    c.fillText('V_m', 0, -10);
-    c.fillStyle = co.volt;
-    c.font = 'bold 12px var(--font-mono)';
-    c.fillText(st.V_mV.toFixed(1) + 'mV', 0, 8);
-    c.restore();
+    function drawChannel(g2, c) {
+      const open = st.gateAnim > 0.05;
+      const poreH = GEOM.membH + 8 * st.gateAnim;
+      g2.fillStyle = c.paper;
+      g2.fillRect(GEOM.ch0, GEOM.mid - poreH / 2, GEOM.ch1 - GEOM.ch0, poreH);
+      g2.strokeStyle = open ? c.volt : c.inkMuted;
+      g2.lineWidth = open ? 1.8 : 1.2;
+      g2.strokeRect(GEOM.ch0, GEOM.mid - poreH / 2, GEOM.ch1 - GEOM.ch0, poreH);
+      // gate leaves (vanish when open), never colour-alone: shape shows state
+      if (!open) {
+        g2.fillStyle = c.inkMuted;
+        const w = (GEOM.ch1 - GEOM.ch0) / 2 * (1 - st.gateAnim);
+        g2.fillRect(GEOM.ch0, GEOM.mid - poreH / 2, w, poreH);
+        g2.fillRect(GEOM.ch1 - w, GEOM.mid - poreH / 2, w, poreH);
+      }
+      if (st.hoverTerm === 'g') {
+        g2.save();
+        g2.setLineDash([4, 3]); g2.strokeStyle = c.volt; g2.lineWidth = 1.6;
+        g2.strokeRect(GEOM.ch0 - 5, GEOM.mid - poreH / 2 - 5, GEOM.ch1 - GEOM.ch0 + 10, poreH + 10);
+        g2.restore();
+      }
+      g2.fillStyle = c.ink;
+      g2.font = '12px ui-monospace, monospace';
+      g2.textAlign = 'center';
+      const cx = (GEOM.ch0 + GEOM.ch1) / 2;
+      g2.fillText(ionData[st.ion].name + ' channel · ' + (open ? 'open' : 'shut'),
+        cx, GEOM.mid - poreH / 2 - 20);
+      g2.fillStyle = c.inkMuted;
+      g2.font = '10px ui-monospace, monospace';
+      g2.fillText('g = ' + st.g_nS + ' nS — click to toggle', cx, GEOM.mid - poreH / 2 - 7);
+      g2.textAlign = 'left';
+    }
 
-    c.restore();
+    function drawParticles(g2, c) {
+      const col = c[ionData[st.ion].color];
+      const anion = ionData[st.ion].z < 0;
+      g2.fillStyle = col;
+      for (const q of sim.particles) {
+        g2.globalAlpha = q.inside ? 0.85 : 0.6;
+        g2.beginPath(); g2.arc(q.x, q.y, 2.6, 0, Math.PI * 2); g2.fill();
+        // sign glyph, never colour-alone
+        g2.strokeStyle = c.paper; g2.lineWidth = 1;
+        g2.globalAlpha = 0.9;
+        if (anion) {
+          g2.beginPath(); g2.moveTo(q.x - 1.4, q.y); g2.lineTo(q.x + 1.4, q.y); g2.stroke();
+        } else {
+          g2.beginPath(); g2.moveTo(q.x - 1.4, q.y); g2.lineTo(q.x + 1.4, q.y); g2.stroke();
+          g2.beginPath(); g2.moveTo(q.x, q.y - 1.4); g2.lineTo(q.x + 0, q.y + 1.4); g2.stroke();
+        }
+      }
+      g2.globalAlpha = 1;
+      // flashes on crossings
+      for (const f of sim.flashes) {
+        const k = 1 - f.age / 480;
+        if (k <= 0) continue;
+        g2.globalAlpha = 0.55 * k;
+        g2.strokeStyle = c.volt; g2.lineWidth = 1.4;
+        g2.beginPath(); g2.arc(f.x, f.y, 3 + 9 * (1 - k), 0, Math.PI * 2); g2.stroke();
+      }
+      g2.globalAlpha = 1;
+    }
+
+    // electric force across the bilayer on the selected ion (force, not field:
+    // for anions it flips, and the label says so)
+    function drawElectricArrows(g2, c) {
+      const open = st.channelOpen;
+      if (!open) return;
+      const hover = st.hoverTerm === 'drive' || st.hoverTerm === 'nernst';
+      const strength = Math.min(1, Math.abs(st.V_mV) / 90);
+      if (strength < 0.02 && !hover && !st.frozen) return;
+      // inside potential V < 0 pulls +ions into INSIDE (+y), pushes anions out
+      const dirDown = (ionData[st.ion].z > 0) === (st.V_mV < 0) ? +1 : -1;
+      const skipA = GEOM.ch0 - 58, skipB = GEOM.ch1 + 58;
+      const skipM = GEOM.meterX - GEOM.meterR - 18, skipM2 = GEOM.meterX + GEOM.meterR + 18;
+      const n = 16;
+      for (let i = 0; i < n; i++) {
+        const x = GEOM.x0 + 30 + (GEOM.x1 - GEOM.x0 - 60) * (i + 0.5) / n;
+        if ((x > skipA && x < skipB) || (x > skipM && x < skipM2)) continue;
+        const len = 9 + 14 * strength;
+        const yA = GEOM.mid - len * dirDown, yB = GEOM.mid + len * dirDown;
+        g2.globalAlpha = hover ? 0.95 : 0.35 + 0.45 * strength;
+        g2.strokeStyle = c.mod; g2.fillStyle = c.mod; g2.lineWidth = 1.5;
+        g2.beginPath(); g2.moveTo(x, yA); g2.lineTo(x, yB); g2.stroke();
+        g2.beginPath();
+        g2.moveTo(x, yB);
+        g2.lineTo(x - 3.2, yB - dirDown * 5.5);
+        g2.lineTo(x + 3.2, yB - dirDown * 5.5);
+        g2.closePath(); g2.fill();
+        g2.globalAlpha = 1;
+      }
+      g2.fillStyle = c.mod;
+      g2.font = '11.5px ui-monospace, monospace';
+      const label = 'electric force on ' + ionData[st.ion].name +
+        (ionData[st.ion].z < 0 ? ' (field is opposite)' : '');
+      g2.textAlign = 'right';
+      g2.globalAlpha = hover ? 1 : 0.8;
+      g2.fillText(label, skipA - 10, GEOM.mid - 24);
+      g2.globalAlpha = 1;
+      g2.textAlign = 'left';
+    }
+
+    // the two opposing forces at the pore, lengths from the equations:
+    // chemical push (RT·|ln(in/out)| measured in mV) vs electric drift (|V| mV)
+    function drawBalanceArrows(g2, c) {
+      if (!st.channelOpen) return;
+      const RTF = core.rtOverF_mV(st.tempC);
+      const chem = Math.min(100, RTF * Math.abs(Math.log(st.outside / st.inside))); // mV-equiv
+      const elec = Math.min(100, Math.abs(st.V_mV)); // mV
+      const scale = 0.52;
+      const dirChem = st.inside > st.outside ? -1 : +1; // −1 = up = out of inside
+      const dirElec = (ionData[st.ion].z > 0) === (st.V_mV < 0) ? +1 : -1; // +1 = down = into inside
+      arrow(g2, c, GEOM.ch0 - 26, GEOM.mid, dirChem, chem * scale, c.exc, 'diffusion');
+      arrow(g2, c, GEOM.ch1 + 26, GEOM.mid, dirElec, elec * scale, c.mod, 'drift');
+    }
+    function arrow(g2, c, x, yMid, dir, len, color, label) {
+      if (len < 3) return;
+      const y = yMid + dir * (GEOM.membH / 2 + 6);
+      const tip = y + dir * len;
+      g2.strokeStyle = color; g2.fillStyle = color; g2.lineWidth = 2.2;
+      g2.beginPath(); g2.moveTo(x, y); g2.lineTo(x, tip - dir * 6); g2.stroke();
+      g2.beginPath();
+      g2.moveTo(x, tip);
+      g2.lineTo(x - 4, tip - dir * 8);
+      g2.lineTo(x + 4, tip - dir * 8);
+      g2.closePath(); g2.fill();
+      g2.font = '11px ui-monospace, monospace';
+      g2.textAlign = 'center';
+      g2.fillText(label, x, y + (dir < 0 ? -len - 6 : len + 14));
+      g2.textAlign = 'left';
+    }
+
+    function drawDragBars(g2, c) {
+      bar(g2, c, GEOM.x1 - 26, GEOM.y0 + 60, 'outside', st.outside);
+      bar(g2, c, GEOM.x1 - 26, GEOM.y1 - 60, 'inside', st.inside);
+    }
+    function bar(g2, c, x, y, which, conc) {
+      const w = 10, h = 30;
+      const active = st.dragHandle === which;
+      g2.fillStyle = c.paper;
+      g2.strokeStyle = active ? c.volt : c.inkMuted;
+      g2.lineWidth = active ? 2.2 : 1.2;
+      g2.fillRect(x - w / 2, y - h / 2, w, h);
+      g2.strokeRect(x - w / 2, y - h / 2, w, h);
+      g2.beginPath(); g2.moveTo(x - 3, y - 7); g2.lineTo(x + 3, y - 7); g2.stroke();
+      g2.beginPath(); g2.moveTo(x - 3, y + 7); g2.lineTo(x + 3, y + 7); g2.stroke();
+      g2.fillStyle = c.inkMuted; g2.font = '12px ui-monospace, monospace';
+      g2.textAlign = 'right';
+      g2.fillText((which === 'outside' ? 'OUT ' : 'IN ') + conc.toFixed(1) + ' mM — drag ↕',
+        x - 10, y + 4);
+      g2.textAlign = 'left';
+    }
+
+    function drawVoltmeter(g2, c) {
+      const vx = GEOM.meterX, vy = GEOM.meterY, r = GEOM.meterR;
+      g2.fillStyle = c.paper;
+      g2.beginPath(); g2.arc(vx, vy, r, 0, Math.PI * 2); g2.fill();
+      g2.strokeStyle = c.inkMuted; g2.lineWidth = 1.2;
+      g2.beginPath(); g2.arc(vx, vy, r, Math.PI * 0.75, Math.PI * 2.25); g2.stroke();
+      for (let i = 0; i <= 12; i++) {
+        const a = Math.PI * 0.75 + (i / 12) * Math.PI * 1.5;
+        g2.beginPath();
+        g2.moveTo(vx + Math.cos(a) * r, vy + Math.sin(a) * r);
+        g2.lineTo(vx + Math.cos(a) * (r - 5), vy + Math.sin(a) * (r - 5));
+        g2.stroke();
+      }
+      const E = E_of();
+      if (st.showTheory) { // theory tick on the dial
+        const aE = Math.PI * 0.75 + (Math.max(-120, Math.min(120, E)) + 120) / 240 * Math.PI * 1.5;
+        g2.strokeStyle = c.theory; g2.lineWidth = 2;
+        g2.setLineDash([3, 2]);
+        g2.beginPath();
+        g2.moveTo(vx + Math.cos(aE) * (r - 1), vy + Math.sin(aE) * (r - 1));
+        g2.lineTo(vx + Math.cos(aE) * (r - 11), vy + Math.sin(aE) * (r - 11));
+        g2.stroke();
+        g2.setLineDash([]);
+      }
+      const cl = Math.max(-120, Math.min(120, st.V_mV)) / 120;
+      const ang = Math.PI * 0.75 + (cl + 1) / 2 * Math.PI * 1.5;
+      g2.strokeStyle = c.volt; g2.lineWidth = 2;
+      g2.beginPath(); g2.moveTo(vx, vy);
+      g2.lineTo(vx + Math.cos(ang) * (r - 8), vy + Math.sin(ang) * (r - 8));
+      g2.stroke();
+      g2.beginPath(); g2.arc(vx, vy, 2.4, 0, Math.PI * 2);
+      g2.fillStyle = c.volt; g2.fill();
+      // leads to each side of the bilayer
+      g2.strokeStyle = c.inkMuted; g2.lineWidth = 1;
+      g2.beginPath(); g2.moveTo(vx, vy - r); g2.lineTo(vx, GEOM.mid - GEOM.membH / 2 - 10); g2.stroke();
+      g2.beginPath(); g2.moveTo(vx, vy + r); g2.lineTo(vx, GEOM.mid + GEOM.membH / 2 + 10); g2.stroke();
+      g2.fillStyle = c.ink; g2.font = '12px ui-monospace, monospace';
+      g2.textAlign = 'center';
+      g2.fillText('V = ' + st.V_mV.toFixed(1) + ' mV', vx - 6, vy + r + 14);
+      g2.textAlign = 'left';
+    }
+
+    function drawReadouts(g2, c) {
+      g2.fillStyle = c.inkMuted; g2.font = '12px ui-monospace, monospace';
+      g2.textAlign = 'right';
+      g2.fillText('t = ' + (st.t_ms / 1000).toFixed(1) + ' s', GEOM.x1 - 8, GEOM.y1 - 2);
+      if (st.frozen) {
+        g2.textAlign = 'center';
+        g2.fillStyle = c.mod;
+        g2.fillText('diffusion frozen — the two forces at the pore are the balance picture',
+          GEOM.W / 2, GEOM.y1 - 90);
+      }
+      g2.textAlign = 'left';
+    }
+
+    // -- margin live values -------------------------------------------------------
+    function term(name, html) {
+      const on = st.hoverTerm === name;
+      return '<span class="m03-term' + (on ? ' m03-term-on' : '') + '" data-term="' + name + '">' + html + '</span>';
+    }
+
+    const glossOrder = ['diffusion', 'anion', 'drift', 'nernst', 'decade'];
+
+    function renderMargin() {
+      if (!marginEl) return;
+      const RTF = core.rtOverF_mV(st.tempC);
+      const ratio = st.outside / st.inside;
+      const E = E_of();
+      const eqN = marginEl.querySelector('#m03-eq-nernst');
+      const eqO = marginEl.querySelector('#m03-eq-ode');
+      const gl = marginEl.querySelector('#m03-gloss');
+      const gEff = st.channelOpen && !st.frozen ? st.g_nS : 0;
+      const df = st.V_mV - E;
+      if (eqN) eqN.innerHTML =
+        '<span class="m03-m">' + S.equations.nernst + '</span>' +
+        term('RToverF', 'RT/zF = ' + RTF.toFixed(2) + ' mV') + ' · ' +
+        term('ratio', 'ln([out]/[in]) = ' + Math.log(ratio).toFixed(3)) + ' ⇒ ' +
+        term('nernst', '<b>E = ' + E.toFixed(2) + ' mV</b>');
+      if (eqO) eqO.innerHTML =
+        '<span class="m03-m">' + S.equations.ode + '</span>' +
+        term('g', 'g = ' + gEff + ' nS') + ' · ' +
+        term('drive', 'V − E = ' + df.toFixed(2) + ' mV') + ' ⇒ ' +
+        'dV/dt = ' + (-(gEff / st.C_uF) * df).toFixed(3) + ' mV/ms';
+      if (gl) {
+        const hov = st.hoverTerm && S.terms[st.hoverTerm];
+        gl.innerHTML = '<i>' + (hov || S.glossary[glossOrder[st.chapter % glossOrder.length]]) + '</i>';
+      }
+    }
+
+    function onTermOver(e) {
+      const t = e.target && e.target.closest ? e.target.closest('.m03-term') : null;
+      if (t) st.hoverTerm = t.dataset.term;
+    }
+    function onTermOut(e) {
+      const t = e.target && e.target.closest ? e.target.closest('.m03-term') : null;
+      if (t && st.hoverTerm === t.dataset.term) st.hoverTerm = null;
+    }
+
+    // -- direct manipulation ------------------------------------------------------
+    function canvasXY(e) {
+      const r = cvs.getBoundingClientRect();
+      return {
+        x: (e.clientX - r.left) * GEOM.W / r.width,
+        y: (e.clientY - r.top) * GEOM.H / r.height
+      };
+    }
+    function near(x, y, bx, by, rw, rh) {
+      return Math.abs(x - bx) < (rw || 22) && Math.abs(y - by) < (rh || 30);
+    }
+
+    cvs.addEventListener('pointerdown', e => {
+      const p = canvasXY(e);
+      if (near(p.x, p.y, GEOM.x1 - 26, GEOM.y0 + 60)) st.dragHandle = 'outside';
+      else if (near(p.x, p.y, GEOM.x1 - 26, GEOM.y1 - 60)) st.dragHandle = 'inside';
+      else if (p.x > GEOM.ch0 - 14 && p.x < GEOM.ch1 + 14 &&
+               p.y > GEOM.mid - 34 && p.y < GEOM.mid + 34) {
+        // click the pore: toggle the gate
+        if (st.g_nS > 0) st.channelOpen = !st.channelOpen;
+      } else if (p.y > GEOM.mid + GEOM.membH / 2 + 20 && p.y < GEOM.y1 - 20) {
+        st.inside = Math.max(0.5, Math.min(300, st.inside + 4));
+      } else if (p.y > GEOM.y0 + 20 && p.y < GEOM.mid - GEOM.membH / 2 - 10) {
+        st.outside = Math.max(0.5, Math.min(300, st.outside + 4));
+      }
+      st.lastX = p.x;
+      e.preventDefault();
+    });
+    cvs.addEventListener('pointermove', e => {
+      if (!st.dragHandle) return;
+      const p = canvasXY(e);
+      const dx = p.x - st.lastX;
+      st.lastX = p.x;
+      const scale = Math.exp(dx * 0.02);
+      const key = st.dragHandle === 'outside' ? 'outside' : 'inside';
+      st[key] = Math.max(0.5, Math.min(300, st[key] * scale));
+    });
+    window.addEventListener('pointerup', () => { st.dragHandle = null; });
+
+    // -- keyboard -----------------------------------------------------------------
+    document.addEventListener('keydown', e => {
+      if (e.target && e.target.tagName === 'INPUT') return;
+      if (e.key === ' ') {
+        e.preventDefault();
+        st.playing = !st.playing; syncPlay();
+      } else if (e.key === 't' || e.key === 'T') {
+        st.showTheory = !st.showTheory;
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault(); applyChapter(st.chapter + 1);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault(); applyChapter(st.chapter - 1);
+      } else if (e.key === 'Home') {
+        e.preventDefault(); applyChapter(0);
+      } else if (e.key === 'End') {
+        e.preventDefault(); applyChapter(S.chapters.length - 1);
+      } else if (e.key === 'f' || e.key === 'F') {
+        st.frozen = !st.frozen;
+        if (marginEl) marginEl.querySelector('#m03-freeze').textContent =
+          st.frozen ? 'unfreeze diffusion (F)' : 'freeze diffusion (F)';
+      }
+    });
+
+    // -- frame loop ----------------------------------------------------------------
+    let lastNow = -1;
+    let lastFrameAt = -1e9;
+    function frame() {
+      const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      if (now - lastFrameAt < 11) return;
+      const dt = lastNow < 0 ? 16 : Math.max(0, Math.min(48, now - lastNow));
+      lastNow = now;
+      lastFrameAt = now;
+      physicsStep(dt);
+      particlesStep(dt);
+      renderMargin();
+      draw();
+    }
+
+    onFrame(() => frame()); // shell clock pump (30 fps when its clock plays)
+    if (typeof requestAnimationFrame === 'function') {
+      const raf = () => { frame(); requestAnimationFrame(raf); };
+      requestAnimationFrame(raf); // headless/hidden pumps may never tick
+    }
+    // timer fallback when rAF is throttled or virtual: still honest sim time
+    if (typeof setInterval === 'function') setInterval(frame, 16);
+
+    // -- boot ----------------------------------------------------------------------
+    applyChapter(0);
+    renderMargin();
+    draw();
   }
 
-  if (isNode) return;
+  const CSS_TEXT = [
+    '.m03-wrap{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink,#1b1a17);}',
+    '.m03-eqlabel{font:11px system-ui;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted,#57534e);margin-bottom:4px;}',
+    '.m03-eqlabel .m03-live{color:var(--volt,#b45309);}',
+    '.m03-eq{margin:8px 0;padding:8px 10px;border:1px solid var(--border,#d6cfbf);border-radius:4px;line-height:1.7;background:var(--paper-card,#eeeae0);font-size:12.5px;}',
+    '.m03-eq .m03-m{font-family:ui-monospace,monospace;color:var(--ink-muted,#57534e);display:block;font-size:11.5px;margin-bottom:2px;}',
+    '.m03-term{padding:1px 3px;border-radius:3px;cursor:help;transition:background .15s;}',
+    '.m03-term-on{background:var(--volt,#b45309);color:var(--paper,#f6f2e9);}',
+    '.m03-explain{font:12px ui-serif,Georgia,serif;color:var(--ink-muted,#57534e);margin:10px 0 0;line-height:1.5;}',
+    '.m03-gloss{font:italic 12.5px ui-serif,Georgia,serif;color:var(--ink,#1b1a17);border-left:2px solid var(--inh,#be123c);padding-left:9px;margin:10px 0;min-height:38px;}',
+    '.m03-ctl{display:flex;flex-direction:column;gap:8px;font:13px system-ui;margin-top:10px;}',
+    '.m03-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}',
+    '.m03-lab{min-width:86px;font:11px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted,#57534e);}',
+    '.m03-val{font:12px ui-monospace,monospace;color:var(--ink,#1b1a17);min-width:58px;}',
+    '.m03-btn{font:12px system-ui;padding:4px 10px;border:1px solid var(--ink-muted,#57534e);border-radius:4px;background:var(--paper,#f6f2e9);color:var(--ink,#1b1a17);cursor:pointer;}',
+    '.m03-btn:hover{background:var(--paper-card,#eeeae0);}',
+    '.m03-btn[aria-pressed="true"]{background:var(--volt,#b45309);color:var(--paper,#f6f2e9);border-color:var(--volt,#b45309);}',
+    '.m03-btn:disabled{opacity:.55;cursor:default;}',
+    '.m03-btn:focus-visible{outline:2px solid var(--volt,#b45309);outline-offset:1px;}',
+    '.m03-wrap input[type=range]{accent-color:var(--volt,#b45309);flex:1;min-width:90px;}',
+    '.m03-btns{gap:8px;}',
+    '.m03-note{font:italic 11.5px ui-serif,Georgia,serif;color:var(--ink-muted,#57534e);}',
+    '.m03-footer{font:11.5px ui-monospace,monospace;color:var(--ink-muted,#57534e);margin:2px 4px 8px;line-height:1.5;}',
+    '.m03-footer .m03-foot-src{color:var(--volt,#b45309);letter-spacing:.05em;text-transform:uppercase;font-size:10.5px;}',
+    '.m03-footer code{font-family:ui-monospace,monospace;color:var(--ink,#1b1a17);}',
+    // chapters
+    '.m03-chapters{margin:0 4px 12px;border:1px solid var(--border,#d6cfbf);border-radius:6px;padding:10px 14px;background:var(--paper-card,#eeeae0);display:grid;gap:6px;}',
+    '.m03-ch-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;}',
+    '.m03-ch-code{font:11px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--volt,#b45309);}',
+    '.m03-ch-hint{font:12px ui-serif,Georgia,serif;color:var(--ink-muted,#57534e);font-style:italic;}',
+    '.m03-ch-cap{font:14px ui-serif,Georgia,serif;color:var(--ink,#1b1a17);line-height:1.45;}',
+    '.m03-ch-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}',
+    // predict + reveal
+    '.m03-predict{border:1px dashed var(--volt,#b45309);border-radius:6px;padding:10px 14px;margin-top:6px;background:var(--paper,#f6f2e9);}',
+    '.m03-predict .m03-q{font:13px ui-serif,Georgia,serif;margin-bottom:8px;color:var(--ink,#1b1a17);}',
+    '.m03-predict .m03-lab{font:11px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted,#57534e);}',
+    '.m03-reveal{border:1px solid var(--border,#d6cfbf);border-left:3px solid var(--exc,#0f766e);border-radius:4px;padding:9px 12px;margin-top:8px;font:12.5px ui-serif,Georgia,serif;line-height:1.55;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}',
+    '.m03-bad{border-left-color:var(--mod,#7e22ce);}'
+  ].join('\n');
 
-  if (typeof Atlas !== 'undefined') {
-    Atlas.Plate.register({
+  if (typeof module !== 'undefined' && module.exports) module.exports = { core, S };
+  if (typeof root.Atlas !== 'undefined' && root.Atlas && root.Atlas.Plate) {
+    root.Atlas.Plate.register({
       id: 'M03',
-      title: { en: S.title, fa: 'معادله نرنست: چرا غشاء ولتاژ دارد' },
+      title: { en: S.title },
       source: 'live',
       mount
     });
