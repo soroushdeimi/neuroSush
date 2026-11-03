@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -84,4 +85,31 @@ test('theory steady-state omega calculation returns expected values', () => {
   // 0.02 * (-60 - (-65)) + 120 * 0.5 * (20 / 1000)
   // 0.02 * 5 + 120 * 0.5 * 0.02 = 0.1 + 1.2 = 1.3
   assert.ok(Math.abs(omegaEst - 1.3) < 1e-10);
+});
+
+test('theory steady-state omega calculation returns expected values for multiple parameter sets', () => {
+  const p1 = { ...core.DEFAULTS, a: 0.02, b: 0.5, tau_w: 120, v_rest: -65 };
+  assert.ok(Math.abs(core.theorySteadyStateOmega(20, -60, p1) - 1.3) < 1e-10);
+  const p2 = { ...core.DEFAULTS, a: 0.04, b: 0.35, tau_w: 150, v_rest: -65 };
+  assert.ok(Math.abs(core.theorySteadyStateOmega(30, -55, p2) - 1.975) < 1e-10);
+  const p3 = { ...core.DEFAULTS, a: 0.01, b: 0.2, tau_w: 100, v_rest: -65 };
+  assert.ok(Math.abs(core.theorySteadyStateOmega(10, -62, p3) - 0.23) < 1e-10);
+});
+
+test('exponential term is uncapped for large V - V_T', () => {
+  const p = { ...core.DEFAULTS, theta_rh: -50, delta: 2, tau: 20, dt: 1.0 };
+  const v = 100;
+  const terms = core.adex_terms(v, 0, 0, p);
+  const expectedExp = p.delta * Math.exp((v - p.theta_rh) / p.delta) * (p.dt / p.tau);
+  assert.ok(Math.abs(terms.spike_initiation - expectedExp) < 1e-10);
+  assert.ok(terms.spike_initiation > 1e10);
+});
+
+test('Learn section is present with four blocks under 90 words each', () => {
+  const plateSource = readFileSync(new URL('../../../src/neurosush/viz/web/plates/N03.js', import.meta.url), 'utf8');
+  assert.ok(plateSource.includes('Learn: the math, the brain, the ML analogy'));
+  assert.ok(plateSource.includes('What you see:'));
+  assert.ok(plateSource.includes('The math:'));
+  assert.ok(plateSource.includes('In the brain:'));
+  assert.ok(plateSource.includes('Like classic ML:'));
 });

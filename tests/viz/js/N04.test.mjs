@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -173,4 +174,15 @@ test('the string table is complete and in English', () => {
   assert.ok(S.ch1Title.length > 0);
   assert.ok(S.predictExplanation.length > 0);
   assert.ok(S.glossaryU.length > 0);
+});
+
+test('Learn section is present with four blocks and model units', () => {
+  const plateSource = readFileSync(new URL('../../../src/neurosush/viz/web/plates/N04.js', import.meta.url), 'utf8');
+  assert.ok(plateSource.includes('Learn: the math, the brain, the ML analogy'));
+  assert.ok(plateSource.includes('What you see:'));
+  assert.ok(plateSource.includes('The math:'));
+  assert.ok(plateSource.includes('In the brain:'));
+  assert.ok(plateSource.includes('Like classic ML:'));
+  assert.ok(plateSource.includes("unitsPa: 'model units'"));
+  assert.ok(plateSource.includes("unitsDudt: 'model units/ms'"));
 });
