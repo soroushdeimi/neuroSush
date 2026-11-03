@@ -71,8 +71,8 @@
     ch3_body: 'Because traces decay as (1 - dt/τ)^k ≈ exp(-|Δt|/τ), pairings closer in time yield exponentially larger weight changes. Beyond ~60 ms, traces have decayed to near zero.',
     ch4_title: '4. Run the experiment: build the curve',
     ch4_body: 'In classic experiments (Bi & Poo 1998), 60 spike pairs are delivered at 5 Hz for each Δt. Watch the weight drift and map the empirical plasticity window point by point.',
-    ch5_title: '5. Why it learns causality (pre helps cause post)',
-    ch5_body: 'STDP reinforces causal connections: inputs that consistently fire before post are strengthened, while anti-causal inputs are pruned. Uncorrelated Poisson activity yields balanced LTP/LTD with near-zero net drift.',
+    ch5_title: '5. Timing-dependent association',
+    ch5_body: 'This rule favors pre-before-post correlations. Timing alone does not establish causality; the default unbounded independent-stream drift is negative.',
 
     // Controls
     btn_prev: '◀ Prev',
@@ -120,7 +120,7 @@
     gl_trace_term: 'Trace',
     gl_trace_def: 'Exponential memory of recent spikes: x(t) = (1 - dt/τ)^k, bridging the timing gap.',
     gl_ltp_term: 'Potentiation (LTP)',
-    gl_ltp_def: 'Strengthening when pre precedes post (Δt > 0); indicates causal contribution.',
+    gl_ltp_def: 'Strengthening when pre precedes post (Δt > 0); is consistent with a possible contribution; timing alone is insufficient evidence.',
     gl_ltd_term: 'Depression (LTD)',
     gl_ltd_def: 'Weakening when post precedes pre (Δt < 0); indicates acausal arrival.',
     gl_causality_term: 'Causality',
@@ -139,7 +139,7 @@
   }
 
   const core = {
-    // Default constants matching neurosush STDP defaults
+    // Illustrative parameters passed explicitly to neurosush STDP and Traces
     DEFAULT_A_PLUS: 0.02,
     DEFAULT_A_MINUS: 0.021,
     DEFAULT_TAU_PLUS: 20.0,
@@ -299,11 +299,14 @@
     },
 
     /**
-     * Sample Poisson spike for interval dt (ms) with rate r (Hz).
+     * Sample Poisson spike for interval dt (ms) with rate r (Hz) using Bernoulli time bins.
      */
     poisson_spike(rate_hz, dt_ms, rng) {
       if (rate_hz <= 0) return 0;
       const p = rate_hz * (dt_ms / 1000.0);
+      if (p > 1.0) {
+        throw new Error('rate*dt/1000 must be <= 1, got ' + p);
+      }
       return rng() < p ? 1 : 0;
     },
 
@@ -615,14 +618,31 @@
     canvasContainer.style.maxHeight = '560px';
 
     // Insert banner, predictCard, controlsBar around the canvasContainer
+    const learnCard = document.createElement('div');
+    learnCard.className = 'y01-learn-card';
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 600;
+    learnCard.innerHTML = `
+      <details class="y01-learn-panel" ${isDesktop ? 'open' : ''} style="background:var(--paper-card); border:1px solid var(--border); border-radius:var(--radius, 3px); padding:8px 12px; font-size:12px; margin-top:6px;">
+        <summary style="font-family:var(--font-serif); font-weight:600; cursor:pointer; color:var(--ink);">Learn: the math, the brain, the ML analogy</summary>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:8px; margin-top:8px; line-height:1.4; color:var(--ink);">
+          <div><strong>(a) What you see:</strong> Pre and post-soma neurons with exponential spike traces, synaptic boutons, and an interactive STDP timing curve showing millisecond-dependent potentiation and depression.</div>
+          <div><strong>(b) The math:</strong> Trace decay x(t) = (1 - dt/τ)^k ≈ exp(-|Δt|/τ) with time constant τ = 20 ms and dt = 1 ms. Weight change Δw = +a_+ exp(-Δt/τ_+) for Δt > 0 and -a_- exp(Δt/τ_-) for Δt < 0. Amplitudes a_+ = 0.02, a_- = 0.021.</div>
+          <div><strong>(c) In the brain:</strong> Spike-Timing-Dependent Plasticity (STDP) in rat hippocampal cultures (Bi & Poo 1998) shows asymmetric millisecond windows where pre-before-post spikes strengthen synapses (LTP) and post-before-pre weaken them (LTD).</div>
+          <div><strong>(d) Like classic ML:</strong> Resembles a decaying feature memory with outer-product Hebbian updates (similar to an exponential moving average trace). Breaks down because it lacks gradient descent errors and deep error credit assignment.</div>
+        </div>
+      </details>
+    `;
+
     if (figureSection && figureSection.contains(canvasContainer)) {
       figureSection.insertBefore(storyBanner, canvasContainer);
       if (canvasContainer.nextSibling) {
         figureSection.insertBefore(predictCard, canvasContainer.nextSibling);
         figureSection.insertBefore(controlsBar, predictCard.nextSibling);
+        figureSection.insertBefore(learnCard, controlsBar.nextSibling);
       } else {
         figureSection.appendChild(predictCard);
         figureSection.appendChild(controlsBar);
+        figureSection.appendChild(learnCard);
       }
     }
 
