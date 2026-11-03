@@ -371,7 +371,13 @@ def main():
     # 5. Landing assets and gallery
     shutil.copytree(_ASSETS, out_dir / "assets", dirs_exist_ok=True)
     shutil.copy(_ASSETS / "atlas.json", out_dir / "assets" / "atlas.json")
+    shutil.rmtree(out_dir / "assets" / "story", ignore_errors=True)
     shutil.copytree(_ASSETS / "story", out_dir / "story", dirs_exist_ok=True)
+    story_html = out_dir / "story" / "story.html"
+    story_html.write_text(
+        story_html.read_text(encoding="utf-8").replace("{{ICONS}}", favicon_links("../")),
+        encoding="utf-8",
+    )
     (out_dir / "assets" / "index.html").unlink(missing_ok=True)
     (out_dir / "assets" / "results.html").unlink(missing_ok=True)
     (out_dir / "assets" / "research.html").unlink(missing_ok=True)
