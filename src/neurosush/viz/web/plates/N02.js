@@ -248,6 +248,7 @@ ctx) {
     const margin = ctx.margin || document.getElementById('atlas-margin') || section;
 
     const state = {
+      p: params(),
       chapter: 1,
       current: 0.9 * rheobase(),
       v: -68,
@@ -562,7 +563,7 @@ figure);
       }
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
       const H = targetH,
-        co = colors(),
+        co = ctx.colors(),
         muted = co.muted || co.inkMuted || '#57534e',
         border = co.border || '#d6cfbf',
         paperCard = co.paperCard || (co.paper === '#15171a' ? '#1c2024' : '#eeeae0');
