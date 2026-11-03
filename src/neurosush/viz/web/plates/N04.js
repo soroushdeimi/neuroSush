@@ -62,8 +62,8 @@
     theoryStatus: 'Theory Status',
     theoryParabola: 'v-nullcline: u = 0.04·v² + 5·v + 140 + I',
     theoryLine: 'u-nullcline: u = b·v',
-    theoryRest: 'Stable Rest (v_rest)',
-    theoryThresh: 'Threshold Saddle (v_th)',
+    theoryRest: 'Lower Equilibrium',
+    theoryThresh: 'Upper Equilibrium',
     theoryDelta: 'Discriminant Δ',
     bifurcationActive: 'Δ < 0: Limit Cycle (Repetitive Spiking)',
     bifurcationRest: 'Δ ≥ 0: Quiescent Equilibrium Exists',
@@ -101,7 +101,7 @@
       'After each spike, v resets to c and u jumps by d. Setting c high (-50 mV in Chattering) and d small (2.0) leaves the membrane above threshold, triggering rhythmic high-frequency bursts.',
     ch4Title: '4. a, b Make Resonance',
     ch4Body:
-      'When b is elevated (0.26) and a is fast (0.10), the subthreshold fixed point becomes a damped focus. The cell exhibits subthreshold oscillations and resonates with high-frequency inputs.',
+      'When b is elevated (0.26) and a is fast (0.10), at suitable subthreshold drive, these parameters can produce a focus and subthreshold oscillations; stability depends on current.',
     ch5Title: '5. Your Own Cell',
     ch5Body:
       'Direct manipulation: drag the handles in the (a-vs-b) and (c-vs-d) parameter maps to sculpt your own custom neuron. Watch the live pattern fingerprint classify its firing mode in real time.',
@@ -130,16 +130,16 @@
 
     // Units
     unitsMv: 'mV',
-    unitsPa: 'pA',
+    unitsPa: 'model units',
     unitsMs: 'ms',
     unitsHz: 'Hz',
     unitsDvdt: 'mV/ms',
-    unitsDudt: 'pA/ms',
+    unitsDudt: 'model units/ms',
   };
 
   // ---- core: pure math, no DOM, exported for node tests ----
   const core = {
-    // 8 canonical neuron presets from Eugene M. Izhikevich (2003)
+    // Six presets based on Izhikevich (2003), plus custom rebound and mixed-mode examples
     CELL_PRESETS: Object.freeze({
       RS: {
         id: 'RS',
@@ -400,8 +400,8 @@
       let description = 'Tonic spiking activity';
 
       if (count >= 75) {
-        label = 'Resonator (RZ)';
-        description = 'High frequency firing with fast subthreshold recovery';
+        label = 'High-rate firing';
+        description = 'High spike count; resonance requires a separate frequency-response experiment';
       } else if (cvIsi >= 0.80 && burstRatio >= 0.45) {
         label = 'Chattering (CH)';
         description = 'Stereotyped high-frequency bursts with quiescent intervals';
@@ -490,13 +490,13 @@
         );
         let isSpike = false;
         if (resetRes.spike) {
-          spikes.push(t);
+          spikes.push(t + dt);
           isSpike = true;
           v = resetRes.v;
           u = resetRes.u;
         }
 
-        history.push({ t, v, u, I: cur, isSpike });
+        history.push({ t: t + dt, v, u, I: cur, isSpike });
       }
 
       const fingerprint = this.computeFingerprint(spikes, durationMs);
@@ -665,11 +665,11 @@
           </div>
           <div style="display:flex; justify-content:space-between; align-items:baseline;">
             <span class="atlas-serif" style="color:var(--mod); font-weight:600;">${S.readoutU}:</span>
-            <span class="atlas-margin-value atlas-mono" id="val-u" style="color:var(--mod);">-13.0 pA</span>
+            <span class="atlas-margin-value atlas-mono" id="val-u" style="color:var(--mod);">-13.0 model units</span>
           </div>
           <div style="display:flex; justify-content:space-between; align-items:baseline;">
             <span class="atlas-serif" style="color:var(--exc); font-weight:600;">${S.readoutI}:</span>
-            <span class="atlas-margin-value atlas-mono" id="val-I" style="color:var(--exc);">10.0 pA</span>
+            <span class="atlas-margin-value atlas-mono" id="val-I" style="color:var(--exc);">10.0 model units</span>
           </div>
           <div style="display:flex; justify-content:space-between; align-items:baseline; border-top:1px dashed var(--border); padding-top:4px;">
             <span class="atlas-serif">${S.readoutDvdt}:</span>
@@ -677,7 +677,7 @@
           </div>
           <div style="display:flex; justify-content:space-between; align-items:baseline;">
             <span class="atlas-serif">${S.readoutDudt}:</span>
-            <span class="atlas-margin-value atlas-mono" id="val-dudt">0.0 pA/ms</span>
+            <span class="atlas-margin-value atlas-mono" id="val-dudt">0.0 model units/ms</span>
           </div>
         </div>
 
@@ -724,6 +724,18 @@
           <p style="margin:0 0 4px 0;">• ${S.glossaryC}</p>
           <p style="margin:0 0 4px 0;">• ${S.glossaryD}</p>
           <p style="margin:0 0 2px 0;">• ${S.glossaryNullcline}</p>
+        </div>
+
+        <div class="atlas-margin-section" id="n04-margin-learn">
+          <details ${window.innerWidth >= 640 ? 'open' : ''} style="font-size: 11px; line-height: 1.4;">
+            <summary style="font-weight: 600; cursor: pointer; margin-bottom: 6px;">Learn: the math, the brain, the ML analogy</summary>
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+              <div><b>What you see:</b> Izhikevich model membrane potential v(t) trace, phase plane of v vs recovery variable u with quadratic v-nullcline and linear u-nullcline, and live fingerprint classifying cortical firing patterns.</div>
+              <div><b>The math:</b> v' = 0.04v² + 5v + 140 - u + I; u' = a(bv - u). If v ≥ 30 mV, v ← c, u ← u + d. Parameters a controls recovery speed, b sets voltage coupling, c sets reset voltage, d sets post-spike recovery jump.</div>
+              <div><b>In the brain:</b> A phenomenological spiking neuron model reproducing cortical firing repertoires (regular spiking, bursting, fast spiking) with polynomial dynamics without explicit ionic conductances.</div>
+              <div><b>Like classic ML:</b> A two-state recurrent unit with slow negative-feedback memory and event reset. Break: no learned gradient or optimizer; parameters reproduce firing patterns but are not molecular mechanisms or learned weights.</div>
+            </div>
+          </details>
         </div>
       `;
 
@@ -1312,8 +1324,8 @@
     const elDudt = document.getElementById('val-dudt');
 
     if (elV) elV.textContent = `${state.mainV.toFixed(1)} mV`;
-    if (elU) elU.textContent = `${state.mainU.toFixed(1)} pA`;
-    if (elI) elI.textContent = `${state.I_slider.toFixed(1)} pA`;
+    if (elU) elU.textContent = `${state.mainU.toFixed(1)} model units`;
+    if (elI) elI.textContent = `${state.I_slider.toFixed(1)} model units`;
 
     const dv =
       0.04 * state.mainV * state.mainV +
@@ -1323,7 +1335,7 @@
       state.I_slider;
     const du = state.a * (state.b * state.mainV - state.mainU);
     if (elDvdt) elDvdt.textContent = `${dv >= 0 ? '+' : ''}${dv.toFixed(1)} mV/ms`;
-    if (elDudt) elDudt.textContent = `${du >= 0 ? '+' : ''}${du.toFixed(2)} pA/ms`;
+    if (elDudt) elDudt.textContent = `${du >= 0 ? '+' : ''}${du.toFixed(2)} model units/ms`;
 
     const fp = state.fingerprint;
     const elFpBadge = document.getElementById('val-fp-badge');
