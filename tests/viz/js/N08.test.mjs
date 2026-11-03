@@ -76,3 +76,11 @@ test('seeded current noise is exactly reproducible', () => {
   const changed = core.simulateSteady('elif', 1.31, { ...options, seed: 419 });
   assert.notDeepEqual(changed.spikes, first.spikes, 'a different seed must change the path');
 });
+
+test('failure proof edge case: non-finite current throws error in lifRate', () => {
+  assert.throws(() => core.lifRate(NaN), /current must be finite/);
+});
+
+test('failure proof edge case: non-finite current throws error in elifIsi', () => {
+  assert.throws(() => core.elifIsi(Infinity), /current must be finite/);
+});
