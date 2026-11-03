@@ -1,0 +1,557 @@
+{
+  "sources": {
+    "deck": {
+      "citation": "Deimi. What is a neuron? The_Neuron_v2, slides 11–12, 18, 20, 26–28.",
+      "url": "",
+      "opened": "Local rendered slides p01–p30"
+    },
+    "anatomy": {
+      "citation": "National Research Council (1992). Environmental Neurotoxicology, chapter 2, p. 22. National Academies Press.",
+      "url": "https://www.nationalacademies.org/read/1801/chapter/4",
+      "opened": "Structure of the Neuron"
+    },
+    "azevedo": {
+      "citation": "Azevedo et al. (2009). J Comp Neurol 513:532–541, abstract.",
+      "url": "https://gwern.net/doc/psychology/neuroscience/2009-azevedo.pdf",
+      "opened": "PDF p. 532"
+    },
+    "energy": {
+      "citation": "Levy & Calvert (2021). PNAS 118:e2008173118, Energy Audit.",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8106317/",
+      "opened": "Abstract and Results / Energy Audit"
+    },
+    "lif": {
+      "citation": "neuroSush, neurons/dynamics.py, lif_terms and lif_rate; N01 audit §§2–5.",
+      "url": "",
+      "opened": "Local code and audit"
+    },
+    "hh": {
+      "citation": "neuroSush, neurons/hodgkin_huxley.py, gate_rates, hh_currents, resting_potential and HodgkinHuxley; N05 audit §§2–5.",
+      "url": "",
+      "opened": "Local code and audit"
+    },
+    "stdp": {
+      "citation": "neuroSush, synapses/traces.py trace_step and synapses/plasticity.py stdp_dense; Y01 audit §§2–5.",
+      "url": "",
+      "opened": "Local code and audit; illustrative Y01 parameters"
+    },
+    "nernst": {
+      "citation": "M03 audit §§2–5: Nernst equation and physical constants; deck p26–28: concentrations.",
+      "url": "",
+      "opened": "Local audit and deck; no library Nernst function exists"
+    },
+    "synapse": {
+      "citation": "neuroSush, neurons/dendrite.py, conductance_step; deck p18.",
+      "url": "",
+      "opened": "Local code and rendered slide"
+    }
+  },
+  "facts": [
+    {
+      "id": "power",
+      "value": 20,
+      "unit": "W",
+      "source": "energy",
+      "status": "VERIFIED",
+      "note": "Nominal whole-brain glucose energy budget, not ATP watts exclusively available for computation."
+    },
+    {
+      "id": "neurons",
+      "value": 86.1,
+      "unit": "billion neurons",
+      "source": "azevedo",
+      "status": "VERIFIED",
+      "note": "Mean NeuN-positive cell estimate in the adult male sample; not an exact count for every brain."
+    },
+    {
+      "id": "soma_min",
+      "value": 10,
+      "unit": "µm",
+      "source": "anatomy",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "soma_max",
+      "value": 100,
+      "unit": "µm",
+      "source": "anatomy",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "soma",
+      "value": 20,
+      "unit": "µm",
+      "source": "deck",
+      "status": "VERIFIED",
+      "note": "Illustrative spherical cell from slide 11; branching geometry is schematic."
+    },
+    {
+      "id": "lif_tau",
+      "value": 20,
+      "unit": "ms",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_rest",
+      "value": -70,
+      "unit": "mV",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_threshold",
+      "value": -40,
+      "unit": "mV",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_reset",
+      "value": -75,
+      "unit": "mV",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_resistance",
+      "value": 10,
+      "unit": "MΩ",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_refractory",
+      "value": 2,
+      "unit": "ms",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_dt",
+      "value": 0.1,
+      "unit": "ms",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_input",
+      "value": 3.5,
+      "unit": "nA",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_input_max",
+      "value": 12,
+      "unit": "nA",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_duration",
+      "value": 400,
+      "unit": "ms",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_rheobase",
+      "value": 3,
+      "unit": "nA",
+      "source": "lif",
+      "status": "VERIFIED",
+      "formula": "(lif_threshold-lif_rest)/lif_resistance",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "lif_rate",
+      "value": 22.94165686199676,
+      "unit": "Hz",
+      "source": "lif",
+      "status": "VERIFIED",
+      "formula": "lif_rate(current=lif_input)",
+      "tolerance": 1e-09
+    },
+    {
+      "id": "temperature",
+      "value": 37,
+      "unit": "°C",
+      "source": "nernst",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "gas_constant",
+      "value": 8.314462618,
+      "unit": "J mol⁻¹ K⁻¹",
+      "source": "nernst",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "faraday",
+      "value": 96485.332,
+      "unit": "C mol⁻¹",
+      "source": "nernst",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "kelvin_offset",
+      "value": 273.15,
+      "unit": "K",
+      "source": "nernst",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "k_in",
+      "value": 140,
+      "unit": "mM",
+      "source": "deck",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "k_out",
+      "value": 5,
+      "unit": "mM",
+      "source": "deck",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "na_in",
+      "value": 12,
+      "unit": "mM",
+      "source": "deck",
+      "status": "VERIFIED",
+      "note": "Cell-type dependent; M03/N05 plates instead illustrate 15 mM and approximately +60.6 mV. Neither concentration is universal."
+    },
+    {
+      "id": "na_out",
+      "value": 145,
+      "unit": "mM",
+      "source": "deck",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "thermal",
+      "value": 26.726659146207837,
+      "unit": "mV",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "formula": "1000*gas_constant*(temperature+kelvin_offset)/faraday",
+      "tolerance": 1e-10
+    },
+    {
+      "id": "k_ratio",
+      "value": 0.03571428571428571,
+      "unit": "out/in",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "formula": "k_out/k_in",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "e_k",
+      "value": -89.05869414890911,
+      "unit": "mV",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "formula": "thermal*ln(k_ratio)",
+      "tolerance": 1e-09
+    },
+    {
+      "id": "na_ratio",
+      "value": 12.083333333333334,
+      "unit": "out/in",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "formula": "na_out/na_in",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "e_na",
+      "value": 66.59821335607687,
+      "unit": "mV",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "formula": "thermal*ln(na_ratio)",
+      "tolerance": 1e-09
+    },
+    {
+      "id": "hh_c",
+      "value": 1,
+      "unit": "µF/cm²",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_g_na",
+      "value": 120,
+      "unit": "mS/cm²",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_g_k",
+      "value": 36,
+      "unit": "mS/cm²",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_g_leak",
+      "value": 0.3,
+      "unit": "mS/cm²",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_e_na",
+      "value": 50,
+      "unit": "mV",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_e_k",
+      "value": -77,
+      "unit": "mV",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_e_leak",
+      "value": -54.387,
+      "unit": "mV",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_temperature",
+      "value": 6.3,
+      "unit": "°C",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_v_spike",
+      "value": 0,
+      "unit": "mV",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_dt",
+      "value": 0.025,
+      "unit": "ms",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_duration",
+      "value": 30,
+      "unit": "ms",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_pulse",
+      "value": 15,
+      "unit": "µA/cm²",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_pulse_start",
+      "value": 2,
+      "unit": "ms",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_pulse_end",
+      "value": 4,
+      "unit": "ms",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "stdp_a_plus",
+      "value": 0.02,
+      "unit": "weight units",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "note": "Illustrative Y01 parameter, explicitly supplied to library; not a library default."
+    },
+    {
+      "id": "stdp_a_minus",
+      "value": 0.021,
+      "unit": "weight units",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "note": "Illustrative Y01 parameter, explicitly supplied to library; not a library default."
+    },
+    {
+      "id": "stdp_tau",
+      "value": 20,
+      "unit": "ms",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "note": "Illustrative Y01 parameter, explicitly supplied to library; not a library default."
+    },
+    {
+      "id": "stdp_dt",
+      "value": 1,
+      "unit": "ms",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "note": "Illustrative Y01 parameter, explicitly supplied to library; not a library default."
+    },
+    {
+      "id": "stdp_lag",
+      "value": 20,
+      "unit": "ms",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "note": "Illustrative Y01 parameter, explicitly supplied to library; not a library default."
+    },
+    {
+      "id": "stdp_positive",
+      "value": 0.0071697184481708375,
+      "unit": "weight units",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "formula": "stdp_a_plus*(1-stdp_dt/stdp_tau)^(stdp_lag/stdp_dt)",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "stdp_negative",
+      "value": -0.00752820437057938,
+      "unit": "weight units",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "formula": "-stdp_a_minus*(1-stdp_dt/stdp_tau)^(stdp_lag/stdp_dt)",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "synapse_gap",
+      "value": 20,
+      "unit": "nm",
+      "source": "deck",
+      "status": "VERIFIED",
+      "note": "Approximate chemical synapse cleft; slide 18."
+    },
+    {
+      "id": "layers",
+      "value": 6,
+      "unit": "layers",
+      "source": "deck",
+      "status": "VERIFIED",
+      "note": "Neocortical layer scheme, slide 20; not every cortex region has an identical laminar structure."
+    },
+    {
+      "id": "cl_in",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "A primary or textbook source must be opened before showing this number."
+    },
+    {
+      "id": "cl_out",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "A primary or textbook source must be opened before showing this number."
+    },
+    {
+      "id": "ca_in",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "A primary or textbook source must be opened before showing this number."
+    },
+    {
+      "id": "ca_out",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "A primary or textbook source must be opened before showing this number."
+    },
+    {
+      "id": "hydrated_na",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "A primary or textbook source must be opened before showing this number."
+    },
+    {
+      "id": "hydrated_k",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "A primary or textbook source must be opened before showing this number."
+    },
+    {
+      "id": "filter_width",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "A primary or textbook source must be opened before showing this number."
+    },
+    {
+      "id": "channel_rate",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "A primary or textbook source must be opened before showing this number."
+    },
+    {
+      "id": "channel_conductance",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "A primary or textbook source must be opened before showing this number."
+    },
+    {
+      "id": "bilayer",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "A primary or textbook source must be opened before showing this number."
+    },
+    {
+      "id": "na_radius",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "A primary or textbook source must be opened before showing this number."
+    },
+    {
+      "id": "k_radius",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "A primary or textbook source must be opened before showing this number."
+    }
+  ]
+}
