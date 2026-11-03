@@ -52,6 +52,7 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         '<a href="' + prefix + 'results.html">Results</a>'
         '<a href="' + prefix + 'studio-live.html">Studio Live</a>'
         '<a href="' + prefix + 'tem.html">Live TEM</a>'
+        '<a href="' + prefix + 'story/story.html">The Neuron, zoomed</a>'
         '<a href="' + home + '#studio">Studio <span class="chip">preview</span></a>'
         '<a href="' + home + '#evidence">Benchmarks</a>'
         '<a href="' + repo + '/tree/main/docs">Docs ↗</a></nav>'
@@ -370,6 +371,13 @@ def main():
     # 5. Landing assets and gallery
     shutil.copytree(_ASSETS, out_dir / "assets", dirs_exist_ok=True)
     shutil.copy(_ASSETS / "atlas.json", out_dir / "assets" / "atlas.json")
+    shutil.rmtree(out_dir / "assets" / "story", ignore_errors=True)
+    shutil.copytree(_ASSETS / "story", out_dir / "story", dirs_exist_ok=True)
+    story_html = out_dir / "story" / "story.html"
+    story_html.write_text(
+        story_html.read_text(encoding="utf-8").replace("{{ICONS}}", favicon_links("../")),
+        encoding="utf-8",
+    )
     (out_dir / "assets" / "index.html").unlink(missing_ok=True)
     (out_dir / "assets" / "results.html").unlink(missing_ok=True)
     (out_dir / "assets" / "research.html").unlink(missing_ok=True)
