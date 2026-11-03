@@ -24,8 +24,8 @@
     ch3_cap: 'Thousands of random draws stream in (bars) under the exact hypergeometric pmf (ghost).',
     ch4_title: 'A match threshold of 20 is astronomically unlikely',
     ch4_cap: 'Drag the threshold to shade the tail. The chance of 20 shared bits by accident?',
-    ch5_title: 'Noise robustness: lose half the bits',
-    ch5_cap: 'Keep 28 of 40 stored bits: the cell still fires (overlap 28 >= 20).',
+    ch5_title: 'Noise robustness: replace 30% of the bits',
+    ch5_cap: 'Keep 28 of 40 stored bits: the overlap detector still reports a match (overlap 28 >= 20).',
     ch6_title: 'Unions: how many patterns fit?',
     ch6_cap: 'OR together M stored patterns. The union gets denser and false matches rise.',
     predict_q2: 'How many of the 40 amber cells land on teal?',
@@ -46,9 +46,9 @@
     draw100: 'Draw 100 random',
     unionM: 'Union size M',
     unionActivation: 'Union activation p',
-    unionSize: 'Union cells',
+    unionSize: 'Expected union cells',
     unionP: 'P(match union)',
-    unionNote: 'union uses the binomial approximation of Ahmad & Hawkins 2016',
+    unionNote: 'union uses the binomial approximation of Ahmad & Hawkins 2016; fixed-weight patterns induce correlations, so the approximation can be poor for tiny tails or small M',
     nLabel: 'n cells',
     wLabel: 'w active',
     keepLabel: 'Noise: keep bits',
@@ -332,8 +332,11 @@
     if (!Array.isArray(stored) || stored.length !== w) {
       throw new Error(`stored must have exactly w=${w} bits, got ${stored && stored.length}`);
     }
-    const storedSet = new Set(stored);
     const k = Math.max(0, Math.min(w, Math.floor(keep)));
+    if (n - w < w - k) {
+      throw new Error('not enough inactive bits to refill');
+    }
+    const storedSet = new Set(stored);
     const set = new Set();
     for (let i = 0; i < k; i++) set.add(stored[i]);
     while (set.size < w) {
@@ -547,6 +550,17 @@ P(B \u2265 <span class="h01-term" data-term="theta">\u03b8</span>) =
         <div class="h01-mini" id="h01-union-readout" style="color:var(--ink-muted);margin-top:6px"></div>
       </div>
       <div class="atlas-margin-section">
+        <details class="h01-learn-panel" ${typeof window !== 'undefined' && window.innerWidth >= 600 ? 'open' : ''} style="font-size:12px; line-height:1.4;">
+          <summary style="font-family:var(--font-serif); font-weight:600; cursor:pointer; color:var(--ink);">Learn: the math, the brain, the ML analogy</summary>
+          <div style="display:grid; grid-template-columns: 1fr; gap:6px; margin-top:6px; color:var(--ink);">
+            <div><strong>(a) What you see:</strong> A 64x32 grid of 2048 cells visualizing sparse distributed representations (SDRs), measuring overlap between stored and presented active bit vectors.</div>
+            <div><strong>(b) The math:</strong> Hypergeometric exact overlap distribution P(B=b) = C(w_x,b) C(n-w_x, w-b) / C(n,w) with n = 2048 cells, w = 40 active bits (approx 2% sparsity).</div>
+            <div><strong>(c) In the brain:</strong> Sparse neural populations (Ahmad & Hawkins 2016) store patterns where random overlapping codes yield near-zero accidental matches, providing robust high-capacity memory.</div>
+            <div><strong>(d) Like classic ML:</strong> Sparse binary hashing with similarity thresholds (resembles a Bloom filter). Breaks down because biological representations are correlated, dense clusters exist, and OR-unions lose source identity.</div>
+          </div>
+        </details>
+      </div>
+      <div class="atlas-margin-section">
         <div class="atlas-margin-label">${S.glossary}</div>
         <div class="h01-mini" style="color:var(--ink-muted);line-height:1.6">
           ${S.g_sdr}<br>${S.g_sparsity}<br>${S.g_overlap}<br>${S.g_theta}<br>${S.g_false}<br>${S.g_union}
@@ -719,7 +733,7 @@ P(B \u2265 <span class="h01-term" data-term="theta">\u03b8</span>) =
           const inv = tail > 0 ? (1 / tail) : Infinity;
           truth = `P(overlap \u2265 ${state.theta}) = ${core.formatSci(tail)} \u2248 1 in ${core.formatSci(inv, 1)}.`;
           predictEl.innerHTML = `<div class="h01-pq">${q}</div>` +
-            `<div class="h01-reveal">${truth} A 2048-bit population holds nothing like 10\u00b2\u2076 patterns.</div>` +
+            `<div class="h01-reveal">${truth} This inverse false-match probability is not storage capacity; C(2048,40) \u2248 2.37 \u00d7 10\u2078\u2074 distinct 40-bit codes exist.</div>` +
             `<div class="h01-ghost" style="margin-top:6px">Your answer: ${choices[p.choice]}</div>`;
         }
       }
