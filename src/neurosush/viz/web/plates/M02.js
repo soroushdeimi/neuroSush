@@ -48,17 +48,17 @@
     spikes: 'spikes',
     stepRuler: 'coin flips',
     bandNote: 'coin flips too fine to draw',
-    footer: 'live \u00b7 mirrors neurosush.encoding.rate_poisson (p = rate \u00b7 dt)',
+    footer: 'live \u00b7 mirrors neurosush.encoding.rate_poisson (x = rate, ratio = dt / 1000, p = x * ratio)',
     chapterCaps: [
-      'One neuron, many tiny coin flips. Every dt ms the neuron flips a biased coin: it spikes with probability p = rate\u00b7dt. Make dt smaller and the coin is flipped more often, each time with a smaller chance.',
-      'Count spikes in a window. A window of W ms holds n = W/dt coin flips, so its spike count is Binomial(n, p) with mean \u03bb = n\u00b7p = rate\u00b7W, whatever dt is. Watch the bars grow onto the dashed binomial pmf.',
+      'One neuron, many tiny coin flips. Every dt ms the neuron flips a biased coin: it spikes with probability p = rate(Hz)\u00b7dt(ms)/1000. Make dt smaller and the coin is flipped more often, each time with a smaller chance.',
+      'Count spikes in a window. A window of W ms holds n = W/dt coin flips, so its spike count is Binomial(n, p) with mean \u03bb = n\u00b7p = rate(Hz)\u00b7W(ms)/1000, whatever dt is. Watch the bars grow onto the dashed binomial pmf.',
       'Smaller steps: Poisson takes over. As dt \u2192 0 with \u03bb = rate\u00b7W fixed, the binomial pmf slides onto the dots of the Poisson pmf; the total-variation distance shrinks with the step size.',
       'The gaps between spikes. The time from one spike to the next is geometric, becoming exponential as dt \u2192 0. Its coefficient of variation sits near 1 - the fingerprint of a Poisson spike train.',
-      "Add many windows: the bell curve. Sum m windows and the histogram of the sums narrows into a bell; the dashed normal ghost is the central limit theorem.",
+      "Add many windows: the bell curve. Sum m windows and the standardized sums approach a normal distribution; raw sums have SD proportional to \u221a(m).",
     ],
     glossary: [
       ['dt', 'Step length in ms; one Bernoulli coin flip per step.'],
-      ['rate', 'Mean firing rate in Hz; p = rate\u00b7dt at each step.'],
+      ['rate', 'Mean firing rate in Hz; p = rate(Hz)\u00b7dt(ms)/1000 at each step.'],
       ['window', 'A block of W ms whose spike count N we histogram.'],
       ['pmf', 'Probability mass function: the chance of each count.'],
       ['Poisson limit', 'dt\u21920 with rate\u00b7W fixed turns Binomial(n,p) into Poisson(\u03bb).'],
@@ -586,6 +586,15 @@
           <div class="atlas-margin-label">${S.glossaryTitle}</div>
           ${glossary}
         </div>
+        <details class="atlas-margin-section" id="m02-learn-panel" ${typeof window !== 'undefined' && window.innerWidth > 720 ? 'open' : ''} style="font-size:12px; line-height:1.45;">
+          <summary style="font-weight:600; cursor:pointer; margin-bottom:6px;">Learn: the math, the brain, the ML analogy</summary>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+            <div><strong>(a) What you see:</strong> A discrete-time Bernoulli spike train ("rain on a timeline") with probability p = rate·dt/1000 per step dt, window counting statistics (Binomial/Poisson), inter-spike intervals (Geometric/Exponential), and central limit theorem sums.</div>
+            <div><strong>(b) The math:</strong> Counts in window W are Binomial(n, p) with n = W/dt and mean λ = n·p = rate·W/1000. As dt → 0, Binomial converges to Poisson(λ) with TV distance shrinking. ISIs follow Geometric(p), converging to Exponential(rate). Summing m windows yields mean mλ and variance mp(1-p).</div>
+            <div><strong>(c) In the brain:</strong> Represents stochastic neural spike generation and rate coding under Poisson point processes. While mathematical Poisson trains have Fano factor 1 and CV near 1, biological spike trains often exhibit refractoriness, burstiness, or adaptation.</div>
+            <div><strong>(d) Like classic ML:</strong> Analogous to independent Bernoulli dropout or stochastic binary units. Breaks because real neurons have membrane dynamics, refractory periods, and spike correlation, whereas Bernoulli trials are memoryless and independent across time steps.</div>
+          </div>
+        </details>
         <div class="atlas-margin-section">
           <div class="m02-note">${S.footer}</div>
         </div>
@@ -761,8 +770,14 @@
     }
 
     function rebuild() {
-      const p = clamp((state.rate * state.dt) / 1000, 0, 1);
+      const p = (state.rate * state.dt) / 1000;
+      assertProb(p);
       const nPerBin = Math.max(1, Math.round(state.binMs / state.dt));
+      state.binMs = nPerBin * state.dt;
+      if (refs.bin && refs.binVal) {
+        refs.bin.value = String(Math.round(state.binMs));
+        refs.binVal.textContent = String(Math.round(state.binMs));
+      }
       state.p = p;
       state.nPerBin = nPerBin;
       state.lambda = nPerBin * p;
@@ -1218,7 +1233,7 @@
         const hiMs = (b + 1) * bw;
         let mass = 0;
         const kLo = Math.max(1, Math.ceil(loMs / state.dt));
-        const kHi = Math.floor(hiMs / state.dt);
+        const kHi = Math.ceil(hiMs / state.dt) - 1;
         for (let k = kLo; k <= kHi && mass < 1; k++) mass += geometricPmf(k, state.p);
         geoDens[b] = mass / bw;
         expDens[b] = exponentialPdf(loMs + bw / 2, ratePerMs);

@@ -25,7 +25,7 @@
     eqLif: 'τ dV/dt = (V_rest − V) + R·I',
     eqElif: 'τ dV/dt = (V_rest − V) + R·I + Δ·exp((V−θ)/Δ)',
     eqIsi: 'T = τ · ln( I / (I − I_rh) )',
-    eqRate: 'f = 1 / T',
+    eqRate: 'f (Hz) = 1000 / T (ms)',
     eqRheoLif: 'I_rh = (V_th − V_rest) / R',
     eqRheoElif: 'I_rh = (θ − V_rest − Δ) / R',
     eqSqrt: 'near onset:  f ~ √(I − I_rh)   (ELIF, type-I)',
@@ -43,7 +43,7 @@
     roGain: 'gain  S = df/dI',
     roDiff: 'theory − sim  difference',
     roNoise: 'current noise σ_I',
-    roSigmaV: 'voltage noise σ_V = R·σ_I',
+    roSigmaV: 'voltage diffusion σ_dW = (R/τ)σ_I√dt',
 
     unitsNa: 'nA',
     unitsHz: 'Hz',
@@ -55,7 +55,7 @@
     glRheobase: 'Rheobase — the smallest steady current that makes the neuron fire.',
     glFI: 'f-I curve — steady firing rate f as a function of a constant input current I.',
     glTypeI: 'Type-I onset — rate rises continuously from zero at I_rh (e.g. ELIF, √ law).',
-    glIsi: 'ISI — interspike interval; f = 1/T.',
+    glIsi: 'ISI — interspike interval (ms); f (Hz) = 1000 / T (ms).',
     glGain: 'Gain — slope df/dI of the f-I curve, in Hz per nA.',
     glHyst: 'Dynamical hysteresis — the trace lags a changing current, so the up- and down-ramp loops differ.',
     glNoise: 'Noise smoothing — random current lets the neuron fire below I_rh, rounding the sharp knee.',
@@ -247,7 +247,7 @@
         const k4 = f(V + dt * k3);
         return V + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
       }
-      // LIF: linear in V, RK4 collapses to the exact exponential map
+      // LIF: linear in V, RK4 approximates the linear differential equation to fourth order
       const f = (v) => this.lifDrive(v, I) / P.TAU;
       const k1 = f(V);
       const k2 = f(V + 0.5 * dt * k1);
@@ -457,6 +457,16 @@
           <p style="margin:0 0 2px;">• ${S.glNoise}</p>
         </div>
 
+        <details class="atlas-margin-section" id="n08-learn-panel" ${typeof window !== 'undefined' && window.innerWidth > 720 ? 'open' : ''} style="font-size:12px; line-height:1.45;">
+          <summary style="font-weight:600; cursor:pointer; margin-bottom:6px;">Learn: the math, the brain, the ML analogy</summary>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+            <div><strong>(a) What you see:</strong> A firing rate versus input current (f-I) curve for Leaky Integrate-and-Fire (LIF) and Exponential LIF (ELIF) neuron models, traced dynamically via an automated current ramp or manual holding current.</div>
+            <div><strong>(b) The math:</strong> Governing ODE: τ dV/dt = (V_rest − V) + R·I + Δ·exp((V−θ)/Δ). Rheobase I_rh = (θ − V_rest − Δ)/R (ELIF) or (V_th − V_rest)/R (LIF). Near ELIF onset, rate f grows as √(I − I_rh) (Type-I), whereas LIF onset grows logarithmically.</div>
+            <div><strong>(c) In the brain:</strong> Characterizes neuronal input-output transfer functions. Type-I excitability enables smooth rate coding from arbitrary low firing rates near rheobase, while membrane noise smooths out the bifurcation knee.</div>
+            <div><strong>(d) Like classic ML:</strong> Analogous to a neural network activation / transfer function mapping input magnitude to output rate. Breaks because biological f-I curves depend dynamically on membrane time constants, spike reset potentials, and noise history rather than being static scalar functions.</div>
+          </div>
+        </details>
+
         <div class="atlas-margin-section" style="font-size:10px;line-height:1.4;color:var(--ink-muted);">
           <div class="atlas-margin-label">Source</div>
           <div>${S.source} · mirrors <span class="atlas-mono">${S.libraryMirror}</span></div>
@@ -633,7 +643,7 @@
     }
 
     function noiseCurve(sigmaI) {
-      const key = sigmaI.toFixed(3);
+      const key = state.model + ':' + sigmaI.toFixed(3);
       if (state.noiseCacheKey === key && state.noiseCurve) return state.noiseCurve;
       const pts = [];
       const N = 44;
