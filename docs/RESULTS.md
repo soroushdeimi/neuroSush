@@ -70,7 +70,7 @@ May NOT say
 
 | Item | Status | Owner / branch |
 |---|---|---|
-| Save weights, probe our models with the same metrics as section 3 (spatial info, decoder, cross-world corr/RSA, distance structure) | done for v2 s0 and v1 s0 (6.1); seeds 1-2 and 16x16 pending | `tem/spatial-probe` |
+| Save weights, probe our models with the same metrics as section 3 (spatial info, decoder, cross-world corr/RSA, distance structure) | done for seeds 0-2 of v2 and v1 (6.1, 6.2); 16x16 not run | `tem/spatial-probe` |
 | Retrain v2 s0 and v1 s0 with checkpoints (about 2.3 h each) | completed | background |
 | Live teaching plate T01 in the Atlas (Hebbian memory, new-route prediction vs baselines; g imposed, labelled) | in progress | `tem/atlas-plate` |
 | Site: grid-cell chapter + results table with these caveats | waiting for site redesign | `feat/landing-neuro` |
@@ -99,12 +99,36 @@ Source: `experiments/results/tem-spatial-v2-s0.{json,md}`, `tem-spatial-v1-s0.{j
 Reading:
 - Position can be decoded within a world from g and from p (well above the shift null).
 - **Controls added (2026-11-02, PR #51; probe seeds 1e6, 2e6, 3e6; same checkpoints, one training seed each).** Cross-world RSA of g is 0.779 (v2 s0) and 0.850 (v1 s0) averaged over 3 probe seeds; the probe seed 1e6 reproduces the earlier 0.742 and 0.833. But coherent path integration alone gets the same values: path integration with the trained transitions and no memory 0.585 (v2) / 0.638 (v1); same with a random start per world 0.668 / 0.650; random non-zero transition weights, per scale (0.1, 0.3, 1.0): 0.513, 0.613, 0.365 (v2) and 0.292, 0.798, 0.815 (v1), with a spread of 0.18-0.89 across probe seeds; full model with a random start per world 0.781 / 0.770. Margin of the full model over the 95th percentile of the path-integration controls (rsa_margin): **-0.103 (v2), +0.010 (v1)**, i.e. no evidence that training or memory adds anything on this measure. Position-label shuffle gives 0.099 / 0.030 (inside its null), so the metric itself behaves. About 0.88-0.92 of within-world distance variance is explained by displacement (i-j) alone.
-- **Reading:** the cross-world RSA of g is what a coherent path integrator produces, with a world-specific phase (best-shift map correlation 0.66-0.86, sign-ignored 0.33-0.53). It is not a world-independent position code and not evidence of learning. It does not follow Manhattan grid distance in the trained models (RSA vs grid 0.011 v2, -0.045 v1), while random-weight path integrators have 0.3-0.7 on it. No grid-cell claim. The earlier degenerate random-init control (0.07) is replaced by these controls. Seeds 1-2 and 16x16 worlds are not run (not planned for now).
+- **Reading:** the cross-world RSA of g is what a coherent path integrator produces, with a world-specific phase (best-shift map correlation 0.66-0.86, sign-ignored 0.33-0.53). It is not a world-independent position code and not evidence of learning. It does not follow Manhattan grid distance in the trained models (RSA vs grid 0.011 v2, -0.045 v1), while random-weight path integrators have 0.3-0.7 on it. No grid-cell claim. The earlier degenerate random-init control (0.07) is replaced by these controls. Seeds 1-2 are covered in 6.2; 16x16 worlds are not run.
 - p mainly follows sensory identity (RSA vs sensory 0.63 and 0.73), as in the authors' run, and its map correlation across worlds is near zero.
 - Random-init p also decodes position (0.54) because the fast memory binds observations within a world: high within-world decoding alone is not evidence of learned geometry.
 - Spatial information of g and g_gen is about 1e12 because the reference formula accepts signed activations: a diagnostic, not bits per spike. Only p (3.1 and 8.8e6 for v2/v1, the latter also not interpretable) has a usable-looking value for v2.
-- One seed per model, 8x8 worlds: gridness is not resolvable. Needs seeds 1-2 and 16x16 worlds before any stronger statement.
+- One seed per model, 8x8 worlds: gridness is not resolvable. Seeds 1-2 are in 6.2; 16x16 worlds are needed before any stronger statement about gridness.
 
+
+### 6.2 Seeds 1 and 2, controls and training trajectory (2026-11-03)
+
+Setup: v2 and v1 with training seeds 1 and 2 were retrained from scratch (16,000 updates, 8x8 training worlds) with snapshots at 500, 2000, 4000, 8000 and 16000 updates. The retrains reproduce the accuracies of section 2 to all digits (deterministic), so the probed models are the same models as in that table. Probe as in 6.1 (3 probe seeds, new 8x8 worlds, empty memory) with the path-integration controls; seed 0 numbers are from 6.1.
+
+| Run (16,000 updates) | g cross-world RSA | p95 of path-integration controls | Margin | Trained transitions, no memory | Displacement share of distance variance | RSA vs grid |
+|---|---|---|---|---|---|---|
+| v2 s0 | 0.779 | 0.882 | -0.103 | 0.585 | 0.882 | +0.011 |
+| v2 s1 | 0.642 | 0.887 | -0.244 | 0.722 | 0.767 | +0.105 |
+| v2 s2 | 0.807 | 0.895 | -0.087 | 0.603 | 0.885 | +0.034 |
+| v1 s0 | 0.850 | 0.840 | +0.010 | 0.638 | 0.917 | -0.045 |
+| v1 s1 | 0.794 | 0.848 | -0.054 | 0.696 | 0.875 | -0.002 |
+| v1 s2 | 0.930 | 0.954 | -0.024 | 0.882 | 0.945 | -0.057 |
+
+Stop rule fixed beforehand: go to a stronger claim only if the margin is at least 0.15 in all three seeds. Not met: margins are -0.103, -0.244, -0.087 (v2) and +0.010, -0.054, -0.024 (v1).
+
+Training trajectory (seeds 1 and 2): from 2000 to 16,000 updates the g RSA mostly rises (v2 dips at 4000), for example v2 s1: 0.23 (margin -0.47) at 2000 updates, 0.58 (-0.25) at 8000, 0.64 (-0.24) at 16000; v1 s1: 0.22, 0.62, 0.79; v1 s2: 0.11, 0.62, 0.93. At 500 updates the values are high and erratic for v2 (v2 s1 0.85). In seeds 1 and 2 the margin is negative at every snapshot.
+
+Reading:
+- The cross-world RSA of g grows as the model learns to path-integrate, but path integrators with random transition weights reach the same range (95th percentile 0.84-0.95; individual random-weight controls spread from 0.01 to 0.89 per probe seed). So this measure does not separate learned from unlearned structure.
+- The full model is above its own memory-free path integration (trained transitions, no memory) in 5 of 6 runs on the 3-seed means (by 0.05-0.21; the exception is v2 s1), but not in every single probe seed.
+- RSA against the grid-distance model is near zero (-0.06 to +0.11) in the trained models. No grid-cell claim. Not a ranking against the paper.
+
+Caveats: one training run per seed, 8x8 worlds (gridness not resolvable), the control p95 comes from only 9 random-weight values (3 scales x 3 probe seeds) so it is close to their maximum: a negative margin means below that upper tail, not below typical controls. 16x16 worlds were not run.
 
 ## 7. Supporting facts
 
