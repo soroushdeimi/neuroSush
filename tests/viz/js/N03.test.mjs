@@ -80,8 +80,8 @@ test('nullclines follow their closed-form definitions and f-I is nonnegative', (
 test('theory steady-state omega calculation returns expected values', () => {
   const p = { ...core.DEFAULTS, a: 0.02, b: 0.5, tau_w: 120, v_rest: -65 };
   const omegaEst = core.theorySteadyStateOmega(20, -60, p);
-  // tau_w * (a * (vMean - v_rest) + b * (f / 1000))
-  // 120 * (0.02 * (-60 - (-65)) + 0.5 * (20 / 1000))
-  // 120 * (0.02 * 5 + 0.01) = 120 * (0.1 + 0.01) = 120 * 0.11 = 13.2
-  assert.ok(Math.abs(omegaEst - 13.2) < 1e-10);
+  // a * (vMean - v_rest) + tau_w * b * (f / 1000)
+  // 0.02 * (-60 - (-65)) + 120 * 0.5 * (20 / 1000)
+  // 0.02 * 5 + 120 * 0.5 * 0.02 = 0.1 + 1.2 = 1.3
+  assert.ok(Math.abs(omegaEst - 1.3) < 1e-10);
 });
