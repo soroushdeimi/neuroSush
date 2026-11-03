@@ -24,8 +24,11 @@ class LandingParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         attributes = dict(attrs)
         if tag == "a":
-            line, col = self.getpos()
-            assert self.anchor_depth == 0, f"Nested anchor tag <a> found in {self.current_file.relative_to(self.root)} at line {line}"
+            line, _col = self.getpos()
+            assert self.anchor_depth == 0, (
+                f"Nested anchor tag <a> found in "
+                f"{self.current_file.relative_to(self.root)} at line {line}"
+            )
             self.anchor_depth += 1
         if tag not in {"meta", "link", "input", "br", "hr", "img", "source", "wbr"}:
             self.stack.append(tag)
@@ -96,13 +99,17 @@ def main():
         for item in atlas_data["items"]
         if item["id"] in shipped_plates or item["id"].startswith(("M", "N", "H", "T", "Y", "P"))
     ]
-    assert len(plate_ids_in_atlas) == len(set(plate_ids_in_atlas)), "Duplicate plate ID found in atlas.json"
+    assert len(plate_ids_in_atlas) == len(set(plate_ids_in_atlas)), (
+        "Duplicate plate ID found in atlas.json"
+    )
 
     for pid in plate_ids_in_atlas:
         if pid.startswith(("M", "N", "H", "T", "Y", "P")):
             assert pid in shipped_plates, f"Atlas.json names a plate that is not shipped: {pid}"
 
-    print("Site HTML nesting, IDs, local links, local assets, anchor nesting, and atlas.json: passed")
+    print(
+        "Site HTML nesting, IDs, local links, local assets, anchor nesting, and atlas.json: passed"
+    )
 
 
 if __name__ == "__main__":

@@ -127,20 +127,30 @@ def build_gallery(version: str) -> str:
             f'<a class="step-card" href="{url}">'
             f'<span class="step-num">Step {step_item["step"]}</span>'
             f'<span class="step-id">{html.escape(pid)}</span>'
-            f'<strong>{html.escape(title)}</strong>'
-            f'<p>{html.escape(why)}</p>'
-            f'</a>'
+            f"<strong>{html.escape(title)}</strong>"
+            f"<p>{html.escape(why)}</p>"
+            f"</a>"
         )
 
-    group_chips = '<button class="atlas-group-chip button" data-group="all" aria-pressed="true">All groups</button>'
+    group_chips = (
+        '<button class="atlas-group-chip button" data-group="all" '
+        'aria-pressed="true">All groups</button>'
+    )
     for g in atlas_data["groups"]:
-        group_chips += f'<button class="atlas-group-chip button" data-group="{g["id"]}" aria-pressed="false">{html.escape(g["title"])}</button>'
+        group_chips += (
+            f'<button class="atlas-group-chip button" data-group="{g["id"]}" '
+            f'aria-pressed="false">{html.escape(g["title"])}</button>'
+        )
 
     level_chips = (
-        '<button class="atlas-level-chip button" data-level="all" aria-pressed="true">All levels</button>'
-        '<button class="atlas-level-chip button" data-level="Beginner" aria-pressed="false">Beginner</button>'
-        '<button class="atlas-level-chip button" data-level="Intermediate" aria-pressed="false">Intermediate</button>'
-        '<button class="atlas-level-chip button" data-level="Advanced" aria-pressed="false">Advanced</button>'
+        '<button class="atlas-level-chip button" data-level="all" '
+        'aria-pressed="true">All levels</button>'
+        '<button class="atlas-level-chip button" data-level="Beginner" '
+        'aria-pressed="false">Beginner</button>'
+        '<button class="atlas-level-chip button" data-level="Intermediate" '
+        'aria-pressed="false">Intermediate</button>'
+        '<button class="atlas-level-chip button" data-level="Advanced" '
+        'aria-pressed="false">Advanced</button>'
     )
 
     group_sections = []
@@ -164,93 +174,117 @@ def build_gallery(version: str) -> str:
             learn = item["learn"]
             prereqs = item.get("prerequisite_ids", [])
             prereq_links = " · ".join(f'<a href="plates/{p}.html">{p}</a>' for p in prereqs)
-            prereq_html = f'<div class="prereq"><small>Prerequisite: {prereq_links}</small></div>' if prereqs else ''
-            tags_html = "".join(f'<span class="chip tag">{html.escape(t)}</span>' for t in item.get("tags", []))
+            prereq_html = (
+                f'<div class="prereq"><small>Prerequisite: {prereq_links}</small></div>'
+                if prereqs
+                else ""
+            )
+            tags_html = "".join(
+                f'<span class="chip tag">{html.escape(t)}</span>' for t in item.get("tags", [])
+            )
 
             cards_html.append(
-                f'<div class="atlas-card" data-level="{html.escape(level)}" data-group="{html.escape(g_id)}">'
-                f'<span class="id">{html.escape(pid if not item.get("url") else title[:3].upper())}</span>'
+                f'<div class="atlas-card" data-level="{html.escape(level)}" '
+                f'data-group="{html.escape(g_id)}">'
+                f'<span class="id">'
+                f"{html.escape(pid if not item.get('url') else title[:3].upper())}"
+                f"</span>"
                 f'<h3><a href="{url}">{html.escape(title)}</a></h3>'
                 f'<p class="learn">“{html.escape(learn)}”</p>'
                 f'<div class="chips">'
                 f'<span class="chip level">{html.escape(level)}</span>'
                 f'<span class="chip time">{minutes} min</span>'
                 f'<span class="chip status">{html.escape(status)}</span>'
-                f'{tags_html}'
-                f'</div>'
-                f'{prereq_html}'
-                f'</div>'
+                f"{tags_html}"
+                f"</div>"
+                f"{prereq_html}"
+                f"</div>"
             )
 
         group_sections.append(
             f'<section class="atlas-group-section" id="{g["anchor"]}" data-group-id="{g_id}">'
-            f'<h2>{html.escape(g["title"])}</h2>'
+            f"<h2>{html.escape(g['title'])}</h2>"
             f'<p class="group-subtitle">{html.escape(g["subtitle"])}</p>'
             f'<div class="grid">{"".join(cards_html)}</div>'
-            f'</section>'
+            f"</section>"
         )
 
-    return f"""<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Atlas of neural circuits, simulation plates and educational models in neuroSush.">
-<title>neuroSush Atlas</title>
-{favicon_links()}
-<link rel="preload" href="assets/fonts/SourceSerif4-Display-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="assets/fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/site.css">
-<script defer src="assets/site.js"></script>
-</head>
-<body class="atlas-page">
-{header}
-<main id="main">
-<div class="atlas-container">
-<section class="atlas-hero">
-<p class="eyebrow">Atlas · v{html.escape(version)}</p>
-<h1>Atlas of Neural Circuits & Models</h1>
-<p class="lead">The neuroSush Atlas is a curated catalog of interactive teaching plates and simulation models. Explore core equations, perturb parameters, and trace neural dynamics from foundational biophysics to network memory.</p>
-</section>
+    hero = (
+        f'<section class="atlas-hero">\n'
+        f'<p class="eyebrow">Atlas · v{html.escape(version)}</p>\n'
+        f"<h1>Atlas of Neural Circuits & Models</h1>\n"
+        f'<p class="lead">The neuroSush Atlas is a curated catalog of interactive '
+        f"teaching plates and simulation models. Explore core equations, perturb "
+        f"parameters, and trace neural dynamics from foundational biophysics to "
+        f"network memory.</p>\n"
+        f"</section>"
+    )
 
-<section class="atlas-path-section">
-<h2>Start here: a 4-step path</h2>
-<p class="lead">Follow this guided sequence from membrane biophysics to synaptic plasticity.</p>
-<div class="stepper">
-{"".join(step_html)}
-</div>
-</section>
-
-<section class="atlas-filter-bar">
-<div class="search-box">
-<label for="atlas-search">Search Atlas</label>
-<input id="atlas-search" type="search" placeholder="Search plates, equations, tags, models…">
-</div>
-<div class="filter-group-row">
-<span class="filter-label">Group:</span>
-<div class="chip-row">{group_chips}</div>
-</div>
-<div class="filter-level-row">
-<span class="filter-label">Level:</span>
-<div class="chip-row">{level_chips}</div>
-</div>
-<div id="result-count" class="result-count" role="status" aria-live="polite">Showing {len(atlas_data["items"])} items</div>
-</section>
-
-<div class="atlas-content">
-{"".join(group_sections)}
-<div id="empty-state" class="empty-state" hidden>
-<h3>No matching plates or models found</h3>
-<p>Try adjusting your search terms or clearing active group and level filters.</p>
-</div>
-</div>
-
-</div>
-</main>
-{footer}
-</body>
-</html>
-"""
+    return (
+        f"<!DOCTYPE html>\n"
+        f'<html lang="en" data-theme="dark">\n'
+        f"<head>\n"
+        f'<meta charset="utf-8">\n'
+        f'<meta name="viewport" content="width=device-width,initial-scale=1">\n'
+        f'<meta name="description" content="Atlas of neural circuits, simulation '
+        f'plates and educational models in neuroSush.">\n'
+        f"<title>neuroSush Atlas</title>\n"
+        f"{favicon_links()}\n"
+        f'<link rel="preload" href="assets/fonts/SourceSerif4-Display-Regular.woff2" '
+        f'as="font" type="font/woff2" crossorigin>\n'
+        f'<link rel="preload" href="assets/fonts/IBMPlexSans-Regular.woff2" '
+        f'as="font" type="font/woff2" crossorigin>\n'
+        f'<link rel="stylesheet" href="assets/site.css">\n'
+        f'<script defer src="assets/site.js"></script>\n'
+        f"</head>\n"
+        f'<body class="atlas-page">\n'
+        f"{header}\n"
+        f'<main id="main">\n'
+        f'<div class="atlas-container">\n'
+        f"{hero}\n"
+        f"\n"
+        f'<section class="atlas-path-section">\n'
+        f"<h2>Start here: a 4-step path</h2>\n"
+        f'<p class="lead">Follow this guided sequence from membrane '
+        f"biophysics to synaptic plasticity.</p>\n"
+        f'<div class="stepper">\n'
+        f"{''.join(step_html)}\n"
+        f"</div>\n"
+        f"</section>\n"
+        f"\n"
+        f'<section class="atlas-filter-bar">\n'
+        f'<div class="search-box">\n'
+        f'<label for="atlas-search">Search Atlas</label>\n'
+        f'<input id="atlas-search" type="search" '
+        f'placeholder="Search plates, equations, tags, models…">\n'
+        f"</div>\n"
+        f'<div class="filter-group-row">\n'
+        f'<span class="filter-label">Group:</span>\n'
+        f'<div class="chip-row">{group_chips}</div>\n'
+        f"</div>\n"
+        f'<div class="filter-level-row">\n'
+        f'<span class="filter-label">Level:</span>\n'
+        f'<div class="chip-row">{level_chips}</div>\n'
+        f"</div>\n"
+        f'<div id="result-count" class="result-count" role="status" '
+        f'aria-live="polite">Showing {len(atlas_data["items"])} items</div>\n'
+        f"</section>\n"
+        f"\n"
+        f'<div class="atlas-content">\n'
+        f"{''.join(group_sections)}\n"
+        f'<div id="empty-state" class="empty-state" hidden>\n'
+        f"<h3>No matching plates or models found</h3>\n"
+        f"<p>Try adjusting your search terms or clearing active "
+        f"group and level filters.</p>\n"
+        f"</div>\n"
+        f"</div>\n"
+        f"\n"
+        f"</div>\n"
+        f"</main>\n"
+        f"{footer}\n"
+        f"</body>\n"
+        f"</html>\n"
+    )
 
 
 _ASSETS = Path(__file__).resolve().parent / "site_assets"
