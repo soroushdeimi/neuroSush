@@ -53,6 +53,7 @@ def chrome(prefix: str = "") -> tuple[str, str]:
         '<a href="' + prefix + 'studio-live.html">Studio Live</a>'
         '<a href="' + prefix + 'tem.html">Live TEM</a>'
         '<a href="' + prefix + 'story/story.html">The Neuron, zoomed</a>'
+        '<a href="' + prefix + 'story-tem/story.html">The Spiking TEM</a>'
         '<a href="' + home + '#studio">Studio <span class="chip">preview</span></a>'
         '<a href="' + home + '#evidence">Benchmarks</a>'
         '<a href="' + repo + '/tree/main/docs">Docs ↗</a></nav>'
@@ -376,6 +377,13 @@ def main():
     story_html = out_dir / "story" / "story.html"
     story_html.write_text(
         story_html.read_text(encoding="utf-8").replace("{{ICONS}}", favicon_links("../")),
+        encoding="utf-8",
+    )
+    shutil.rmtree(out_dir / "assets" / "story-tem", ignore_errors=True)
+    shutil.copytree(_ASSETS / "story-tem", out_dir / "story-tem", dirs_exist_ok=True)
+    tem_story_html = out_dir / "story-tem" / "story.html"
+    tem_story_html.write_text(
+        tem_story_html.read_text(encoding="utf-8").replace("{{ICONS}}", favicon_links("../")),
         encoding="utf-8",
     )
     (out_dir / "assets" / "index.html").unlink(missing_ok=True)
