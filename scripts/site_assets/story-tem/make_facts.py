@@ -755,15 +755,30 @@ for fact in FACTS:
 
 ideal_maps, ideal_scores = ideal_lattices()
 for fact_id, value, unit in [
-    ("ideal_square_score", ideal_scores["square"].hexagonal, "dimensionless standard hex score"),
+    (
+        "ideal_square_score",
+        round(ideal_scores["square"].hexagonal, 6),
+        "dimensionless standard hex score",
+    ),
     (
         "ideal_square_score_display",
         f"{ideal_scores['square'].hexagonal:.3f}",
         "dimensionless, rounded",
     ),
-    ("ideal_hex_score", ideal_scores["hex"].hexagonal, "dimensionless standard hex score"),
+    (
+        "ideal_hex_score",
+        round(ideal_scores["hex"].hexagonal, 6),
+        "dimensionless standard hex score",
+    ),
     ("ideal_hex_score_display", f"{ideal_scores['hex'].hexagonal:.3f}", "dimensionless, rounded"),
-    ("ideal_maps", {name: rate.tolist() for name, rate in ideal_maps.items()}, "ideal activity"),
+    (
+        "ideal_maps",
+        {
+            name: [[round(v, 8) for v in row] for row in rate.tolist()]
+            for name, rate in ideal_maps.items()
+        },
+        "ideal activity",
+    ),
     ("ideal_map_bins", 49, "bins per side"),
     ("ideal_scale", 10, "bins per period"),
     ("ideal_annulus_inner", 5, "autocorrelation lag bins"),

@@ -127,11 +127,11 @@ def test_tem_ideal_lattice_scores_recompute_from_stored_maps():
     }
     for name in ("square", "hex"):
         rate = torch.tensor(facts["ideal_maps"][name], dtype=torch.float64)
-        torch.testing.assert_close(rate, expected[name], rtol=0, atol=0)
+        torch.testing.assert_close(rate, expected[name], rtol=0, atol=1e-7)
         score = gridness(rate, annulus=(facts["ideal_annulus_inner"], facts["ideal_annulus_outer"]))
         c = score.correlations
         recomputed = min(c[60], c[120]) - max(c[30], c[90], c[150])
         assert facts[f"ideal_{name}_score_display"] == f"{score.hexagonal:.3f}"
         assert score.resolvable
-        assert facts[f"ideal_{name}_score"] == pytest.approx(recomputed, rel=0, abs=1e-12)
+        assert facts[f"ideal_{name}_score"] == pytest.approx(recomputed, rel=0, abs=1e-6)
     assert facts["ideal_square_score"] < 0 < facts["ideal_hex_score"]
