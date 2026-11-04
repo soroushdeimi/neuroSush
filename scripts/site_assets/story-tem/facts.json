@@ -1,0 +1,826 @@
+[
+  {
+    "id": "baseline_accuracy",
+    "value": 0.1027,
+    "unit": "fraction correct",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "training_updates",
+    "value": 16000,
+    "unit": "updates",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v0_mean",
+    "value": 0.236,
+    "unit": "fraction correct",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v0_sd",
+    "value": 0.15,
+    "unit": "fraction correct",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v1_mean",
+    "value": 0.721,
+    "unit": "fraction correct",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v1_sd",
+    "value": 0.038,
+    "unit": "fraction correct",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v2_mean",
+    "value": 0.769,
+    "unit": "fraction correct",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v2_sd",
+    "value": 0.007,
+    "unit": "fraction correct",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v3_v0_mean",
+    "value": 0.832,
+    "unit": "fraction correct",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v3_v0_sd",
+    "value": 0.014,
+    "unit": "fraction correct",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v3_v1_mean",
+    "value": 0.783,
+    "unit": "fraction correct",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v3_v1_sd",
+    "value": 0.048,
+    "unit": "fraction correct",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v2_s0_rsa",
+    "value": 0.779,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v2_s1_rsa",
+    "value": 0.642,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v2_s2_rsa",
+    "value": 0.807,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v1_s0_rsa",
+    "value": 0.85,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v1_s1_rsa",
+    "value": 0.794,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v1_s2_rsa",
+    "value": 0.93,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "control_p95_min",
+    "value": 0.84,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "control_p95_max",
+    "value": 0.954,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v2_s0_margin",
+    "value": -0.103,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v2_s1_margin",
+    "value": -0.244,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v2_s2_margin",
+    "value": -0.087,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v1_s0_margin",
+    "value": 0.01,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v1_s1_margin",
+    "value": -0.054,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "v1_s2_margin",
+    "value": -0.024,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "margin_threshold",
+    "value": 0.15,
+    "unit": "dimensionless RSA value",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "world_size_side",
+    "value": 16,
+    "unit": "positions per side, proposed unrun world",
+    "source": "RESULTS_AND_EXPLANATIONS.md, section 6.2",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "whittington_citation",
+    "value": "Whittington et al. 2020, Cell 183, 1249-1263",
+    "unit": "",
+    "source": "Whittington et al. 2020, Cell 183, p. 6",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "g_definition",
+    "value": "Abstract relational structure / position (Medial Entorhinal Cortex interpretation)",
+    "unit": "",
+    "source": "Whittington et al. 2020, Cell 183, p. 4, Fig. 2",
+    "type": "DEFINITION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "x_definition",
+    "value": "Sensory identity (Lateral Entorhinal Cortex interpretation)",
+    "unit": "",
+    "source": "Whittington et al. 2020, Cell 183, p. 4, Fig. 2",
+    "type": "DEFINITION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "p_definition",
+    "value": "Conjunction of g and x (Hippocampal interpretation / place cells)",
+    "unit": "",
+    "source": "Whittington et al. 2020, Cell 183, p. 4, Fig. 2",
+    "type": "DEFINITION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "hebbian_memory_definition",
+    "value": "Fast associative memory M binding p at location g",
+    "unit": "",
+    "source": "Whittington et al. 2020, Cell 183, p. 23",
+    "type": "DEFINITION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "generative_factorisation_eq",
+    "value": "p(x_{1:T}, p_{1:T}, g_{1:T}) = \\prod_{t=1}^T p(x_t | p_t) p(p_t | M_{t-1}, g_t) p(g_t | g_{t-1}, a_t)",
+    "unit": "",
+    "source": "Whittington et al. 2020, Cell 183, STAR Methods e5 (PDF p. 21)",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "hebbian_memory_update_eq",
+    "value": "M_t = \\lambda M_{t-1} + \\eta (p_t - \\hat{p}_t)(p_t + \\hat{p}_t)^T",
+    "unit": "",
+    "source": "Whittington et al. 2020, Cell 183, STAR Methods e7 (PDF p. 23)",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "theta_hz",
+    "value": 8,
+    "unit": "Hz",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 3, Eq. 5",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "opening_ingredients",
+    "value": "LIF threshold/reset, STDP associative memory, imposed theta inhibition; most weights use backpropagation",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF pp. 3-4, Eqs. 1-5 and 9; p. 8, section 2.3.2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "place_grid_definition",
+    "value": "Place cells encode location-specific activity; MEC grid cells exhibit periodic spatial firing.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 1, Author Summary; p. 2, Introduction lines 35-38",
+    "type": "DEFINITION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "entorhinal_routes",
+    "value": "DG receives MECII and LECII; CA3 combines DG, MECII, LECII and recurrent CA3; CA1 combines CA3 and LECIII.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 4, section 2.2.2; p. 5, Fig. 1",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "phase_definition",
+    "value": "Precession shifts spikes earlier in theta; phase locking concentrates spikes at a phase. MECII precession and MECIII locking are compared with experimental findings.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 2, lines 55-59; p. 17, lines 337-352",
+    "type": "DEFINITION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "earlier_mechanisms",
+    "value": "Oscillatory interference combines theta-modulated inputs; continuous attractors maintain a moving activity bump. Many rely on handcrafted architecture or idealized input.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 2, Introduction lines 40-50",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "original_remapping",
+    "value": "Original TEM structural grid-like codes transfer; place-like codes remap while preserving relationships to structural codes.",
+    "unit": "",
+    "source": "Whittington et al. 2020, PDF pp. 8-10, Figs. 4 and 6",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "spiking_architecture",
+    "value": "Prediction: MECII plus action to MECIII, memory-assisted CA1 to MECV to senses. Inference: senses and previous MECIII to MECII, DG/CA3/CA1 circuit. Original multiplicative binding omitted after failure to produce grids.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF pp. 4-5, Fig. 1; p. 8, lines 173-177",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "spiking_training",
+    "value": "Associative memory uses STDP; other weights use backpropagation through time with surrogate spike gradients.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 4, Eq. 9; p. 8, section 2.3.2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "arena_side",
+    "value": 8,
+    "unit": "positions per side",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 10, section 3.1.1",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "arena_positions",
+    "value": 64,
+    "unit": "positions",
+    "formula": "arena_side ** 2",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 15, lines 295-298",
+    "type": "DERIVED",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "sensory_neurons",
+    "value": 20,
+    "unit": "sensory neurons",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 9, Table 1, 2D setting",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "task_definition",
+    "value": "Random exploration with up/down/left/right/stay actions; arbitrary one-hot sensory labels repeat across locations. No rewards.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF pp. 7-10, Algorithm 1 and section 3.1.1",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "grid_mean",
+    "value": 59.6,
+    "unit": "percent of MECII units",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 10, section 3.1.1; p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "grid_sd",
+    "value": 18.0,
+    "unit": "percentage points, SD across runs",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "paper_runs",
+    "value": 4,
+    "unit": "simulation runs per condition",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 11, Fig. 3C; p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "grid_cutoff",
+    "value": 0.8,
+    "unit": "gridness score",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 10, lines 219-220; S1 definition unavailable",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "ca1_theta",
+    "value": "CA1 spatial-information distribution changed little with training; removing theta at the beginning of training lowered spatial information.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 10, lines 225-233; p. 12, Fig. 4",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "spiking_remapping",
+    "value": "Changing one-hot to two-hot observations with fixed geometry and parameters realigns MECII fields and remaps CA1 fields. Two model initializations.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF pp. 12-15, section 3.1.2, Figs. 5-6",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "no_feedback",
+    "value": 43.4,
+    "unit": "percent of MECII units",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "no_theta",
+    "value": 25.6,
+    "unit": "percent of MECII units",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "no_stdp",
+    "value": 10.1,
+    "unit": "percent of MECII units",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "no_sparsity",
+    "value": 0.875,
+    "unit": "percent of MECII units",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "mse",
+    "value": 0.25,
+    "unit": "percent of MECII units",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "no_gain",
+    "value": 0.0,
+    "unit": "percent of MECII units",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "no_feedback_sd",
+    "value": 17.5,
+    "unit": "percentage points, SD across runs",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "no_theta_sd",
+    "value": 20.6,
+    "unit": "percentage points, SD across runs",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "no_stdp_sd",
+    "value": 16.6,
+    "unit": "percentage points, SD across runs",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "no_sparsity_sd",
+    "value": 1.75,
+    "unit": "percentage points, SD across runs",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "mse_sd",
+    "value": 0.353,
+    "unit": "percentage points, SD across runs",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "no_gain_sd",
+    "value": 0.0,
+    "unit": "percentage points, SD across runs",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, Table 2",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "feedback_p",
+    "value": 0.244,
+    "unit": "reported p value",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 13, line 288",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "ambiguity",
+    "value": "Moderate sensory ambiguity, around 20 sensory units, favors grid classification in this task.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF pp. 15-16, section 3.1.4 and Fig. 7",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "predictive_grid",
+    "value": "MECIII is trained to predict MECII one step ahead; next-position alignment increases gridness.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 16, section 3.1.5; p. 17, Fig. 8",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "precession_mean",
+    "value": 80.2,
+    "unit": "percent of MECII grid cells",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 17, section 3.2.1; p. 22, Fig. 13C",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "locking_mean",
+    "value": 86.7,
+    "unit": "percent of MECIII grid cells",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 17, section 3.2.1; p. 22, Fig. 13C",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "learned_signs",
+    "value": "Mostly negative effective MECII to MECIII and MECIII to CA1 weights are interpreted as inhibition.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF pp. 18-19, section 3.3; pp. 23-24, Figs. 14-15",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "paper_geometry",
+    "value": "Authors report square or diamond grids, no canonical hexagons; limited phase diversity and no reproduced toroidal population structure.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 25, lines 428-442",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "paper_limitations",
+    "value": "Coarse time resolution; BPTT computational cost and disputed biological plausibility; temporal replay remains future work.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 25, lines 416-448",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "fig7_approx",
+    "value": 26,
+    "unit": "percent, approximate visual reading",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 16, Fig. 7, bar at 20 sensory neurons; deck author approximate reading, independently inspected",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "dg_table",
+    "value": 400,
+    "unit": "DG neurons",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 9, Table 1, Number of dentate gyrus neurons",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "dg_discussion",
+    "value": 200,
+    "unit": "DG neurons used as denominator",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 22, Discussion, lines 387-389",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "equation_ambiguities",
+    "value": "Eq. 9 places minus before A-minus; Table 1 lists negative A-minus. Eq. 17 repeats the DG activity norm. Intended implementation not established.",
+    "unit": "",
+    "source": "Kawahara & Fujisawa 2025, PDF p. 4, Eq. 9; p. 8, Eq. 17; p. 9, Table 1",
+    "type": "PAPER-CLAIM",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "square_grid_score_critique",
+    "value": null,
+    "unit": "gridness score",
+    "source": "Preprint p. 10 defers definition to S1, absent from supplied PDF",
+    "type": "UNRESOLVED",
+    "status": "NOT VERIFIED"
+  },
+  {
+    "id": "our_replay",
+    "value": "Frozen TEM models in new worlds with empty memory; recorded paths and whole-walk activity.",
+    "unit": "",
+    "source": "RESULTS_AND_EXPLANATIONS.md sections 1, 6.1-6.2; tem-run-v1-s0.json and tem-run-v2-s0.json metadata",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "our_control_caveats",
+    "value": "Control p95 has nine random-weight values and is near their maximum; coherent path integration explains cross-world g RSA. Larger-world probes not run.",
+    "unit": "",
+    "source": "RESULTS_AND_EXPLANATIONS.md sections 6.1-6.2, Reading and Caveats",
+    "type": "OUR-RESULT",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "ideal_square_score",
+    "value": -1.215312,
+    "unit": "dimensionless standard hex score",
+    "source": "OUR COMPUTATION: spatial/gridness.py gridness; htm/grid_cells.py hexagonal_rate; geometry from tests/spatial/test_gridness.py reference tests. Score=min(r60,r120)-max(r30,r90,r150); float64 ideal maps, orientation zero.",
+    "type": "OUR-COMPUTATION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "ideal_square_score_display",
+    "value": "-1.215",
+    "unit": "dimensionless, rounded",
+    "source": "OUR COMPUTATION: spatial/gridness.py gridness; htm/grid_cells.py hexagonal_rate; geometry from tests/spatial/test_gridness.py reference tests. Score=min(r60,r120)-max(r30,r90,r150); float64 ideal maps, orientation zero.",
+    "type": "OUR-COMPUTATION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "ideal_hex_score",
+    "value": 1.310262,
+    "unit": "dimensionless standard hex score",
+    "source": "OUR COMPUTATION: spatial/gridness.py gridness; htm/grid_cells.py hexagonal_rate; geometry from tests/spatial/test_gridness.py reference tests. Score=min(r60,r120)-max(r30,r90,r150); float64 ideal maps, orientation zero.",
+    "type": "OUR-COMPUTATION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "ideal_hex_score_display",
+    "value": "1.310",
+    "unit": "dimensionless, rounded",
+    "source": "OUR COMPUTATION: spatial/gridness.py gridness; htm/grid_cells.py hexagonal_rate; geometry from tests/spatial/test_gridness.py reference tests. Score=min(r60,r120)-max(r30,r90,r150); float64 ideal maps, orientation zero.",
+    "type": "OUR-COMPUTATION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "ideal_maps",
+    "value": {
+      "square": [
+        [4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699],
+        [3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399],
+        [3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399],
+        [2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0],
+        [2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5],
+        [2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699],
+        [2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5],
+        [2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0],
+        [3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399],
+        [3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399],
+        [4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699],
+        [3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399],
+        [3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399],
+        [2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0],
+        [2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5],
+        [2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699],
+        [2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5],
+        [2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0],
+        [3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399],
+        [3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399],
+        [4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699],
+        [3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399],
+        [3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399],
+        [2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0],
+        [2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5],
+        [2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699],
+        [2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5],
+        [2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0],
+        [3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399],
+        [3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399],
+        [4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699],
+        [3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399],
+        [3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399],
+        [2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0],
+        [2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5],
+        [2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699],
+        [2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5],
+        [2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0],
+        [3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399],
+        [3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399],
+        [4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699, 3.80901699, 4.0, 3.80901699, 3.30901699, 2.69098301, 2.19098301, 2.0, 2.19098301, 2.69098301, 3.30901699],
+        [3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399, 3.61803399, 3.80901699, 3.61803399, 3.11803399, 2.5, 2.0, 1.80901699, 2.0, 2.5, 3.11803399],
+        [3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399],
+        [2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0],
+        [2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5],
+        [2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699, 1.80901699, 2.0, 1.80901699, 1.30901699, 0.69098301, 0.19098301, 0.0, 0.19098301, 0.69098301, 1.30901699],
+        [2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5, 2.0, 2.19098301, 2.0, 1.5, 0.88196601, 0.38196601, 0.19098301, 0.38196601, 0.88196601, 1.5],
+        [2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0, 2.5, 2.69098301, 2.5, 2.0, 1.38196601, 0.88196601, 0.69098301, 0.88196601, 1.38196601, 2.0],
+        [3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399, 3.11803399, 3.30901699, 3.11803399, 2.61803399, 2.0, 1.5, 1.30901699, 1.5, 2.0, 2.61803399]
+      ],
+      "hex": [
+        [1.0, 0.91511866, 0.69289644, 0.41821467, 0.19599245, 0.11111111, 0.19599245, 0.41821467, 0.69289644, 0.91511866, 1.0, 0.91511866, 0.69289644, 0.41821467, 0.19599245, 0.11111111, 0.19599245, 0.41821467, 0.69289644, 0.91511866, 1.0, 0.91511866, 0.69289644, 0.41821467, 0.19599245, 0.11111111, 0.19599245, 0.41821467, 0.69289644, 0.91511866, 1.0, 0.91511866, 0.69289644, 0.41821467, 0.19599245, 0.11111111, 0.19599245, 0.41821467, 0.69289644, 0.91511866, 1.0, 0.91511866, 0.69289644, 0.41821467, 0.19599245, 0.11111111, 0.19599245, 0.41821467, 0.69289644],
+        [0.91511038, 0.83575304, 0.62799281, 0.37118704, 0.16342681, 0.08406947, 0.16342681, 0.37118704, 0.62799281, 0.83575304, 0.91511038, 0.83575304, 0.62799281, 0.37118704, 0.16342681, 0.08406947, 0.16342681, 0.37118704, 0.62799281, 0.83575304, 0.91511038, 0.83575304, 0.62799281, 0.37118704, 0.16342681, 0.08406947, 0.16342681, 0.37118704, 0.62799281, 0.83575304, 0.91511038, 0.83575304, 0.62799281, 0.37118704, 0.16342681, 0.08406947, 0.16342681, 0.37118704, 0.62799281, 0.83575304, 0.91511038, 0.83575304, 0.62799281, 0.37118704, 0.16342681, 0.08406947, 0.16342681, 0.37118704, 0.62799281],
+        [0.69239558, 0.62889121, 0.46263462, 0.25713017, 0.09087358, 0.02736922, 0.09087358, 0.25713017, 0.46263462, 0.62889121, 0.69239558, 0.62889121, 0.46263462, 0.25713017, 0.09087358, 0.02736922, 0.09087358, 0.25713017, 0.46263462, 0.62889121, 0.69239558, 0.62889121, 0.46263462, 0.25713017, 0.09087358, 0.02736922, 0.09087358, 0.25713017, 0.46263462, 0.62889121, 0.69239558, 0.62889121, 0.46263462, 0.25713017, 0.09087358, 0.02736922, 0.09087358, 0.25713017, 0.46263462, 0.62889121, 0.69239558, 0.62889121, 0.46263462, 0.25713017, 0.09087358, 0.02736922, 0.09087358, 0.25713017, 0.46263462],
+        [0.41302903, 0.37364324, 0.2705299, 0.14307481, 0.03996147, 0.00057568, 0.03996147, 0.14307481, 0.2705299, 0.37364324, 0.41302903, 0.37364324, 0.2705299, 0.14307481, 0.03996147, 0.00057568, 0.03996147, 0.14307481, 0.2705299, 0.37364324, 0.41302903, 0.37364324, 0.2705299, 0.14307481, 0.03996147, 0.00057568, 0.03996147, 0.14307481, 0.2705299, 0.37364324, 0.41302903, 0.37364324, 0.2705299, 0.14307481, 0.03996147, 0.00057568, 0.03996147, 0.14307481, 0.2705299, 0.37364324, 0.41302903, 0.37364324, 0.2705299, 0.14307481, 0.03996147, 0.00057568, 0.03996147, 0.14307481, 0.2705299],
+        [0.17055291, 0.16041207, 0.13386301, 0.10104656, 0.0744975, 0.06435666, 0.0744975, 0.10104656, 0.13386301, 0.16041207, 0.17055291, 0.16041207, 0.13386301, 0.10104656, 0.0744975, 0.06435666, 0.0744975, 0.10104656, 0.13386301, 0.16041207, 0.17055291, 0.16041207, 0.13386301, 0.10104656, 0.0744975, 0.06435666, 0.0744975, 0.10104656, 0.13386301, 0.16041207, 0.17055291, 0.16041207, 0.13386301, 0.10104656, 0.0744975, 0.06435666, 0.0744975, 0.10104656, 0.13386301, 0.16041207, 0.17055291, 0.16041207, 0.13386301, 0.10104656, 0.0744975, 0.06435666, 0.0744975, 0.10104656, 0.13386301],
+        [0.02990167, 0.05032569, 0.10379647, 0.16988999, 0.22336077, 0.24378479, 0.22336077, 0.16988999, 0.10379647, 0.05032569, 0.02990167, 0.05032569, 0.10379647, 0.16988999, 0.22336077, 0.24378479, 0.22336077, 0.16988999, 0.10379647, 0.05032569, 0.02990167, 0.05032569, 0.10379647, 0.16988999, 0.22336077, 0.24378479, 0.22336077, 0.16988999, 0.10379647, 0.05032569, 0.02990167, 0.05032569, 0.10379647, 0.16988999, 0.22336077, 0.24378479, 0.22336077, 0.16988999, 0.10379647, 0.05032569, 0.02990167, 0.05032569, 0.10379647, 0.16988999, 0.22336077, 0.24378479, 0.22336077, 0.16988999, 0.10379647],
+        [0.00213995, 0.05047048, 0.17700146, 0.33340235, 0.45993333, 0.50826387, 0.45993333, 0.33340235, 0.17700146, 0.05047048, 0.00213995, 0.05047048, 0.17700146, 0.33340235, 0.45993333, 0.50826387, 0.45993333, 0.33340235, 0.17700146, 0.05047048, 0.00213995, 0.05047048, 0.17700146, 0.33340235, 0.45993333, 0.50826387, 0.45993333, 0.33340235, 0.17700146, 0.05047048, 0.00213995, 0.05047048, 0.17700146, 0.33340235, 0.45993333, 0.50826387, 0.45993333, 0.33340235, 0.17700146, 0.05047048, 0.00213995, 0.05047048, 0.17700146, 0.33340235, 0.45993333, 0.50826387, 0.45993333, 0.33340235, 0.17700146],
+        [0.04667033, 0.11661677, 0.29973894, 0.52609038, 0.70921255, 0.77915899, 0.70921255, 0.52609038, 0.29973894, 0.11661677, 0.04667033, 0.11661677, 0.29973894, 0.52609038, 0.70921255, 0.77915899, 0.70921255, 0.52609038, 0.29973894, 0.11661677, 0.04667033, 0.11661677, 0.29973894, 0.52609038, 0.70921255, 0.77915899, 0.70921255, 0.52609038, 0.29973894, 0.11661677, 0.04667033, 0.11661677, 0.29973894, 0.52609038, 0.70921255, 0.77915899, 0.70921255, 0.52609038, 0.29973894, 0.11661677, 0.04667033, 0.11661677, 0.29973894, 0.52609038, 0.70921255, 0.77915899, 0.70921255, 0.52609038, 0.29973894],
+        [0.09878594, 0.18124421, 0.39712276, 0.66396331, 0.87984186, 0.96230013, 0.87984186, 0.66396331, 0.39712276, 0.18124421, 0.09878594, 0.18124421, 0.39712276, 0.66396331, 0.87984186, 0.96230013, 0.87984186, 0.66396331, 0.39712276, 0.18124421, 0.09878594, 0.18124421, 0.39712276, 0.66396331, 0.87984186, 0.96230013, 0.87984186, 0.66396331, 0.39712276, 0.18124421, 0.09878594, 0.18124421, 0.39712276, 0.66396331, 0.87984186, 0.96230013, 0.87984186, 0.66396331, 0.39712276, 0.18124421, 0.09878594, 0.18124421, 0.39712276, 0.66396331, 0.87984186, 0.96230013, 0.87984186, 0.66396331, 0.39712276],
+        [0.10776548, 0.19200297, 0.4125396, 0.68513785, 0.90567447, 0.98991197, 0.90567447, 0.68513785, 0.4125396, 0.19200297, 0.10776548, 0.19200297, 0.4125396, 0.68513785, 0.90567447, 0.98991197, 0.90567447, 0.68513785, 0.4125396, 0.19200297, 0.10776548, 0.19200297, 0.4125396, 0.68513785, 0.90567447, 0.98991197, 0.90567447, 0.68513785, 0.4125396, 0.19200297, 0.10776548, 0.19200297, 0.4125396, 0.68513785, 0.90567447, 0.98991197, 0.90567447, 0.68513785, 0.4125396, 0.19200297, 0.10776548, 0.19200297, 0.4125396, 0.68513785, 0.90567447, 0.98991197, 0.90567447, 0.68513785, 0.4125396],
+        [0.06560615, 0.14065869, 0.33714879, 0.58002392, 0.77651402, 0.85156656, 0.77651402, 0.58002392, 0.33714879, 0.14065869, 0.06560615, 0.14065869, 0.33714879, 0.58002392, 0.77651402, 0.85156656, 0.77651402, 0.58002392, 0.33714879, 0.14065869, 0.06560615, 0.14065869, 0.33714879, 0.58002392, 0.77651402, 0.85156656, 0.77651402, 0.58002392, 0.33714879, 0.14065869, 0.06560615, 0.14065869, 0.33714879, 0.58002392, 0.77651402, 0.85156656, 0.77651402, 0.58002392, 0.33714879, 0.14065869, 0.06560615, 0.14065869, 0.33714879, 0.58002392, 0.77651402, 0.85156656, 0.77651402, 0.58002392, 0.33714879],
+        [0.01150753, 0.06760644, 0.21447527, 0.39601514, 0.54288397, 0.59898288, 0.54288397, 0.39601514, 0.21447527, 0.06760644, 0.01150753, 0.06760644, 0.21447527, 0.39601514, 0.54288397, 0.59898288, 0.54288397, 0.39601514, 0.21447527, 0.06760644, 0.01150753, 0.06760644, 0.21447527, 0.39601514, 0.54288397, 0.59898288, 0.54288397, 0.39601514, 0.21447527, 0.06760644, 0.01150753, 0.06760644, 0.21447527, 0.39601514, 0.54288397, 0.59898288, 0.54288397, 0.39601514, 0.21447527, 0.06760644, 0.01150753, 0.06760644, 0.21447527, 0.39601514, 0.54288397, 0.59898288, 0.54288397, 0.39601514, 0.21447527],
+        [0.00978894, 0.03963249, 0.11776391, 0.21433966, 0.29247109, 0.32231463, 0.29247109, 0.21433966, 0.11776391, 0.03963249, 0.00978894, 0.03963249, 0.11776391, 0.21433966, 0.29247109, 0.32231463, 0.29247109, 0.21433966, 0.11776391, 0.03963249, 0.00978894, 0.03963249, 0.11776391, 0.21433966, 0.29247109, 0.32231463, 0.29247109, 0.21433966, 0.11776391, 0.03963249, 0.00978894, 0.03963249, 0.11776391, 0.21433966, 0.29247109, 0.32231463, 0.29247109, 0.21433966, 0.11776391, 0.03963249, 0.00978894, 0.03963249, 0.11776391, 0.21433966, 0.29247109, 0.32231463, 0.29247109, 0.21433966, 0.11776391],
+        [0.11266735, 0.11237117, 0.11159575, 0.11063729, 0.10986188, 0.1095657, 0.10986188, 0.11063729, 0.11159575, 0.11237117, 0.11266735, 0.11237117, 0.11159575, 0.11063729, 0.10986188, 0.1095657, 0.10986188, 0.11063729, 0.11159575, 0.11237117, 0.11266735, 0.11237117, 0.11159575, 0.11063729, 0.10986188, 0.1095657, 0.10986188, 0.11063729, 0.11159575, 0.11237117, 0.11266735, 0.11237117, 0.11159575, 0.11063729, 0.10986188, 0.1095657, 0.10986188, 0.11063729, 0.11159575, 0.11237117, 0.11266735, 0.11237117, 0.11159575, 0.11063729, 0.10986188, 0.1095657, 0.10986188, 0.11063729, 0.11159575],
+        [0.32727244, 0.29687508, 0.21729376, 0.11892583, 0.03934451, 0.00894715, 0.03934451, 0.11892583, 0.21729376, 0.29687508, 0.32727244, 0.29687508, 0.21729376, 0.11892583, 0.03934451, 0.00894715, 0.03934451, 0.11892583, 0.21729376, 0.29687508, 0.32727244, 0.29687508, 0.21729376, 0.11892583, 0.03934451, 0.00894715, 0.03934451, 0.11892583, 0.21729376, 0.29687508, 0.32727244, 0.29687508, 0.21729376, 0.11892583, 0.03934451, 0.00894715, 0.03934451, 0.11892583, 0.21729376, 0.29687508, 0.32727244, 0.29687508, 0.21729376, 0.11892583, 0.03934451, 0.00894715, 0.03934451, 0.11892583, 0.21729376],
+        [0.60438281, 0.54784073, 0.39981164, 0.21683761, 0.06880852, 0.01226644, 0.06880852, 0.21683761, 0.39981164, 0.54784073, 0.60438281, 0.54784073, 0.39981164, 0.21683761, 0.06880852, 0.01226644, 0.06880852, 0.21683761, 0.39981164, 0.54784073, 0.60438281, 0.54784073, 0.39981164, 0.21683761, 0.06880852, 0.01226644, 0.06880852, 0.21683761, 0.39981164, 0.54784073, 0.60438281, 0.54784073, 0.39981164, 0.21683761, 0.06880852, 0.01226644, 0.06880852, 0.21683761, 0.39981164, 0.54784073, 0.60438281, 0.54784073, 0.39981164, 0.21683761, 0.06880852, 0.01226644, 0.06880852, 0.21683761, 0.39981164],
+        [0.85555551, 0.78022811, 0.58301841, 0.33925381, 0.14204411, 0.06671671, 0.14204411, 0.33925381, 0.58301841, 0.78022811, 0.85555551, 0.78022811, 0.58301841, 0.33925381, 0.14204411, 0.06671671, 0.14204411, 0.33925381, 0.58301841, 0.78022811, 0.85555551, 0.78022811, 0.58301841, 0.33925381, 0.14204411, 0.06671671, 0.14204411, 0.33925381, 0.58301841, 0.78022811, 0.85555551, 0.78022811, 0.58301841, 0.33925381, 0.14204411, 0.06671671, 0.14204411, 0.33925381, 0.58301841, 0.78022811, 0.85555551, 0.78022811, 0.58301841, 0.33925381, 0.14204411, 0.06671671, 0.14204411, 0.33925381, 0.58301841],
+        [0.99101832, 0.90671006, 0.68598816, 0.41316089, 0.19243899, 0.10813072, 0.19243899, 0.41316089, 0.68598816, 0.90671006, 0.99101832, 0.90671006, 0.68598816, 0.41316089, 0.19243899, 0.10813072, 0.19243899, 0.41316089, 0.68598816, 0.90671006, 0.99101832, 0.90671006, 0.68598816, 0.41316089, 0.19243899, 0.10813072, 0.19243899, 0.41316089, 0.68598816, 0.90671006, 0.99101832, 0.90671006, 0.68598816, 0.41316089, 0.19243899, 0.10813072, 0.19243899, 0.41316089, 0.68598816, 0.90671006, 0.99101832, 0.90671006, 0.68598816, 0.41316089, 0.19243899, 0.10813072, 0.19243899, 0.41316089, 0.68598816],
+        [0.96010505, 0.87778931, 0.66228392, 0.39590461, 0.18039922, 0.09808349, 0.18039922, 0.39590461, 0.66228392, 0.87778931, 0.96010505, 0.87778931, 0.66228392, 0.39590461, 0.18039922, 0.09808349, 0.18039922, 0.39590461, 0.66228392, 0.87778931, 0.96010505, 0.87778931, 0.66228392, 0.39590461, 0.18039922, 0.09808349, 0.18039922, 0.39590461, 0.66228392, 0.87778931, 0.96010505, 0.87778931, 0.66228392, 0.39590461, 0.18039922, 0.09808349, 0.18039922, 0.39590461, 0.66228392, 0.87778931, 0.96010505, 0.87778931, 0.66228392, 0.39590461, 0.18039922, 0.09808349, 0.18039922, 0.39590461, 0.66228392],
+        [0.77448933, 0.70488018, 0.52264104, 0.29738107, 0.11514193, 0.04553277, 0.11514193, 0.29738107, 0.52264104, 0.70488018, 0.77448933, 0.70488018, 0.52264104, 0.29738107, 0.11514193, 0.04553277, 0.11514193, 0.29738107, 0.52264104, 0.70488018, 0.77448933, 0.70488018, 0.52264104, 0.29738107, 0.11514193, 0.04553277, 0.11514193, 0.29738107, 0.52264104, 0.70488018, 0.77448933, 0.70488018, 0.52264104, 0.29738107, 0.11514193, 0.04553277, 0.11514193, 0.29738107, 0.52264104, 0.70488018, 0.77448933, 0.70488018, 0.52264104, 0.29738107, 0.11514193, 0.04553277, 0.11514193, 0.29738107, 0.52264104],
+        [0.50281203, 0.45496963, 0.32971661, 0.17489536, 0.04964234, 0.00179994, 0.04964234, 0.17489536, 0.32971661, 0.45496963, 0.50281203, 0.45496963, 0.32971661, 0.17489536, 0.04964234, 0.00179994, 0.04964234, 0.17489536, 0.32971661, 0.45496963, 0.50281203, 0.45496963, 0.32971661, 0.17489536, 0.04964234, 0.00179994, 0.04964234, 0.17489536, 0.32971661, 0.45496963, 0.50281203, 0.45496963, 0.32971661, 0.17489536, 0.04964234, 0.00179994, 0.04964234, 0.17489536, 0.32971661, 0.45496963, 0.50281203, 0.45496963, 0.32971661, 0.17489536, 0.04964234, 0.00179994, 0.04964234, 0.17489536, 0.32971661],
+        [0.23934209, 0.21949352, 0.16752929, 0.10329798, 0.05133375, 0.03148519, 0.05133375, 0.10329798, 0.16752929, 0.21949352, 0.23934209, 0.21949352, 0.16752929, 0.10329798, 0.05133375, 0.03148519, 0.05133375, 0.10329798, 0.16752929, 0.21949352, 0.23934209, 0.21949352, 0.16752929, 0.10329798, 0.05133375, 0.03148519, 0.05133375, 0.10329798, 0.16752929, 0.21949352, 0.23934209, 0.21949352, 0.16752929, 0.10329798, 0.05133375, 0.03148519, 0.05133375, 0.10329798, 0.16752929, 0.21949352, 0.23934209, 0.21949352, 0.16752929, 0.10329798, 0.05133375, 0.03148519, 0.05133375, 0.10329798, 0.16752929],
+        [0.06203534, 0.07276405, 0.10085218, 0.13557101, 0.16365914, 0.17438785, 0.16365914, 0.13557101, 0.10085218, 0.07276405, 0.06203534, 0.07276405, 0.10085218, 0.13557101, 0.16365914, 0.17438785, 0.16365914, 0.13557101, 0.10085218, 0.07276405, 0.06203534, 0.07276405, 0.10085218, 0.13557101, 0.16365914, 0.17438785, 0.16365914, 0.13557101, 0.10085218, 0.07276405, 0.06203534, 0.07276405, 0.10085218, 0.13557101, 0.16365914, 0.17438785, 0.16365914, 0.13557101, 0.10085218, 0.07276405, 0.06203534, 0.07276405, 0.10085218, 0.13557101, 0.16365914, 0.17438785, 0.16365914, 0.13557101, 0.10085218],
+        [0.0003952, 0.04030476, 0.14478934, 0.2739394, 0.37842398, 0.41833354, 0.37842398, 0.2739394, 0.14478934, 0.04030476, 0.0003952, 0.04030476, 0.14478934, 0.2739394, 0.37842398, 0.41833354, 0.37842398, 0.2739394, 0.14478934, 0.04030476, 0.0003952, 0.04030476, 0.14478934, 0.2739394, 0.37842398, 0.41833354, 0.37842398, 0.2739394, 0.14478934, 0.04030476, 0.0003952, 0.04030476, 0.14478934, 0.2739394, 0.37842398, 0.41833354, 0.37842398, 0.2739394, 0.14478934, 0.04030476, 0.0003952, 0.04030476, 0.14478934, 0.2739394, 0.37842398, 0.41833354, 0.37842398, 0.2739394, 0.14478934],
+        [0.02839606, 0.09229193, 0.25957347, 0.46634484, 0.63362638, 0.69752225, 0.63362638, 0.46634484, 0.25957347, 0.09229193, 0.02839606, 0.09229193, 0.25957347, 0.46634484, 0.63362638, 0.69752225, 0.63362638, 0.46634484, 0.25957347, 0.09229193, 0.02839606, 0.09229193, 0.25957347, 0.46634484, 0.63362638, 0.69752225, 0.63362638, 0.46634484, 0.25957347, 0.09229193, 0.02839606, 0.09229193, 0.25957347, 0.46634484, 0.63362638, 0.69752225, 0.63362638, 0.46634484, 0.25957347, 0.09229193, 0.02839606, 0.09229193, 0.25957347, 0.46634484, 0.63362638, 0.69752225, 0.63362638, 0.46634484, 0.25957347],
+        [0.08502072, 0.16458633, 0.37289182, 0.63037156, 0.83867705, 0.91824266, 0.83867705, 0.63037156, 0.37289182, 0.16458633, 0.08502072, 0.16458633, 0.37289182, 0.63037156, 0.83867705, 0.91824266, 0.83867705, 0.63037156, 0.37289182, 0.16458633, 0.08502072, 0.16458633, 0.37289182, 0.63037156, 0.83867705, 0.91824266, 0.83867705, 0.63037156, 0.37289182, 0.16458633, 0.08502072, 0.16458633, 0.37289182, 0.63037156, 0.83867705, 0.91824266, 0.83867705, 0.63037156, 0.37289182, 0.16458633, 0.08502072, 0.16458633, 0.37289182, 0.63037156, 0.83867705, 0.91824266, 0.83867705, 0.63037156, 0.37289182],
+        [0.11110029, 0.19597956, 0.41819637, 0.69287145, 0.91508826, 0.99996753, 0.91508826, 0.69287145, 0.41819637, 0.19597956, 0.11110029, 0.19597956, 0.41819637, 0.69287145, 0.91508826, 0.99996753, 0.91508826, 0.69287145, 0.41819637, 0.19597956, 0.11110029, 0.19597956, 0.41819637, 0.69287145, 0.91508826, 0.99996753, 0.91508826, 0.69287145, 0.41819637, 0.19597956, 0.11110029, 0.19597956, 0.41819637, 0.69287145, 0.91508826, 0.99996753, 0.91508826, 0.69287145, 0.41819637, 0.19597956, 0.11110029, 0.19597956, 0.41819637, 0.69287145, 0.91508826, 0.99996753, 0.91508826, 0.69287145, 0.41819637],
+        [0.08310606, 0.16225128, 0.36945613, 0.62557541, 0.83278027, 0.91192548, 0.83278027, 0.62557541, 0.36945613, 0.16225128, 0.08310606, 0.16225128, 0.36945613, 0.62557541, 0.83278027, 0.91192548, 0.83278027, 0.62557541, 0.36945613, 0.16225128, 0.08310606, 0.16225128, 0.36945613, 0.62557541, 0.83278027, 0.91192548, 0.83278027, 0.62557541, 0.36945613, 0.16225128, 0.08310606, 0.16225128, 0.36945613, 0.62557541, 0.83278027, 0.91192548, 0.83278027, 0.62557541, 0.36945613, 0.16225128, 0.08310606, 0.16225128, 0.36945613, 0.62557541, 0.83278027, 0.91192548, 0.83278027, 0.62557541, 0.36945613],
+        [0.02635339, 0.08946317, 0.25468671, 0.45891423, 0.62413777, 0.68724754, 0.62413777, 0.45891423, 0.25468671, 0.08946317, 0.02635339, 0.08946317, 0.25468671, 0.45891423, 0.62413777, 0.68724754, 0.62413777, 0.45891423, 0.25468671, 0.08946317, 0.02635339, 0.08946317, 0.25468671, 0.45891423, 0.62413777, 0.68724754, 0.62413777, 0.45891423, 0.25468671, 0.08946317, 0.02635339, 0.08946317, 0.25468671, 0.45891423, 0.62413777, 0.68724754, 0.62413777, 0.45891423, 0.25468671, 0.08946317, 0.02635339, 0.08946317, 0.25468671, 0.45891423, 0.62413777, 0.68724754, 0.62413777, 0.45891423, 0.25468671],
+        [0.00079085, 0.03965096, 0.14138802, 0.26714195, 0.36887902, 0.40773912, 0.36887902, 0.26714195, 0.14138802, 0.03965096, 0.00079085, 0.03965096, 0.14138802, 0.26714195, 0.36887902, 0.40773912, 0.36887902, 0.26714195, 0.14138802, 0.03965096, 0.00079085, 0.03965096, 0.14138802, 0.26714195, 0.36887902, 0.40773912, 0.36887902, 0.26714195, 0.14138802, 0.03965096, 0.00079085, 0.03965096, 0.14138802, 0.26714195, 0.36887902, 0.40773912, 0.36887902, 0.26714195, 0.14138802, 0.03965096, 0.00079085, 0.03965096, 0.14138802, 0.26714195, 0.36887902, 0.40773912, 0.36887902, 0.26714195, 0.14138802],
+        [0.06672261, 0.07627509, 0.1012838, 0.13219626, 0.15720497, 0.16675745, 0.15720497, 0.13219626, 0.1012838, 0.07627509, 0.06672261, 0.07627509, 0.1012838, 0.13219626, 0.15720497, 0.16675745, 0.15720497, 0.13219626, 0.1012838, 0.07627509, 0.06672261, 0.07627509, 0.1012838, 0.13219626, 0.15720497, 0.16675745, 0.15720497, 0.13219626, 0.1012838, 0.07627509, 0.06672261, 0.07627509, 0.1012838, 0.13219626, 0.15720497, 0.16675745, 0.15720497, 0.13219626, 0.1012838, 0.07627509, 0.06672261, 0.07627509, 0.1012838, 0.13219626, 0.15720497, 0.16675745, 0.15720497, 0.13219626, 0.1012838],
+        [0.24826057, 0.22726209, 0.17228736, 0.10433485, 0.04936012, 0.02836164, 0.04936012, 0.10433485, 0.17228736, 0.22726209, 0.24826057, 0.22726209, 0.17228736, 0.10433485, 0.04936012, 0.02836164, 0.04936012, 0.10433485, 0.17228736, 0.22726209, 0.24826057, 0.22726209, 0.17228736, 0.10433485, 0.04936012, 0.02836164, 0.04936012, 0.10433485, 0.17228736, 0.22726209, 0.24826057, 0.22726209, 0.17228736, 0.10433485, 0.04936012, 0.02836164, 0.04936012, 0.10433485, 0.17228736, 0.22726209, 0.24826057, 0.22726209, 0.17228736, 0.10433485, 0.04936012, 0.02836164, 0.04936012, 0.10433485, 0.17228736],
+        [0.5137186, 0.46490229, 0.33709951, 0.1791266, 0.05132382, 0.0025075, 0.05132382, 0.1791266, 0.33709951, 0.46490229, 0.5137186, 0.46490229, 0.33709951, 0.1791266, 0.05132382, 0.0025075, 0.05132382, 0.1791266, 0.33709951, 0.46490229, 0.5137186, 0.46490229, 0.33709951, 0.1791266, 0.05132382, 0.0025075, 0.05132382, 0.1791266, 0.33709951, 0.46490229, 0.5137186, 0.46490229, 0.33709951, 0.1791266, 0.05132382, 0.0025075, 0.05132382, 0.1791266, 0.33709951, 0.46490229, 0.5137186, 0.46490229, 0.33709951, 0.1791266, 0.05132382, 0.0025075, 0.05132382, 0.1791266, 0.33709951],
+        [0.7837953, 0.71351498, 0.52951871, 0.30208681, 0.11809054, 0.04781022, 0.11809054, 0.30208681, 0.52951871, 0.71351498, 0.7837953, 0.71351498, 0.52951871, 0.30208681, 0.11809054, 0.04781022, 0.11809054, 0.30208681, 0.52951871, 0.71351498, 0.7837953, 0.71351498, 0.52951871, 0.30208681, 0.11809054, 0.04781022, 0.11809054, 0.30208681, 0.52951871, 0.71351498, 0.7837953, 0.71351498, 0.52951871, 0.30208681, 0.11809054, 0.04781022, 0.11809054, 0.30208681, 0.52951871, 0.71351498, 0.7837953, 0.71351498, 0.52951871, 0.30208681, 0.11809054, 0.04781022, 0.11809054, 0.30208681, 0.52951871],
+        [0.96443577, 0.88183898, 0.66559779, 0.39830898, 0.18206779, 0.099471, 0.18206779, 0.39830898, 0.66559779, 0.88183898, 0.96443577, 0.88183898, 0.66559779, 0.39830898, 0.18206779, 0.099471, 0.18206779, 0.39830898, 0.66559779, 0.88183898, 0.96443577, 0.88183898, 0.66559779, 0.39830898, 0.18206779, 0.099471, 0.18206779, 0.39830898, 0.66559779, 0.88183898, 0.96443577, 0.88183898, 0.66559779, 0.39830898, 0.18206779, 0.099471, 0.18206779, 0.39830898, 0.66559779, 0.88183898, 0.96443577, 0.88183898, 0.66559779, 0.39830898, 0.18206779, 0.099471, 0.18206779, 0.39830898, 0.66559779],
+        [0.98874214, 0.90457952, 0.68423892, 0.41188296, 0.19154236, 0.10737974, 0.19154236, 0.41188296, 0.68423892, 0.90457952, 0.98874214, 0.90457952, 0.68423892, 0.41188296, 0.19154236, 0.10737974, 0.19154236, 0.41188296, 0.68423892, 0.90457952, 0.98874214, 0.90457952, 0.68423892, 0.41188296, 0.19154236, 0.10737974, 0.19154236, 0.41188296, 0.68423892, 0.90457952, 0.98874214, 0.90457952, 0.68423892, 0.41188296, 0.19154236, 0.10737974, 0.19154236, 0.41188296, 0.68423892, 0.90457952, 0.98874214, 0.90457952, 0.68423892, 0.41188296, 0.19154236, 0.10737974, 0.19154236, 0.41188296, 0.68423892],
+        [0.84753407, 0.77276004, 0.57699911, 0.33502529, 0.13926436, 0.06449033, 0.13926436, 0.33502529, 0.57699911, 0.77276004, 0.84753407, 0.77276004, 0.57699911, 0.33502529, 0.13926436, 0.06449033, 0.13926436, 0.33502529, 0.57699911, 0.77276004, 0.84753407, 0.77276004, 0.57699911, 0.33502529, 0.13926436, 0.06449033, 0.13926436, 0.33502529, 0.57699911, 0.77276004, 0.84753407, 0.77276004, 0.57699911, 0.33502529, 0.13926436, 0.06449033, 0.13926436, 0.33502529, 0.57699911, 0.77276004, 0.84753407, 0.77276004, 0.57699911, 0.33502529, 0.13926436, 0.06449033, 0.13926436, 0.33502529, 0.57699911],
+        [0.59357411, 0.53792112, 0.39221969, 0.21212283, 0.0664214, 0.01076841, 0.0664214, 0.21212283, 0.39221969, 0.53792112, 0.59357411, 0.53792112, 0.39221969, 0.21212283, 0.0664214, 0.01076841, 0.0664214, 0.21212283, 0.39221969, 0.53792112, 0.59357411, 0.53792112, 0.39221969, 0.21212283, 0.0664214, 0.01076841, 0.0664214, 0.21212283, 0.39221969, 0.53792112, 0.59357411, 0.53792112, 0.39221969, 0.21212283, 0.0664214, 0.01076841, 0.0664214, 0.21212283, 0.39221969, 0.53792112, 0.59357411, 0.53792112, 0.39221969, 0.21212283, 0.0664214, 0.01076841, 0.0664214, 0.21212283, 0.39221969],
+        [0.3173818, 0.28809352, 0.2114158, 0.11663693, 0.03995921, 0.01067093, 0.03995921, 0.11663693, 0.2114158, 0.28809352, 0.3173818, 0.28809352, 0.2114158, 0.11663693, 0.03995921, 0.01067093, 0.03995921, 0.11663693, 0.2114158, 0.28809352, 0.3173818, 0.28809352, 0.2114158, 0.11663693, 0.03995921, 0.01067093, 0.03995921, 0.11663693, 0.2114158, 0.28809352, 0.3173818, 0.28809352, 0.2114158, 0.11663693, 0.03995921, 0.01067093, 0.03995921, 0.11663693, 0.2114158, 0.28809352, 0.3173818, 0.28809352, 0.2114158, 0.11663693, 0.03995921, 0.01067093, 0.03995921, 0.11663693, 0.2114158],
+        [0.10650741, 0.10739594, 0.10972214, 0.11259748, 0.11492369, 0.11581222, 0.11492369, 0.11259748, 0.10972214, 0.10739594, 0.10650741, 0.10739594, 0.10972214, 0.11259748, 0.11492369, 0.11581222, 0.11492369, 0.11259748, 0.10972214, 0.10739594, 0.10650741, 0.10739594, 0.10972214, 0.11259748, 0.11492369, 0.11581222, 0.11492369, 0.11259748, 0.10972214, 0.10739594, 0.10650741, 0.10739594, 0.10972214, 0.11259748, 0.11492369, 0.11581222, 0.11492369, 0.11259748, 0.10972214, 0.10739594, 0.10650741, 0.10739594, 0.10972214, 0.11259748, 0.11492369, 0.11581222, 0.11492369, 0.11259748, 0.10972214],
+        [0.00814529, 0.03909499, 0.12012234, 0.22027765, 0.301305, 0.33225469, 0.301305, 0.22027765, 0.12012234, 0.03909499, 0.00814529, 0.03909499, 0.12012234, 0.22027765, 0.301305, 0.33225469, 0.301305, 0.22027765, 0.12012234, 0.03909499, 0.00814529, 0.03909499, 0.12012234, 0.22027765, 0.301305, 0.33225469, 0.301305, 0.22027765, 0.12012234, 0.03909499, 0.00814529, 0.03909499, 0.12012234, 0.22027765, 0.301305, 0.33225469, 0.301305, 0.22027765, 0.12012234, 0.03909499, 0.00814529, 0.03909499, 0.12012234, 0.22027765, 0.301305, 0.33225469, 0.301305, 0.22027765, 0.12012234],
+        [0.01304463, 0.07002714, 0.21920928, 0.40360855, 0.55279069, 0.6097732, 0.55279069, 0.40360855, 0.21920928, 0.07002714, 0.01304463, 0.07002714, 0.21920928, 0.40360855, 0.55279069, 0.6097732, 0.55279069, 0.40360855, 0.21920928, 0.07002714, 0.01304463, 0.07002714, 0.21920928, 0.40360855, 0.55279069, 0.6097732, 0.55279069, 0.40360855, 0.21920928, 0.07002714, 0.01304463, 0.07002714, 0.21920928, 0.40360855, 0.55279069, 0.6097732, 0.55279069, 0.40360855, 0.21920928, 0.07002714, 0.01304463, 0.07002714, 0.21920928, 0.40360855, 0.55279069, 0.6097732, 0.55279069, 0.40360855, 0.21920928],
+        [0.06782157, 0.14342017, 0.34133987, 0.58598206, 0.78390176, 0.85950036, 0.78390176, 0.58598206, 0.34133987, 0.14342017, 0.06782157, 0.14342017, 0.34133987, 0.58598206, 0.78390176, 0.85950036, 0.78390176, 0.58598206, 0.34133987, 0.14342017, 0.06782157, 0.14342017, 0.34133987, 0.58598206, 0.78390176, 0.85950036, 0.78390176, 0.58598206, 0.34133987, 0.14342017, 0.06782157, 0.14342017, 0.34133987, 0.58598206, 0.78390176, 0.85950036, 0.78390176, 0.58598206, 0.34133987, 0.14342017, 0.06782157, 0.14342017, 0.34133987, 0.58598206, 0.78390176, 0.85950036, 0.78390176, 0.58598206, 0.34133987],
+        [0.10847534, 0.19285027, 0.4137467, 0.6867897, 0.90768613, 0.99206106, 0.90768613, 0.6867897, 0.4137467, 0.19285027, 0.10847534, 0.19285027, 0.4137467, 0.6867897, 0.90768613, 0.99206106, 0.90768613, 0.6867897, 0.4137467, 0.19285027, 0.10847534, 0.19285027, 0.4137467, 0.6867897, 0.90768613, 0.99206106, 0.90768613, 0.6867897, 0.4137467, 0.19285027, 0.10847534, 0.19285027, 0.4137467, 0.6867897, 0.90768613, 0.99206106, 0.90768613, 0.6867897, 0.4137467, 0.19285027, 0.10847534, 0.19285027, 0.4137467, 0.6867897, 0.90768613, 0.99206106, 0.90768613, 0.6867897, 0.4137467],
+        [0.09736389, 0.17953308, 0.39465482, 0.66055991, 0.87568164, 0.95785084, 0.87568164, 0.66055991, 0.39465482, 0.17953308, 0.09736389, 0.17953308, 0.39465482, 0.66055991, 0.87568164, 0.95785084, 0.87568164, 0.66055991, 0.39465482, 0.17953308, 0.09736389, 0.17953308, 0.39465482, 0.66055991, 0.87568164, 0.95785084, 0.87568164, 0.66055991, 0.39465482, 0.17953308, 0.09736389, 0.17953308, 0.39465482, 0.66055991, 0.87568164, 0.95785084, 0.87568164, 0.66055991, 0.39465482, 0.17953308, 0.09736389, 0.17953308, 0.39465482, 0.66055991, 0.87568164, 0.95785084, 0.87568164, 0.66055991, 0.39465482],
+        [0.04439803, 0.11366651, 0.29501375, 0.51917127, 0.70051851, 0.76978699, 0.70051851, 0.51917127, 0.29501375, 0.11366651, 0.04439803, 0.11366651, 0.29501375, 0.51917127, 0.70051851, 0.76978699, 0.70051851, 0.51917127, 0.29501375, 0.11366651, 0.04439803, 0.11366651, 0.29501375, 0.51917127, 0.70051851, 0.76978699, 0.70051851, 0.51917127, 0.29501375, 0.11366651, 0.04439803, 0.11366651, 0.29501375, 0.51917127, 0.70051851, 0.76978699, 0.70051851, 0.51917127, 0.29501375, 0.11366651, 0.04439803, 0.11366651, 0.29501375, 0.51917127, 0.70051851, 0.76978699, 0.70051851, 0.51917127, 0.29501375],
+        [0.00148792, 0.04883985, 0.17280881, 0.32604288, 0.45001184, 0.49736377, 0.45001184, 0.32604288, 0.17280881, 0.04883985, 0.00148792, 0.04883985, 0.17280881, 0.32604288, 0.45001184, 0.49736377, 0.45001184, 0.32604288, 0.17280881, 0.04883985, 0.00148792, 0.04883985, 0.17280881, 0.32604288, 0.45001184, 0.49736377, 0.45001184, 0.32604288, 0.17280881, 0.04883985, 0.00148792, 0.04883985, 0.17280881, 0.32604288, 0.45001184, 0.49736377, 0.45001184, 0.32604288, 0.17280881, 0.04883985, 0.00148792, 0.04883985, 0.17280881, 0.32604288, 0.45001184, 0.49736377, 0.45001184, 0.32604288, 0.17280881],
+        [0.03311232, 0.05238447, 0.10283961, 0.16520559, 0.21566073, 0.23493288, 0.21566073, 0.16520559, 0.10283961, 0.05238447, 0.03311232, 0.05238447, 0.10283961, 0.16520559, 0.21566073, 0.23493288, 0.21566073, 0.16520559, 0.10283961, 0.05238447, 0.03311232, 0.05238447, 0.10283961, 0.16520559, 0.21566073, 0.23493288, 0.21566073, 0.16520559, 0.10283961, 0.05238447, 0.03311232, 0.05238447, 0.10283961, 0.16520559, 0.21566073, 0.23493288, 0.21566073, 0.16520559, 0.10283961, 0.05238447, 0.03311232, 0.05238447, 0.10283961, 0.16520559, 0.21566073, 0.23493288, 0.21566073, 0.16520559, 0.10283961],
+        [0.17826196, 0.1669459, 0.13732008, 0.10070055, 0.07107473, 0.05975867, 0.07107473, 0.10070055, 0.13732008, 0.1669459, 0.17826196, 0.1669459, 0.13732008, 0.10070055, 0.07107473, 0.05975867, 0.07107473, 0.10070055, 0.13732008, 0.1669459, 0.17826196, 0.1669459, 0.13732008, 0.10070055, 0.07107473, 0.05975867, 0.07107473, 0.10070055, 0.13732008, 0.1669459, 0.17826196, 0.1669459, 0.13732008, 0.10070055, 0.07107473, 0.05975867, 0.07107473, 0.10070055, 0.13732008, 0.1669459, 0.17826196, 0.1669459, 0.13732008, 0.10070055, 0.07107473, 0.05975867, 0.07107473, 0.10070055, 0.13732008]
+      ]
+    },
+    "unit": "ideal activity",
+    "source": "OUR COMPUTATION: spatial/gridness.py gridness; htm/grid_cells.py hexagonal_rate; geometry from tests/spatial/test_gridness.py reference tests. Score=min(r60,r120)-max(r30,r90,r150); float64 ideal maps, orientation zero.",
+    "type": "OUR-COMPUTATION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "ideal_map_bins",
+    "value": 49,
+    "unit": "bins per side",
+    "source": "OUR COMPUTATION: spatial/gridness.py gridness; htm/grid_cells.py hexagonal_rate; geometry from tests/spatial/test_gridness.py reference tests. Score=min(r60,r120)-max(r30,r90,r150); float64 ideal maps, orientation zero.",
+    "type": "OUR-COMPUTATION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "ideal_scale",
+    "value": 10,
+    "unit": "bins per period",
+    "source": "OUR COMPUTATION: spatial/gridness.py gridness; htm/grid_cells.py hexagonal_rate; geometry from tests/spatial/test_gridness.py reference tests. Score=min(r60,r120)-max(r30,r90,r150); float64 ideal maps, orientation zero.",
+    "type": "OUR-COMPUTATION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "ideal_annulus_inner",
+    "value": 5,
+    "unit": "autocorrelation lag bins",
+    "source": "OUR COMPUTATION: spatial/gridness.py gridness; htm/grid_cells.py hexagonal_rate; geometry from tests/spatial/test_gridness.py reference tests. Score=min(r60,r120)-max(r30,r90,r150); float64 ideal maps, orientation zero.",
+    "type": "OUR-COMPUTATION",
+    "status": "VERIFIED"
+  },
+  {
+    "id": "ideal_annulus_outer",
+    "value": 15,
+    "unit": "autocorrelation lag bins",
+    "source": "OUR COMPUTATION: spatial/gridness.py gridness; htm/grid_cells.py hexagonal_rate; geometry from tests/spatial/test_gridness.py reference tests. Score=min(r60,r120)-max(r30,r90,r150); float64 ideal maps, orientation zero.",
+    "type": "OUR-COMPUTATION",
+    "status": "VERIFIED"
+  }
+]
