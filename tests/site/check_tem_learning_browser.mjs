@@ -123,6 +123,21 @@ try{
    assert.equal(await evaluate('document.querySelector("#paper-audit-link").hidden'),false,`no audit link at ${i}`);
    await waitChartSettled();
    await assertMarksVisible(nativeData[i].kind);
+   if(nativeData[i].kind==='heatmaps'){
+    const hm=await evaluate(`(()=>{const cells=[...document.querySelectorAll('#native-figure-chart .nc-cell')];if(!cells.length)return null;const r=cells[0].getBoundingClientRect();const maxB=Math.max(...cells.map(c=>c.getBoundingClientRect().bottom));const maxR=Math.max(...cells.map(c=>c.getBoundingClientRect().right));return{count:cells.length,w:r.width,h:r.height,maxBottom:maxB,maxRight:maxR}})()`);
+    assert.ok(hm&&hm.count>0,`no heatmap cells at ${i}`);
+    assert.ok(Math.abs(hm.w-hm.h)<1,`heatmap cells not square at ${i}: ${hm.w}x${hm.h}`);
+    assert.ok(hm.maxBottom<900,`heatmap clipped below viewport at ${i}: ${hm.maxBottom}`);
+    assert.ok(hm.maxRight<1440,`heatmap clipped right at ${i}: ${hm.maxRight}`);
+   }
+   if(nativeData[i].kind==='histograms'){
+    const rot=await evaluate(`(()=>{const t=[...document.querySelectorAll('#native-figure-chart text')].find(n=>/rotate\\(-45\\)/.test(n.getAttribute('transform')||''));return t?t.getAttribute('transform'):null})()`);
+    assert.ok(rot&&/rotate\(-45\)/.test(rot),`histogram bin labels not rotated at ${i}: ${rot}`);
+   }
+   if(/percent/i.test(nativeData[i].yLabel||'')){
+    const minTick=await evaluate(`Math.min(...[...document.querySelectorAll('#native-figure-chart .nc-grid text')].map(t=>parseFloat(t.textContent)))`);
+    assert.ok(minTick>=0,`percentage y-axis has negative tick at ${i}: ${minTick}`);
+   }
    // Pause now that the entrance has finished, for a stable capture.
    await evaluate('storyEngine.setPlaying(false)');await delay(150);
    await snap(`native-panel-${i}`);
@@ -139,6 +154,20 @@ try{
    await send('Input.dispatchKeyEvent',{type:'keyDown',key:'h',code:'KeyH'});await delay(100);
   }
   assert.equal(await evaluate('document.querySelector("#paper-highlight-text").hidden'),true,'highlight not cleared');
+  // Semantic highlight: the ring must land on the point the callout text
+  // describes, not a generic index. Panel 11 callout 0 -> last point (24k).
+  await evaluate(`storyEngine.setTarget(storyEngine.keys[11].t);storyEngine.setPlaying(false)`);await settle();
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'h',code:'KeyH'});await delay(100);
+  const ring11=await evaluate(`(()=>{const r=document.querySelector('#native-figure-chart .nc-hl-ring');const d=[...document.querySelectorAll('#native-figure-chart .nc-dot')].pop();return r&&d?{ring:+r.getAttribute('cx'),dot:+d.getAttribute('cx')}:null})()`);
+  assert.ok(ring11,`no highlight ring on panel 11`);
+  assert.ok(Math.abs(ring11.ring-ring11.dot)<1,`panel 11 ring not on last point: ring ${ring11.ring} vs dot ${ring11.dot}`);
+  // Panel 17 callout 0 -> MEC II precession bar (first bar of first series).
+  await evaluate(`storyEngine.setTarget(storyEngine.keys[17].t);storyEngine.setPlaying(false)`);await settle();
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'h',code:'KeyH'});await delay(100);
+  const hl17=await evaluate(`(()=>{const bars=[...document.querySelectorAll('#native-figure-chart .nc-bar')];const b=bars.find(x=>x.classList.contains('nc-hl'));const band=document.querySelector('#native-figure-chart .nc-hl-band');return b&&band?{bar:+b.getAttribute('x'),w:+b.getAttribute('width'),band:+band.getAttribute('x'),isFirst:b===bars[0]}:null})()`);
+  assert.ok(hl17,`no highlighted bar/band on panel 17`);
+  assert.ok(hl17.isFirst,`panel 17 highlight not on MEC II precession (first bar)`);
+  assert.ok(Math.abs(hl17.bar+hl17.w/2-10-hl17.band)<2,`panel 17 band not over highlighted bar: bar ${hl17.bar} w ${hl17.w} band ${hl17.band}`);
   // Theme toggle updates without error.
   await evaluate('document.querySelector("#theme").click()');await delay(100);
   assert.equal(await evaluate('document.documentElement.dataset.theme'),'light');
@@ -151,6 +180,17 @@ try{
   assert.equal(await evaluate('document.querySelector("#native-figure-chart .nc-root").classList.contains("nc-paused")'),true,'chart not paused');
   await evaluate('document.querySelector("#play").click()');await delay(100);
   assert.equal(await evaluate('storyEngine.playing'),true,'engine not resumed');
+  // Paused entry: a chart created while the engine is paused must rest fully
+  // visible (no entrance animation to freeze at opacity 0).
+  await evaluate(`storyEngine.setTarget(storyEngine.keys[11].t);storyEngine.setPlaying(true)`);await settle();
+  await evaluate('storyEngine.setPlaying(false)');await delay(100);
+  assert.equal(await evaluate('storyEngine.playing'),false,'engine not paused before paused-entry');
+  await evaluate(`storyEngine.setTarget(storyEngine.keys[12].t)`);await settle();await delay(150);
+  assert.equal(await evaluate('document.querySelector("#native-figure-chart svg")!==null'),true,'no chart on paused entry');
+  const pausedMarks=await evaluate(`(()=>{const els=[...document.querySelectorAll('#native-figure-chart .nc-bar')];return els.length?{count:els.length,visible:els.filter(n=>parseFloat(getComputedStyle(n).opacity)>.99).length}:null})()`);
+  assert.ok(pausedMarks&&pausedMarks.count>0,'no marks on paused-entry chart');
+  assert.equal(pausedMarks.visible,pausedMarks.count,`paused-entry marks not visible: ${pausedMarks.visible}/${pausedMarks.count}`);
+  await snap('native-paused-entry');
   // Figure toggle relabels Results/Explainer.
   assert.equal(await evaluate('document.querySelector("#figure-toggle").textContent'),'Explainer');
   await evaluate('document.querySelector("#figure-toggle").click()');await delay(100);
@@ -170,7 +210,18 @@ try{
   assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth'),`mobile overflow at ${i}`);
   assert.ok(await evaluate(`(()=>{const p=document.querySelector('.floating').getBoundingClientRect(),n=document.querySelector('.navigation').getBoundingClientRect();return p.bottom<n.top&&p.left>=0&&p.right<=innerWidth})()`),`mobile panel/nav overlap at ${i}`);
  }
+ // Capture panel 11 specifically: enter presenting mode, wait for the correct
+ // active panel, and verify its title is actually visible before the shot.
+ await evaluate('document.querySelector("#presenter-toggle").click()');await delay(100);
+ await evaluate(`storyEngine.setTarget(storyEngine.keys[11].t);storyEngine.setPlaying(false)`);await settle();
+ for(let i=0;i<50;i++){if(await evaluate('storyEngine.active===11'))break;await delay(100);}
+ assert.equal(await evaluate('storyEngine.active'),11,'mobile capture not on panel 11');
+ const mTitle=await evaluate(`(()=>{const t=document.querySelector('#panel-title');const r=t.getBoundingClientRect();return{txt:t.textContent.trim(),visible:r.width>0&&r.height>0&&r.top>=0&&r.bottom<=innerHeight}})()`);
+ assert.ok(mTitle.visible,`panel 11 title not visible on mobile: ${JSON.stringify(mTitle)}`);
+ assert.ok(mTitle.txt.length>0,'panel 11 title empty on mobile');
+ assert.ok(await evaluate(`(()=>{const p=document.querySelector('.floating').getBoundingClientRect(),n=document.querySelector('.navigation').getBoundingClientRect();return p.bottom<n.top})()`),'mobile panel 11 covered by nav');
  await snap('mobile-panel-11');
+ await evaluate('document.querySelector("#presenter-toggle").click()');await delay(100);
  // Reduced motion: world hidden, stills built, renderer idle.
  await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await delay(300);
  assert.equal(await evaluate('document.querySelectorAll("#reduced-story section").length'),count);

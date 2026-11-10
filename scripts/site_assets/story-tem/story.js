@@ -61,6 +61,36 @@ function figureSourceLabel(chapter, entry) {
   const short = FIGURE_SHORT[chapter] || (entry?.source ? entry.source.split(',').pop().trim() : '');
   return entry?.approx ? short + ' · Digitized approximation' : short;
 }
+// Semantic highlight targets per callout, resolved from the chart's own data so
+// a callout always marks the point its text describes (never a generic index).
+// Each entry is a list of {si, ci} targets: si = series/group index, ci = point.
+function highlightSpec(chapter, entry, callout) {
+  const series = entry?.series || [];
+  const last = s => (s?.points?.length || 0) - 1;
+  const byX = (s, x) => (s?.points || []).findIndex(p => String(p.x) === String(x));
+  const byXge = (si, x) => (series[si]?.points || []).map((p, i) => (Number(p.x) >= x ? {si, ci: i} : null)).filter(Boolean);
+  const byName = (name, x) => { const si = series.findIndex(s => s.name === name); return si < 0 ? null : {si, ci: byX(series[si], x)}; };
+  const map = {
+    11: [
+      [{si: 0, ci: last(series[0])}],
+      [{si: 0, ci: last(series[0])}],
+    ],
+    14: [
+      [byName('grid fraction', 'Baseline')],
+      [byName('grid fraction', 'No gain'), byName('grid fraction', 'No sparsity')],
+    ],
+    15: [
+      [{si: 0, ci: byX(series[0], 20)}],
+      byXge(0, 40),
+    ],
+    17: [
+      [byName('MEC II', 'precession')],
+      [byName('MEC III', 'locking')],
+    ],
+  };
+  const spec = map[chapter]?.[callout];
+  return (spec || []).filter(t => t && t.ci != null && t.ci >= 0);
+}
 let chapter = -1;
 let presenting = false;
 let showDetails = false;
@@ -90,7 +120,7 @@ function renderCallout() {
   text.textContent = `${calloutIndex + 1} / ${callouts.length} · ${current.label}`;
   highlightButton.textContent = calloutIndex + 1 === callouts.length ? 'Clear highlight (H)' : 'Next highlight (H)';
   highlightButton.setAttribute('aria-label', calloutIndex + 1 === callouts.length ? 'Clear figure highlight' : 'Show next figure highlight');
-  chartController?.highlight(calloutIndex);
+  chartController?.highlight(highlightSpec(chapter, nativeData?.[chapter], calloutIndex));
 }
 function cycleCallout() {
   const callouts = paperFigures?.[chapter]?.callouts;

@@ -50,7 +50,10 @@ export function errorBarEnds(y, point, domainMin, domainMax) {
   if (!Number.isFinite(y)) throw new RangeError('y must be finite');
   let top = y, bottom = y;
   if (point && point.sd != null) { top = y + point.sd; bottom = y - point.sd; }
-  else if (point && point.low != null && point.high != null) { top = point.high; bottom = point.low; }
+  else {
+    if (point && point.high != null) top = point.high;
+    if (point && point.low != null) bottom = point.low;
+  }
   return {top: clamp(top, domainMin, domainMax), bottom: clamp(bottom, domainMin, domainMax)};
 }
 
@@ -222,7 +225,9 @@ function legend(svg, series, x0, y0) {
 function seriesColorVar(color) { return color === 'blue' ? 'var(--inh)' : 'var(--accent-text)'; }
 
 function animateIn(ctx, node, cls, delayMs) {
-  if (ctx.reducedMotion) return;
+  // A chart created while paused must rest fully visible: skip the entrance
+  // animation classes so marks are not frozen at their invisible start state.
+  if (ctx.reducedMotion || !ctx.playing) return;
   node.classList.add(cls);
   node.style.animationDelay = `${delayMs}ms`;
 }
@@ -244,7 +249,8 @@ function lineChart(ctx, entry) {
     const {top, bottom} = errorBarEnds(p.y, p, -Infinity, Infinity);
     return [p.y, top, bottom];
   })).flat();
-  const yLo = Math.min(0, ...ys), yHi = Math.max(0, ...ys);
+  const isPct = /percent/i.test(entry.yLabel || '');
+  const yLo = isPct ? 0 : Math.min(0, ...ys), yHi = isPct ? 100 : Math.max(0, ...ys);
   const pad = (yHi - yLo) * 0.08 || 1;
   const yScale = linearScale(yLo - pad, yHi + pad, y1, y0);
   yGrid(svg, yScale, yLo - pad, yHi + pad, x0, x1);
@@ -274,20 +280,20 @@ function lineChart(ctx, entry) {
         el('line', {x1: px[i] - 4, x2: px[i] + 4, y1: yScale(bottom), y2: yScale(bottom), class: `nc-ebline nc-${s.color}`}, eb);
         animateIn(ctx, eb, 'nc-fade', 400 + i * 60);
       }
-      const c = el('circle', {cx: px[i], cy: py[i], r: 4, class: `nc-dot nc-${s.color} nc-fade`}, plot);
+      const c = el('circle', {cx: px[i], cy: py[i], r: 4, class: `nc-dot nc-${s.color}`}, plot);
       animateIn(ctx, c, 'nc-fade', 300 + i * 60);
       bindTip(ctx, c, [s.name, `${typeof p.x === 'number' ? formatValue(p.x) : p.x} / ${formatValue(p.y, entry.yLabel)}`, entry.provenance]);
-      ctx.highlightEls.push({si, i, els: [c, path]});
+      ctx.highlightEls.push({si, ci: i, els: [c, path]});
     });
   });
-  ctx.highlight = idx => {
+  // spec: array of {si, ci} point targets (semantic, resolved by the caller).
+  ctx.highlight = spec => {
     hl.replaceChildren();
     ctx.highlightEls.forEach(h => h.els.forEach(n => n.classList.remove('nc-hl')));
-    if (idx == null || idx < 0) return;
-    const h = ctx.highlightEls[idx];
-    if (!h) return;
-    h.els.forEach(n => n.classList.add('nc-hl'));
-    const [cx, cy] = [h.els[0].getAttribute('cx'), h.els[0].getAttribute('cy')];
+    const hits = ctx.highlightEls.filter(h => (spec || []).some(t => t.si === h.si && t.ci === h.ci));
+    hits.forEach(h => h.els.forEach(n => n.classList.add('nc-hl')));
+    if (!hits.length) return;
+    const [cx, cy] = [hits[0].els[0].getAttribute('cx'), hits[0].els[0].getAttribute('cy')];
     el('circle', {cx, cy, r: 9, class: 'nc-hl-ring'}, hl);
   };
 }
@@ -303,7 +309,8 @@ function barsChart(ctx, entry) {
     const {top, bottom} = errorBarEnds(p.y, p, -Infinity, Infinity);
     return [p.y, top, bottom];
   })).flat();
-  const yLo = Math.min(0, ...ys), yHi = Math.max(0, ...ys);
+  const isPct = /percent/i.test(entry.yLabel || '');
+  const yLo = isPct ? 0 : Math.min(0, ...ys), yHi = isPct ? 100 : Math.max(0, ...ys);
   const pad = (yHi - yLo) * 0.08 || 1;
   const yScale = linearScale(yLo - pad, yHi + pad, y1, y0);
   yGrid(svg, yScale, yLo - pad, yHi + pad, x0, x1);
@@ -321,7 +328,7 @@ function barsChart(ctx, entry) {
         x: cx, width: bw,
         y: yScale(Math.max(vTop, yLo - pad)),
         height: Math.max(0, Math.abs(yScale(vTop) - yScale(vBot))),
-        class: `nc-bar nc-${s.color} nc-grow`,
+        class: `nc-bar nc-${s.color}`,
       }, plot);
       animateIn(ctx, rect, 'nc-grow', ci * 80 + si * 60);
       const {top, bottom} = errorBarEnds(p.y, p, yLo - pad, yHi + pad);
@@ -329,17 +336,17 @@ function barsChart(ctx, entry) {
         el('line', {x1: cx + bw / 2, x2: cx + bw / 2, y1: yScale(top), y2: yScale(bottom), class: `nc-ebline nc-${s.color}`}, plot);
       }
       bindTip(ctx, rect, [s.name, `${p.x}: ${formatValue(p.y, entry.yLabel)}`, entry.provenance]);
-      ctx.highlightEls.push({ci, els: [rect]});
+      ctx.highlightEls.push({si, ci, els: [rect]});
     });
   });
-  ctx.highlight = idx => {
+  // spec: array of {si, ci} bar targets (semantic, resolved by the caller).
+  ctx.highlight = spec => {
     hl.replaceChildren();
     ctx.highlightEls.forEach(h => h.els.forEach(e => e.classList.remove('nc-hl')));
-    if (idx == null || idx < 0) return;
-    const h = ctx.highlightEls.filter(e => e.ci === idx);
-    h.forEach(e => e.els.forEach(e2 => e2.classList.add('nc-hl')));
-    if (!h.length) return;
-    const first = h[0].els[0];
+    const hits = ctx.highlightEls.filter(h => (spec || []).some(t => t.si === h.si && t.ci === h.ci));
+    hits.forEach(h => h.els.forEach(e => e.classList.add('nc-hl')));
+    if (!hits.length) return;
+    const first = hits[0].els[0];
     const cx = Number(first.getAttribute('x')) + Number(first.getAttribute('width')) / 2;
     el('rect', {x: cx - 10, y: y0 - 4, width: 20, height: y1 - y0 + 8, class: 'nc-hl-band'}, hl);
   };
@@ -357,7 +364,7 @@ function histogramsChart(ctx, entry) {
   entry.series.forEach((s, si) => {
     const x0 = M.left + si * (cw + gap);
     const x1 = x0 + cw;
-    const g = el('g', {class: 'nc-panel nc-fade'}, plot);
+    const g = el('g', {class: 'nc-panel'}, plot);
     animateIn(ctx, g, 'nc-fade', si * 150);
     const cats = s.points.map(p => String(p.x));
     const xScale = linearScale(0, cats.length, x0, x1);
@@ -374,10 +381,13 @@ function histogramsChart(ctx, entry) {
       el('line', {x1: x0, x2: x1, y1: y, y2: y, class: 'nc-rule'}, g);
       text(g, x0 - 6, y + 4, formatValue(t), 'nc-tick', 'end');
     }
-    const skip = Math.max(1, Math.ceil(cats.length / 6));
+    // Rotate sparse bin labels so long ranges (e.g. "0-0.74") never collide;
+    // the full bin boundary stays in the bar tooltip.
+    const skip = Math.max(1, Math.ceil((cats.length * 56) / Math.max(1, x1 - x0)));
     cats.forEach((lab, i) => {
       if (i % skip !== 0 && i !== cats.length - 1) return;
-      text(g, (xScale(i) + xScale(i + 1)) / 2, y1 + 18, lab, 'nc-tick');
+      const t = text(g, 0, 0, lab, 'nc-tick', 'end');
+      t.setAttribute('transform', `translate(${(xScale(i) + xScale(i + 1)) / 2} ${y1 + 14}) rotate(-45)`);
     });
     text(g, (x0 + x1) / 2, y0 - 8, s.name, 'nc-panel-title');
     s.points.forEach((p, i) => {
@@ -387,7 +397,7 @@ function histogramsChart(ctx, entry) {
         x: cx, width: bw,
         y: yScale(Math.max(vTop, yLo - pad)),
         height: Math.max(0, Math.abs(yScale(vTop) - yScale(vBot))),
-        class: `nc-bar nc-${s.color} nc-grow`,
+        class: `nc-bar nc-${s.color}`,
       }, g);
       animateIn(ctx, rect, 'nc-grow', si * 150 + i * 60);
       const {top, bottom} = errorBarEnds(p.y, p, yLo - pad, yHi + pad);
@@ -399,13 +409,12 @@ function histogramsChart(ctx, entry) {
     ctx.highlightEls.push({els: [g]});
   });
   axisTitles(svg, entry, M.left, W - M.right, y0, y1);
-  ctx.highlight = idx => {
+  // spec: array of {si} panel targets (semantic, resolved by the caller).
+  ctx.highlight = spec => {
     hl.replaceChildren();
     ctx.highlightEls.forEach(h => h.els.forEach(e => e.classList.remove('nc-hl')));
-    if (idx == null || idx < 0) return;
-    const h = ctx.highlightEls[idx];
-    if (!h) return;
-    h.els.forEach(e => e.classList.add('nc-hl'));
+    const hits = ctx.highlightEls.filter((h, si) => (spec || []).some(t => t.si === si));
+    hits.forEach(h => h.els.forEach(e => e.classList.add('nc-hl')));
   };
 }
 
@@ -416,11 +425,19 @@ function heatmapsChart(ctx, entry) {
   const groups = entry.groups;
   const mapRows = groups[0].maps[0].values.length;
   const totalCols = groups[0].maps.reduce((a, m) => a + m.values[0].length, 0);
-  const cellH = 18, cellGap = 3, mapGap = 24, rowGap = 30;
-  const y0 = M.top + 16;
-  const groupH = mapRows * (cellH + cellGap) - cellGap + rowGap;
-  const y1 = y0 + groups.length * groupH - rowGap;
-  const cellW = (x1 - x0 - (groups[0].maps.length - 1) * mapGap) / totalCols;
+  const mapGap = 24, rowGap = 30, cellGap = 1;
+  // Square cells sized to fit every group and map inside the viewBox: the cell
+  // is the smaller of the width- and height-derived sizes, so 24x24 maps never
+  // distort into strips and no group is clipped below the plot area.
+  const availW = x1 - x0 - (groups[0].maps.length - 1) * mapGap;
+  const availH = H - M.bottom - M.top - 16 - (groups.length - 1) * rowGap;
+  const cell = Math.max(1, Math.min(availW / (totalCols + (totalCols - 1) * cellGap), availH / (mapRows * groups.length + (mapRows * groups.length - 1) * cellGap)));
+  const mapW = m => m.values[0].length * cell + (m.values[0].length - 1) * cellGap;
+  const groupH = mapRows * cell + (mapRows - 1) * cellGap;
+  const contentW = groups[0].maps.reduce((a, m) => a + mapW(m), 0) + (groups[0].maps.length - 1) * mapGap;
+  const contentH = groups.length * groupH + (groups.length - 1) * rowGap;
+  const mx0 = x0 + Math.max(0, (x1 - x0 - contentW) / 2);
+  const y0 = M.top + 16 + Math.max(0, (availH - contentH) / 2);
   // Legend ramp: accent at full activity fading to transparent at zero.
   const defs = el('defs', {}, svg);
   const grad = el('linearGradient', {id: `nc-ramp-${uid}`, x1: 0, y1: 0, x2: 0, y2: 1}, defs);
@@ -429,18 +446,18 @@ function heatmapsChart(ctx, entry) {
   const hl = el('g', {class: 'nc-highlight'}, svg);
   ctx.highlightEls = [];
   groups.forEach((g, gi) => {
-    const gy = y0 + gi * groupH;
+    const gy = y0 + gi * (groupH + rowGap);
     const gEls = [];
     text(svg, x0 - 10, gy + groupH / 2, g.name, 'nc-group-label', 'end');
-    let mx = x0;
+    let mx = mx0;
     g.maps.forEach((m, mi) => {
       text(svg, mx, gy - 5, m.label, 'nc-map-label', 'start');
       m.values.forEach((row, ri) => {
         row.forEach((v, ci) => {
           const rect = el('rect', {
-            x: mx + ci * cellW + 1, y: gy + ri * (cellH + cellGap),
-            width: cellW - 2, height: cellH,
-            class: 'nc-cell nc-fade',
+            x: mx + ci * (cell + cellGap), y: gy + ri * (cell + cellGap),
+            width: cell, height: cell,
+            class: 'nc-cell',
             'fill-opacity': String(clamp(v, 0, 1)),
           }, plot);
           animateIn(ctx, rect, 'nc-fade', gi * 120 + mi * 80 + ri * 30);
@@ -448,24 +465,23 @@ function heatmapsChart(ctx, entry) {
           gEls.push(rect);
         });
       });
-      mx += m.values[0].length * cellW + mapGap;
+      mx += mapW(m) + mapGap;
     });
     ctx.highlightEls.push({els: gEls});
   });
   // Legend: normalized activity ramp with 0 and 1 endpoints.
-  const lx = x1 + 16, ly = y0, lh = Math.min(y1 - y0, 160);
+  const lx = x1 + 16, ly = y0, lh = Math.min(contentH, 160);
   el('rect', {x: lx, y: ly, width: 14, height: lh, fill: `url(#nc-ramp-${uid})`, class: 'nc-legend-bar'}, svg);
   text(svg, lx + 22, ly + 6, '1', 'nc-tick', 'start');
   text(svg, lx + 22, ly + lh, '0', 'nc-tick', 'start');
   const lt = text(svg, 0, 0, entry.yLabel || 'normalized activity', 'nc-axis');
   lt.setAttribute('transform', `translate(${lx - 26} ${ly + lh / 2}) rotate(-90)`);
-  ctx.highlight = idx => {
+  // spec: array of {si} group targets (semantic, resolved by the caller).
+  ctx.highlight = spec => {
     hl.replaceChildren();
     ctx.highlightEls.forEach(h => h.els.forEach(e => e.classList.remove('nc-hl')));
-    if (idx == null || idx < 0) return;
-    const h = ctx.highlightEls[idx];
-    if (!h) return;
-    h.els.forEach(e => e.classList.add('nc-hl'));
+    const hits = ctx.highlightEls.filter((h, si) => (spec || []).some(t => t.si === si));
+    hits.forEach(h => h.els.forEach(e => e.classList.add('nc-hl')));
   };
 }
 
@@ -485,7 +501,7 @@ export function renderNativeChart(container, entry, {playing = true, reducedMoti
   tooltip.hidden = true;
   root.append(svg, tooltip);
   container.appendChild(root);
-  const ctx = {svg, plot, tooltip, root, reducedMotion, highlight: () => {}};
+  const ctx = {svg, plot, tooltip, root, reducedMotion, playing, highlight: () => {}};
   RENDERERS[data.kind](ctx, data);
   let isPlaying = playing;
   const applyPlay = () => root.classList.toggle('nc-paused', !isPlaying);

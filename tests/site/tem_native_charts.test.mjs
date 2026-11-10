@@ -49,6 +49,22 @@ test('errorBarEnds uses sd or low/high and clips to the domain', () => {
   assert.throws(() => errorBarEnds(NaN, {}, 0, 1), RangeError);
 });
 
+test('errorBarEnds accepts a high-only bound without inventing a lower bound', () => {
+  // high alone: cap above the point, lower bound stays at the point itself.
+  assert.deepEqual(errorBarEnds(15.7, {high: 33.3}, 0, 100), {top: 33.3, bottom: 15.7});
+  // low alone: floor below the point, upper bound stays at the point itself.
+  assert.deepEqual(errorBarEnds(15.7, {low: 2.0}, 0, 100), {top: 15.7, bottom: 2.0});
+  // A high-only bound that clips at the domain ceiling still keeps the point as the floor.
+  assert.deepEqual(errorBarEnds(90, {high: 120}, 0, 100), {top: 100, bottom: 90});
+  // A low-only bound that clips at the domain floor still keeps the point as the ceiling.
+  assert.deepEqual(errorBarEnds(10, {low: -5}, 0, 100), {top: 10, bottom: 0});
+});
+
+test('errorBarEnds returns a zero-length bar when no bound is present', () => {
+  assert.deepEqual(errorBarEnds(42, {}, 0, 100), {top: 42, bottom: 42});
+  assert.deepEqual(errorBarEnds(42, {sd: 0}, 0, 100), {top: 42, bottom: 42});
+});
+
 test('validateEntry accepts a minimal line entry and returns it unchanged', () => {
   const entry = {
     kind: 'line', title: 't', source: 's', provenance: 'p', xLabel: 'x', yLabel: 'y',
