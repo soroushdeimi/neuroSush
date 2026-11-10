@@ -382,7 +382,7 @@ def _open(name):
 
 
 def _is_blue(p):
-    r, g, b = p
+    r, _, b = p
     return b > 120 and b - r > 50
 
 
@@ -451,7 +451,7 @@ def _fig11_line():
     iters = [0, 4000, 8000, 12000, 16000, 20000, 24000]
     facts = _load_facts()
     points = []
-    for x, it in zip(xs, iters):
+    for x, it in zip(xs, iters, strict=True):
         line = [y for y in range(49, 349) if _is_line(px[x, y])]
         yb = sum(line) / len(line)
         val = (y0 - yb) / (y0 - y100) * 100
@@ -480,12 +480,14 @@ def _fig11_line():
         "xLabel": "training iterations",
         "yLabel": "percent of MEC II units",
         "series": [{"name": "grid fraction", "color": "blue", "points": points}],
-        "notes": "Endpoint (24,000) mean/SD are exact from Table 2; other points are pixel-digitized.",
+        "notes": (
+            "Endpoint (24,000) mean/SD are exact from Table 2; other points are pixel-digitized."
+        ),
     }
 
 
 def _is_line(p):
-    r, g, b = p
+    r, _, b = p
     return b > 90 and b - r > 40 and r < 120
 
 
@@ -507,7 +509,7 @@ def _fig12_histograms():
         "6.70-7.45",
     ]
     series = []
-    for (x0, x1, yb, ymax), name in zip(rects, groups):
+    for (x0, x1, yb, ymax), name in zip(rects, groups, strict=True):
         runs = _bar_runs(px, x0, x1, 58, yb, "blue")
         w = (x1 - x0) / 10
         vals = [0.0] * 10
@@ -649,7 +651,7 @@ def _fig15_bars():
     centers = [260, 424, 589, 753, 918]
     neurons = [10, 20, 40, 60, 80]
     points = []
-    for cx, n in zip(centers, neurons):
+    for cx, n in zip(centers, neurons, strict=True):
         blues = [y for y in range(65, 500) for x in range(cx - 25, cx + 25) if _is_blue(px[x, y])]
         if not blues:
             # no colored bar detected; record the detected baseline, not an invented zero
