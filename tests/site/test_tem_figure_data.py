@@ -137,3 +137,27 @@ def test_missing_source_raises_clear_error(tmp_path, monkeypatch):
     monkeypatch.setattr(mod, "FIG_DIR", tmp_path)
     with pytest.raises(FileNotFoundError, match="missing source figure"):
         mod._open("grid-emergence.png")
+
+
+def test_png_decoder_reads_all_source_figures():
+    # the stdlib decoder must reproduce the real source PNGs (size + valid RGB)
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("digitize_tem_figures", SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    expected = {
+        "grid-emergence.png": (645, 435),
+        "ca1-theta.png": (1500, 365),
+        "remapping.png": (2105, 475),
+        "predictive-mec-iii.png": (995, 535),
+        "sensory-ambiguity.png": (1045, 645),
+        "phase-precession-locking.png": (570, 275),
+        "ablations.png": (1125, 900),
+    }
+    for name, size in expected.items():
+        img = mod._open(name)
+        assert img.size == size, name
+        w, h = size
+        for x, y in ((0, 0), (w // 2, h // 2), (w - 1, h - 1), (w // 3, h // 4)):
+            r, g, b = img[x, y]
+            assert all(0 <= c <= 255 for c in (r, g, b)), (name, x, y)

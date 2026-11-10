@@ -1,25 +1,372 @@
 """Digitize published TEM figure crops for themed charts."""
-import json
-import sys
-from pathlib import Path
 
-import numpy as np
-import matplotlib
-from PIL import Image
+import json
+import struct
+import sys
+import zlib
+from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 FIG_DIR = SCRIPTS / "site_assets" / "story-tem" / "paper-figures"
 FACTS_PATH = SCRIPTS / "site_assets" / "story-tem" / "facts.json"
 OUT_PATH = FIG_DIR / "native-data.json"
 
-# jet lookup table for inverting heatmap colors to 0..1
-_JET_LUT = (matplotlib.colormaps["jet"](np.linspace(0, 1, 256))[:, :3] * 255).astype(int)
+# jet lookup table for inverting heatmap colors to 0..1.
+# Frozen from matplotlib.colormaps["jet"] at 256 stops (RGB, 0..255) so the
+# digitizer stays stdlib-only while reproducing the exact original values.
+_JET_LUT = (
+    (0, 0, 127),
+    (0, 0, 132),
+    (0, 0, 136),
+    (0, 0, 141),
+    (0, 0, 145),
+    (0, 0, 150),
+    (0, 0, 154),
+    (0, 0, 159),
+    (0, 0, 163),
+    (0, 0, 168),
+    (0, 0, 172),
+    (0, 0, 177),
+    (0, 0, 182),
+    (0, 0, 186),
+    (0, 0, 191),
+    (0, 0, 195),
+    (0, 0, 200),
+    (0, 0, 204),
+    (0, 0, 209),
+    (0, 0, 213),
+    (0, 0, 218),
+    (0, 0, 222),
+    (0, 0, 227),
+    (0, 0, 232),
+    (0, 0, 236),
+    (0, 0, 241),
+    (0, 0, 245),
+    (0, 0, 250),
+    (0, 0, 254),
+    (0, 0, 255),
+    (0, 0, 255),
+    (0, 0, 255),
+    (0, 0, 255),
+    (0, 4, 255),
+    (0, 8, 255),
+    (0, 12, 255),
+    (0, 16, 255),
+    (0, 20, 255),
+    (0, 24, 255),
+    (0, 28, 255),
+    (0, 32, 255),
+    (0, 36, 255),
+    (0, 40, 255),
+    (0, 44, 255),
+    (0, 48, 255),
+    (0, 52, 255),
+    (0, 56, 255),
+    (0, 60, 255),
+    (0, 64, 255),
+    (0, 68, 255),
+    (0, 72, 255),
+    (0, 76, 255),
+    (0, 80, 255),
+    (0, 84, 255),
+    (0, 88, 255),
+    (0, 92, 255),
+    (0, 96, 255),
+    (0, 100, 255),
+    (0, 104, 255),
+    (0, 108, 255),
+    (0, 112, 255),
+    (0, 116, 255),
+    (0, 120, 255),
+    (0, 124, 255),
+    (0, 128, 255),
+    (0, 132, 255),
+    (0, 136, 255),
+    (0, 140, 255),
+    (0, 144, 255),
+    (0, 148, 255),
+    (0, 152, 255),
+    (0, 156, 255),
+    (0, 160, 255),
+    (0, 164, 255),
+    (0, 168, 255),
+    (0, 172, 255),
+    (0, 176, 255),
+    (0, 180, 255),
+    (0, 184, 255),
+    (0, 188, 255),
+    (0, 192, 255),
+    (0, 196, 255),
+    (0, 200, 255),
+    (0, 204, 255),
+    (0, 208, 255),
+    (0, 212, 255),
+    (0, 216, 255),
+    (0, 220, 254),
+    (0, 224, 250),
+    (0, 228, 247),
+    (2, 232, 244),
+    (5, 236, 241),
+    (8, 240, 237),
+    (12, 244, 234),
+    (15, 248, 231),
+    (18, 252, 228),
+    (21, 255, 225),
+    (24, 255, 221),
+    (28, 255, 218),
+    (31, 255, 215),
+    (34, 255, 212),
+    (37, 255, 208),
+    (41, 255, 205),
+    (44, 255, 202),
+    (47, 255, 199),
+    (50, 255, 195),
+    (54, 255, 192),
+    (57, 255, 189),
+    (60, 255, 186),
+    (63, 255, 183),
+    (66, 255, 179),
+    (70, 255, 176),
+    (73, 255, 173),
+    (76, 255, 170),
+    (79, 255, 166),
+    (83, 255, 163),
+    (86, 255, 160),
+    (89, 255, 157),
+    (92, 255, 154),
+    (95, 255, 150),
+    (99, 255, 147),
+    (102, 255, 144),
+    (105, 255, 141),
+    (108, 255, 137),
+    (112, 255, 134),
+    (115, 255, 131),
+    (118, 255, 128),
+    (121, 255, 125),
+    (124, 255, 121),
+    (128, 255, 118),
+    (131, 255, 115),
+    (134, 255, 112),
+    (137, 255, 108),
+    (141, 255, 105),
+    (144, 255, 102),
+    (147, 255, 99),
+    (150, 255, 95),
+    (154, 255, 92),
+    (157, 255, 89),
+    (160, 255, 86),
+    (163, 255, 83),
+    (166, 255, 79),
+    (170, 255, 76),
+    (173, 255, 73),
+    (176, 255, 70),
+    (179, 255, 66),
+    (183, 255, 63),
+    (186, 255, 60),
+    (189, 255, 57),
+    (192, 255, 54),
+    (195, 255, 50),
+    (199, 255, 47),
+    (202, 255, 44),
+    (205, 255, 41),
+    (208, 255, 37),
+    (212, 255, 34),
+    (215, 255, 31),
+    (218, 255, 28),
+    (221, 255, 24),
+    (224, 255, 21),
+    (228, 255, 18),
+    (231, 255, 15),
+    (234, 255, 12),
+    (237, 255, 8),
+    (241, 252, 5),
+    (244, 248, 2),
+    (247, 244, 0),
+    (250, 240, 0),
+    (254, 237, 0),
+    (255, 233, 0),
+    (255, 229, 0),
+    (255, 226, 0),
+    (255, 222, 0),
+    (255, 218, 0),
+    (255, 215, 0),
+    (255, 211, 0),
+    (255, 207, 0),
+    (255, 203, 0),
+    (255, 200, 0),
+    (255, 196, 0),
+    (255, 192, 0),
+    (255, 189, 0),
+    (255, 185, 0),
+    (255, 181, 0),
+    (255, 177, 0),
+    (255, 174, 0),
+    (255, 170, 0),
+    (255, 166, 0),
+    (255, 163, 0),
+    (255, 159, 0),
+    (255, 155, 0),
+    (255, 152, 0),
+    (255, 148, 0),
+    (255, 144, 0),
+    (255, 140, 0),
+    (255, 137, 0),
+    (255, 133, 0),
+    (255, 129, 0),
+    (255, 126, 0),
+    (255, 122, 0),
+    (255, 118, 0),
+    (255, 115, 0),
+    (255, 111, 0),
+    (255, 107, 0),
+    (255, 103, 0),
+    (255, 100, 0),
+    (255, 96, 0),
+    (255, 92, 0),
+    (255, 89, 0),
+    (255, 85, 0),
+    (255, 81, 0),
+    (255, 77, 0),
+    (255, 74, 0),
+    (255, 70, 0),
+    (255, 66, 0),
+    (255, 63, 0),
+    (255, 59, 0),
+    (255, 55, 0),
+    (255, 52, 0),
+    (255, 48, 0),
+    (255, 44, 0),
+    (255, 40, 0),
+    (255, 37, 0),
+    (255, 33, 0),
+    (255, 29, 0),
+    (255, 26, 0),
+    (255, 22, 0),
+    (254, 18, 0),
+    (250, 15, 0),
+    (245, 11, 0),
+    (241, 7, 0),
+    (236, 3, 0),
+    (232, 0, 0),
+    (227, 0, 0),
+    (222, 0, 0),
+    (218, 0, 0),
+    (213, 0, 0),
+    (209, 0, 0),
+    (204, 0, 0),
+    (200, 0, 0),
+    (195, 0, 0),
+    (191, 0, 0),
+    (186, 0, 0),
+    (182, 0, 0),
+    (177, 0, 0),
+    (172, 0, 0),
+    (168, 0, 0),
+    (163, 0, 0),
+    (159, 0, 0),
+    (154, 0, 0),
+    (150, 0, 0),
+    (145, 0, 0),
+    (141, 0, 0),
+    (136, 0, 0),
+    (132, 0, 0),
+    (127, 0, 0),
+)
 
 
 def _invert_jet(rgb):
     """Map an RGB pixel to its nearest jet colormap value in 0..1."""
-    d = ((_JET_LUT - np.array(rgb, dtype=int)) ** 2).sum(axis=1)
-    return int(np.argmin(d)) / 255
+    best, idx = None, 0
+    for i, (lr, lg, lb) in enumerate(_JET_LUT):
+        dr, dg, db = lr - rgb[0], lg - rgb[1], lb - rgb[2]
+        d = dr * dr + dg * dg + db * db
+        if best is None or d < best:
+            best, idx = d, i
+    return idx / 255
+
+
+def _paeth(a, b, c):
+    p = a + b - c
+    pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+    if pa <= pb and pa <= pc:
+        return a
+    if pb <= pc:
+        return b
+    return c
+
+
+def _decode_png(path):
+    """Decode an 8-bit RGB/RGBA PNG (filters 0..4, no interlace) to raw bytes."""
+    data = path.read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError(f"not a PNG file: {path}")
+    width = height = bitdepth = colortype = interlace = None
+    idat = b""
+    off = 8
+    while off < len(data):
+        length = struct.unpack(">I", data[off : off + 4])[0]
+        ctype = data[off + 4 : off + 8]
+        body = data[off + 8 : off + 8 + length]
+        if ctype == b"IHDR":
+            width, height, bitdepth, colortype, _c, _f, interlace = struct.unpack(">IIBBBBB", body)
+        elif ctype == b"IDAT":
+            idat += body
+        elif ctype == b"IEND":
+            break
+        off += 12 + length
+    if (colortype, bitdepth, interlace) not in ((2, 8, 0), (6, 8, 0)):
+        raise ValueError(
+            f"unsupported PNG format: color type {colortype}, bit depth {bitdepth}, "
+            f"interlace {interlace} (need 8-bit RGB/RGBA, non-interlaced)"
+        )
+    bpp = 3 if colortype == 2 else 4
+    stride = width * bpp
+    raw = zlib.decompress(idat)
+    if len(raw) != height * (stride + 1):
+        raise ValueError("bad PNG scanline length")
+    out = bytearray(height * stride)
+    prev = bytearray(stride)
+    for y in range(height):
+        filt = raw[y * (stride + 1)]
+        line = bytearray(raw[y * (stride + 1) + 1 : (y + 1) * (stride + 1)])
+        if filt == 0:
+            pass
+        elif filt == 1:
+            for i in range(bpp, stride):
+                line[i] = (line[i] + line[i - bpp]) & 255
+        elif filt == 2:
+            for i in range(stride):
+                line[i] = (line[i] + prev[i]) & 255
+        elif filt == 3:
+            for i in range(stride):
+                a = line[i - bpp] if i >= bpp else 0
+                line[i] = (line[i] + ((a + prev[i]) >> 1)) & 255
+        elif filt == 4:
+            for i in range(stride):
+                a = line[i - bpp] if i >= bpp else 0
+                c = prev[i - bpp] if i >= bpp else 0
+                line[i] = (line[i] + _paeth(a, prev[i], c)) & 255
+        else:
+            raise ValueError(f"unsupported PNG filter {filt}")
+        out[y * stride : (y + 1) * stride] = line
+        prev = line
+    return width, height, bpp, bytes(out)
+
+
+class _Png:
+    """Minimal RGB image exposing the .load() pixel-index and .size interface."""
+
+    def __init__(self, path):
+        self._w, self._h, self._bpp, self._data = _decode_png(path)
+        self.size = (self._w, self._h)
+
+    def load(self):
+        return self
+
+    def __getitem__(self, xy):
+        x, y = xy
+        i = (y * self._w + x) * self._bpp
+        return (self._data[i], self._data[i + 1], self._data[i + 2])
 
 
 def _load_facts():
@@ -31,7 +378,7 @@ def _open(name):
     path = FIG_DIR / name
     if not path.is_file():
         raise FileNotFoundError(f"missing source figure: {path}")
-    return Image.open(path).convert("RGB")
+    return _Png(path)
 
 
 def _is_blue(p):
@@ -110,9 +457,12 @@ def _fig11_line():
         val = (y0 - yb) / (y0 - y100) * 100
         p = {"x": it, "y": round(val, 1)}
         # errorbar extents from dark gray, excluding axis rows
-        err = [y for y in range(49, 349)
-               if not (y <= 51 or y >= 346)
-               and any(_is_errgray(px[x + dx, y]) for dx in (-2, -1, 0, 1, 2))]
+        err = [
+            y
+            for y in range(49, 349)
+            if not (y <= 51 or y >= 346)
+            and any(_is_errgray(px[x + dx, y]) for dx in (-2, -1, 0, 1, 2))
+        ]
         if err:
             p["high"] = round((y0 - min(err)) / (y0 - y100) * 100, 1)
             p["low"] = round((y0 - max(err)) / (y0 - y100) * 100, 1)
@@ -144,8 +494,18 @@ def _fig12_histograms():
     px = _open("ca1-theta.png").load()
     rects = [(75, 457, 268, 80), (558, 940, 270, 80), (1045, 1427, 268, 200)]
     groups = ["Before training", "After training", "Before training without theta"]
-    bins = ["0-0.74", "0.74-1.49", "1.49-2.23", "2.23-2.98", "2.98-3.72",
-            "3.72-4.47", "4.47-5.21", "5.21-5.96", "5.96-6.70", "6.70-7.45"]
+    bins = [
+        "0-0.74",
+        "0.74-1.49",
+        "1.49-2.23",
+        "2.23-2.98",
+        "2.98-3.72",
+        "3.72-4.47",
+        "4.47-5.21",
+        "5.21-5.96",
+        "5.96-6.70",
+        "6.70-7.45",
+    ]
     series = []
     for (x0, x1, yb, ymax), name in zip(rects, groups):
         runs = _bar_runs(px, x0, x1, 58, yb, "blue")
@@ -191,12 +551,28 @@ def _fig13_heatmaps():
     ca1 = [(1277, 185, 60, 60), (1408, 185, 60, 60), (1541, 185, 60, 60)]
     ca1_b = [(1277, 318, 60, 60), (1408, 318, 60, 60), (1541, 318, 60, 60)]
     groups = [
-        {"name": "MEC II", "maps": [
-            {"label": f"cell {i+1} Env A", "values": _sample_map(px, *c)} for i, c in enumerate(mec)],
-            "maps_b": [{"label": f"cell {i+1} Env B", "values": _sample_map(px, *c)} for i, c in enumerate(mec_b)]},
-        {"name": "CA1", "maps": [
-            {"label": f"cell {i+1} Env A", "values": _sample_map(px, *c)} for i, c in enumerate(ca1)],
-            "maps_b": [{"label": f"cell {i+1} Env B", "values": _sample_map(px, *c)} for i, c in enumerate(ca1_b)]},
+        {
+            "name": "MEC II",
+            "maps": [
+                {"label": f"cell {i + 1} Env A", "values": _sample_map(px, *c)}
+                for i, c in enumerate(mec)
+            ],
+            "maps_b": [
+                {"label": f"cell {i + 1} Env B", "values": _sample_map(px, *c)}
+                for i, c in enumerate(mec_b)
+            ],
+        },
+        {
+            "name": "CA1",
+            "maps": [
+                {"label": f"cell {i + 1} Env A", "values": _sample_map(px, *c)}
+                for i, c in enumerate(ca1)
+            ],
+            "maps_b": [
+                {"label": f"cell {i + 1} Env B", "values": _sample_map(px, *c)}
+                for i, c in enumerate(ca1_b)
+            ],
+        },
     ]
     # merge Env A and Env B maps per group
     out = []
@@ -226,7 +602,7 @@ def _fig16_heatmaps():
         maps = []
         for label, y, h in rows:
             maps.append({"label": label, "values": _sample_map(px, c, y, 60, h)})
-        groups.append({"name": f"cell {i+1}", "maps": maps})
+        groups.append({"name": f"cell {i + 1}", "maps": maps})
     return {
         "kind": "heatmaps",
         "title": "MEC III firing maps aligned to current and next position",
@@ -326,10 +702,16 @@ def _fig17_bars():
     by_key[("MEC II", "precession")]["y"] = facts["precession_mean"]
     by_key[("MEC III", "locking")]["y"] = facts["locking_mean"]
     series = [
-        {"name": "MEC II", "color": "blue",
-         "points": [by_key[("MEC II", "precession")], by_key[("MEC II", "locking")]]},
-        {"name": "MEC III", "color": "accent",
-         "points": [by_key[("MEC III", "precession")], by_key[("MEC III", "locking")]]},
+        {
+            "name": "MEC II",
+            "color": "blue",
+            "points": [by_key[("MEC II", "precession")], by_key[("MEC II", "locking")]],
+        },
+        {
+            "name": "MEC III",
+            "color": "accent",
+            "points": [by_key[("MEC III", "precession")], by_key[("MEC III", "locking")]],
+        },
     ]
     return {
         "kind": "bars",
@@ -361,7 +743,7 @@ def build():
 
 def main(argv):
     data = build()
-    text = json.dumps(data, indent=2, sort_keys=True)
+    text = json.dumps(data, sort_keys=True, separators=(",", ":"))
     if "--check" in argv:
         if not OUT_PATH.is_file():
             print("native-data.json missing; run without --check to generate")
