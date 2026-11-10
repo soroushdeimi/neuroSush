@@ -44,9 +44,51 @@ let chapter = -1;
 let presenting = false;
 let showDetails = false;
 let showFigure = false;
+let calloutIndex = -1;
 const paperImage = q('#paper-image');
 const figureElement = q('#paper-figure');
 const figureButton = q('#figure-toggle');
+const highlightButton = q('#highlight-next');
+const calloutLayer = q('#paper-callout-layer');
+
+function syncCalloutLayer() {
+  if (figureElement.hidden || calloutLayer.hidden) return;
+  const imageBox = paperImage.getBoundingClientRect();
+  const figureBox = figureElement.getBoundingClientRect();
+  calloutLayer.style.left = `${imageBox.left - figureBox.left}px`;
+  calloutLayer.style.top = `${imageBox.top - figureBox.top}px`;
+  calloutLayer.style.width = `${imageBox.width}px`;
+  calloutLayer.style.height = `${imageBox.height}px`;
+}
+function renderCallout() {
+  const callouts = paperFigures?.[chapter]?.callouts;
+  const available = presenting && !figureElement.hidden && Array.isArray(callouts) && callouts.length > 0;
+  highlightButton.hidden = !available;
+  const current = available ? callouts[calloutIndex] : null;
+  calloutLayer.hidden = !current;
+  const text = q('#paper-highlight-text');
+  text.hidden = !current;
+  if (!current) {
+    highlightButton.textContent = 'Highlight (H)';
+    highlightButton.setAttribute('aria-label', 'Show first figure highlight');
+    return;
+  }
+  const ring = q('#paper-callout-ring');
+  for (const [property, value] of Object.entries({left: current.x, top: current.y, width: current.w, height: current.h})) {
+    ring.style[property] = `${value * 100}%`;
+  }
+  q('#paper-callout-number').textContent = String(calloutIndex + 1);
+  text.textContent = `${calloutIndex + 1} / ${callouts.length} · ${current.label}`;
+  highlightButton.textContent = calloutIndex + 1 === callouts.length ? 'Clear highlight (H)' : 'Next highlight (H)';
+  highlightButton.setAttribute('aria-label', calloutIndex + 1 === callouts.length ? 'Clear figure highlight' : 'Show next figure highlight');
+  requestAnimationFrame(syncCalloutLayer);
+}
+function cycleCallout() {
+  const callouts = paperFigures?.[chapter]?.callouts;
+  if (highlightButton.hidden || !Array.isArray(callouts)) return;
+  calloutIndex = calloutIndex + 1 >= callouts.length ? -1 : calloutIndex + 1;
+  renderCallout();
+}
 
 function compactCopy(copy) {
   const sentences = copy.split(/(?<=[.!?])\s+(?=[A-Z])/);
@@ -68,16 +110,22 @@ function renderFigure() {
   figureElement.hidden = !visible;
   figureButton.setAttribute('aria-pressed', String(visible));
   figureButton.textContent = visible ? 'Animation' : 'Paper figure';
-  if (!visible) return;
+  if (!visible) { renderCallout(); return; }
   paperImage.src = new URL(item.src, import.meta.url).href;
   paperImage.alt = item.caption || 'Figure from the presentation deck';
   q('#paper-caption').textContent = item.caption || '';
   q('#paper-source').textContent = item.source || 'Adapted from the presentation deck';
+  renderCallout();
 }
+paperImage.addEventListener('load', syncCalloutLayer);
+new ResizeObserver(syncCalloutLayer).observe(paperImage);
+addEventListener('resize', syncCalloutLayer);
 paperImage.addEventListener('error', () => {
   figureElement.hidden = true;
   figureButton.hidden = true;
   figureButton.setAttribute('aria-pressed', 'false');
+  calloutIndex = -1;
+  renderCallout();
 });
 function setPresenting(value) {
   presenting = Boolean(value);
@@ -86,6 +134,7 @@ function setPresenting(value) {
   q('#presenter-toggle').textContent = presenting ? 'Exit present' : 'Present';
   showDetails = false;
   if (presenting) showFigure = true;
+  calloutIndex = -1;
   renderCopy();
   renderFigure();
   engine.resize();
@@ -112,6 +161,7 @@ function onState(active) {
   q('#previous').disabled = active === 0;
   q('#next').disabled = active === panels.length - 1;
   showDetails = false;
+  calloutIndex = -1;
   renderCopy();
   renderFigure();
 }
@@ -162,14 +212,16 @@ addEventListener('keydown', event => {
     event.preventDefault();
     navigate(chapter + 1);
   } else if (key.toLowerCase() === 'p') setPresenting(!presenting);
-  else if (key.toLowerCase() === 'i' && !figureButton.hidden) { showFigure = !showFigure; renderFigure(); }
+  else if (key.toLowerCase() === 'i' && !figureButton.hidden) { showFigure = !showFigure; calloutIndex = -1; renderFigure(); }
+  else if (key.toLowerCase() === 'h') cycleCallout();
 });
 q('#play').addEventListener('click', () => {
   engine.setPlaying(!engine.playing);
   q('#play').setAttribute('aria-pressed', String(engine.playing));
   q('#play').textContent = engine.playing ? 'Pause' : 'Animate';
 });
-q('#figure-toggle').addEventListener('click', () => { showFigure = !showFigure; renderFigure(); });
+q('#figure-toggle').addEventListener('click', () => { showFigure = !showFigure; calloutIndex = -1; renderFigure(); });
+highlightButton.addEventListener('click', cycleCallout);
 q('#details-toggle').addEventListener('click', () => { showDetails = !showDetails; renderCopy(); });
 q('#presenter-toggle').addEventListener('click', () => setPresenting(!presenting));
 q('#fullscreen-toggle').addEventListener('click', async () => {

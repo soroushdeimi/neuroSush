@@ -36,3 +36,13 @@ body.presenting .navigation{left:3vw;max-width:94vw;bottom:14px;font-size:12px}
 body.presenting .navigation button{font-size:13px;padding:8px 11px}
 @media(max-width:900px){.navigation{max-width:calc(100vw - 32px);left:16px;right:16px;bottom:12px;gap:5px}.navigation #position{display:none}#paper-figure{left:38vw;right:2vw;top:14vh;bottom:18vh}body.presenting .floating{left:2vw;width:34vw}}
 @media(max-width:700px){.navigation{max-width:none}.navigation #panel-count{min-width:42px;font-size:10px}.navigation button{font-size:10px;padding:6px 7px}body.presenting .floating{left:16px;right:16px;top:53svh;width:auto;max-width:none;max-height:calc(47svh - 100px);padding:10px 12px;overflow-y:auto}body.presenting h1{font-size:25px;margin-bottom:8px}body.presenting #panel-copy{font-size:16px}#paper-figure{left:3vw;right:3vw;top:8vh;bottom:49vh;padding:8px}#paper-figure figcaption{font-size:10px}#paper-source{font-size:9px}body.presenting .navigation{left:8px;right:8px;max-width:none;bottom:5px}body.presenting .navigation button{font-size:10px;padding:5px 7px}}
+
+/* Callout geometry is placed over the image's measured box, never the figure card. */
+#paper-callout-layer{position:absolute;z-index:2;pointer-events:none}
+#paper-callout-ring{position:absolute;display:block;border:3px solid var(--accent-text);border-radius:10px;background:transparent;box-shadow:0 0 0 2px var(--bg),0 0 14px var(--accent-text);transition:left .28s ease,top .28s ease,width .28s ease,height .28s ease}
+#paper-callout-number{position:absolute;top:-13px;left:-13px;display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:var(--accent-text);color:var(--bg);font:700 13px var(--font-mono)}
+#paper-highlight-text{display:block;flex-basis:100%;padding:7px 10px;border-left:3px solid var(--accent-text);background:var(--surface);color:var(--text);font:600 13px/1.35 var(--font-sans)}
+#highlight-next{border-color:var(--accent-text);color:var(--accent-text)}
+#paper-image{max-height:calc(100% - 110px)}
+#paper-figure figcaption{flex:0 0 auto;max-height:28%;overflow:auto}
+@media(max-width:700px){#paper-highlight-text{font-size:10px;padding:4px 6px}#paper-image{max-height:calc(100% - 95px)}#paper-callout-number{width:20px;height:20px;font-size:11px;top:-10px;left:-10px}}
