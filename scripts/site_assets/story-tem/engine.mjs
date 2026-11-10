@@ -53,7 +53,7 @@ export class ZoomEngine {
   circle(x,y,r,color,fill=true){const c=this.ctx;c.beginPath();c.arc(x,y,r,0,TAU);if(fill){c.fillStyle=color;c.fill();}else{c.strokeStyle=color;c.stroke();}}
   text(s,x,y,color,size=11){this.ctx.fillStyle=color;this.ctx.font=`${size}px IBM Plex Mono,monospace`;this.ctx.fillText(s,x,y);}
   draw(){this.drawCount++;const c=this.ctx;c.setTransform(this.dpr,0,0,this.dpr,0,0);c.globalAlpha=1;c.fillStyle=this.colors[0];c.fillRect(0,0,this.w,this.h);const {index,u}=this.camera,mix=u*u*(3-2*u);this.active=mix<.5?index:Math.min(index+1,this.panels.length-1);this.drawLayer(index,1-mix);if(mix)this.drawLayer(Math.min(index+1,this.panels.length-1),mix);c.globalAlpha=1;const start=this.mobile?22:this.w*.49;this.overlay.querySelector('#journey-dot').setAttribute('cx',start+(this.w-22-start)*this.t);this.overlay.querySelector('#journey-dot').setAttribute('cy',this.mobile?62:100);this.overlay.querySelector('#journey-label').setAttribute('x',start);this.overlay.querySelector('#journey-label').setAttribute('y',this.mobile?84:119);this.overlay.querySelector('#journey-label').textContent=this.panels[this.active].label;}
-  drawLayer(index,opacity){if(!opacity)return;const c=this.ctx;c.save();c.globalAlpha=opacity;const key=this.keys[index];c.translate(this.cx+(key.x-this.camera.x)*this.size,this.cy);const scale=10**((key.log-this.camera.log)*.24);c.scale(scale,scale);const scene=this.panels[index].scene;if(scene==='prediction')this.prediction();else if(scene==='fields')this.fields(this.panels[index].single);else if(scene==='circuit')this.circuit();else if(scene==='timing')this.timing();else if(scene==='mechanisms')this.mechanisms();else if(scene==='replay')this.replay();else if(scene==='margins')this.margins();else if(scene==='limits')this.limits();else if(scene==='discrepancies')this.discrepancies();else if(scene==='standardscore')this.standardscore();else if(scene==='results')this.results(this.panels[index]);else if(scene==='arena')this.arena();else if(scene==='neurons')this.neurons();else if(scene==='plasticity')this.plasticity();else if(scene==='binding')this.binding();else if(scene==='remapping')this.remapping(this.panels[index].square);else this.ingredients();c.restore();}
+  drawLayer(index,opacity){if(!opacity)return;const c=this.ctx;c.save();c.globalAlpha=opacity;const key=this.keys[index];c.translate(this.cx+(key.x-this.camera.x)*this.size,this.cy);const scale=10**((key.log-this.camera.log)*.24);c.scale(scale,scale);const scene=this.panels[index].scene;if(scene==='prediction')this.prediction();else if(scene==='predictive-grid')this.predictiveGrid();else if(scene==='ambiguity')this.ambiguity();else if(scene==='phase-result')this.phaseResult();else if(scene==='fields')this.fields(this.panels[index].single);else if(scene==='circuit')this.circuit();else if(scene==='timing')this.timing();else if(scene==='mechanisms')this.mechanisms();else if(scene==='replay')this.replay();else if(scene==='margins')this.margins();else if(scene==='limits')this.limits();else if(scene==='discrepancies')this.discrepancies();else if(scene==='standardscore')this.standardscore();else if(scene==='results')this.results(this.panels[index]);else if(scene==='arena')this.arena();else if(scene==='neurons')this.neurons();else if(scene==='plasticity')this.plasticity();else if(scene==='binding')this.binding();else if(scene==='remapping')this.remapping(this.panels[index].square);else this.ingredients();c.restore();}
   prediction(){const s=this.size,c=this.ctx,muted=this.colors[2],gold=this.colors[3],blue=this.colors[4];
     const paths=[['MEC II + action','MEC III','CA1 + memory','MEC V','senses'],['senses','MEC II / LEC','DG','CA3','CA1']];
     for(let path=0;path<2;path++){
@@ -139,6 +139,70 @@ export class ZoomEngine {
     c.beginPath();for(let i=Math.max(0,at-20);i<=at;i++){const [x,y]=this.walk[i],xx=left+(x+.5)*cell,yy=top+(y+.5)*cell;i===Math.max(0,at-20)?c.moveTo(xx,yy):c.lineTo(xx,yy);}c.strokeStyle=this.colors[1];c.stroke();
     const a=this.walk[at],b=this.walk[at+1];this.circle(left+(a[0]+(b[0]-a[0])*u+.5)*cell,top+(a[1]+(b[1]-a[1])*u+.5)*cell,5,this.colors[1]);
     this.text(`${n} × ${n} POSITIONS · ${this.facts.sensory_neurons} SENSORY LABELS`,left,top+w+25,muted,this.mobile?8:10);
+  }
+  ambiguity(){const s=this.size,c=this.ctx,muted=this.colors[2],gold=this.colors[3],blue=this.colors[4],ink=this.colors[1];
+    const width=s*.27,top=-s*.15,cell=width/6,step=Math.floor(this.phase*1.2)%6;
+    this.text('SAME VIEW CAN MEAN DIFFERENT PLACES',-s*.45,-s*.39,muted,this.mobile?9:12);
+    for(let mode=0;mode<3;mode++){
+      const left=(-.45+mode*.315)*s;
+      this.text(['UNIQUE CUES','SOME REPEATS','MANY REPEATS'][mode],left,-s*.21,mode===1?gold:muted,this.mobile?8:10);
+      for(let y=0;y<6;y++)for(let x=0;x<6;x++){
+        const identity=mode===0?y*6+x:mode===1?(x*3+y*5)%12:(x+y)%3;
+        const match=identity===(mode===0?14:1);
+        c.fillStyle=match?gold:blue;c.globalAlpha*=match?.9:.12+((identity%5)*.045);
+        c.fillRect(left+x*cell,top+y*cell,cell-2,cell-2);
+        c.globalAlpha/=match?.9:.12+((identity%5)*.045);
+      }
+      c.strokeStyle=muted;c.strokeRect(left,top,width,width);
+      const row=mode===0?2:mode===1?2:1,col=mode===0?2:mode===1?1:0;
+      this.circle(left+(col+.5)*cell,top+(row+.5)*cell,4,ink);
+      if(mode===1){
+        const trail=[[0,5],[1,5],[2,5],[2,4],[2,3],[3,3],[4,3]];
+        c.beginPath();for(let i=0;i<=step;i++){const [x,y]=trail[i],xx=left+(x+.5)*cell,yy=top+(y+.5)*cell;i?c.lineTo(xx,yy):c.moveTo(xx,yy);}c.strokeStyle=ink;c.lineWidth=2;c.stroke();
+        const [x,y]=trail[step];this.circle(left+(x+.5)*cell,top+(y+.5)*cell,5,ink);
+      }
+    }
+    this.text('MOVEMENT HISTORY HELPS DISAMBIGUATE',-s*.43,s*.34,gold,this.mobile?8:11);
+    this.text('ILLUSTRATION · NOT MEASURED GRIDNESS',-s*.43,s*.43,muted,this.mobile?8:10);
+  }
+  predictiveGrid(){const s=this.size,c=this.ctx,muted=this.colors[2],gold=this.colors[3],blue=this.colors[4],ink=this.colors[1];
+    const path=[[1,5],[2,5],[3,5],[3,4],[4,4],[5,4],[5,3],[5,2],[4,2],[4,1],[3,1],[2,1],[1,1],[1,2],[1,3],[1,4]];
+    const at=Math.floor(this.phase*1.5)%path.length,from=path[at],to=path[(at+1)%path.length],w=s*.36,top=-s*.2,n=this.facts.arena_side,cell=w/n;
+    this.text('CURRENT POSITION',-s*.44,-s*.34,blue,this.mobile?9:12);
+    this.text('ONE STEP AHEAD',s*.05,-s*.34,gold,this.mobile?9:12);
+    for(let side=0;side<2;side++){
+      const left=(side?.05:-.44)*s;
+      for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+        const active=(side?to:from),distance=(x-active[0])**2+(y-active[1])**2;
+        c.fillStyle=side?gold:blue;c.globalAlpha*=.12+.7*Math.exp(-distance/1.2);
+        c.fillRect(left+x*cell,top+y*cell,cell-2,cell-2);
+        c.globalAlpha/=.12+.7*Math.exp(-distance/1.2);
+      }
+      c.strokeStyle=muted;c.strokeRect(left,top,w,w);
+      const [x,y]=side?to:from;this.circle(left+(x+.5)*cell,top+(y+.5)*cell,5,ink);
+    }
+    this.line(-s*.035,0,s*.015,0,muted,2);this.line(s*.015,0,s*.001,-s*.014,muted,2);this.line(s*.015,0,s*.001,s*.014,muted,2);
+    this.text('MEC II · PRESENT',-s*.44,s*.28,muted,this.mobile?9:11);
+    this.text('MEC III · PREDICTED',s*.05,s*.28,muted,this.mobile?9:11);
+    this.text('PREDICTION TARGET IS SUPPLIED IN TRAINING',-s*.44,s*.42,muted,this.mobile?8:10);
+  }
+  phaseResult(){const s=this.size,c=this.ctx,muted=this.colors[2],gold=this.colors[3],blue=this.colors[4],left=-s*.43,width=s*.86,cycles=6,active=Math.floor(this.phase*.9)%cycles;
+    this.text('GAIN + IMPOSED THETA',left,-s*.4,muted,this.mobile?9:12);
+    for(let k=0;k<cycles;k++){
+      const x=left+k*width/cycles,opacity=k===active?.1:.025;c.fillStyle=gold;c.globalAlpha*=opacity;c.fillRect(x,-s*.31,width/cycles,s*.65);c.globalAlpha/=opacity;
+      this.line(x,-s*.31,x,s*.34,muted,.7);
+    }
+    this.line(left+width,-s*.31,left+width,s*.34,muted,.7);
+    c.beginPath();for(let i=0;i<=240;i++){const q=i/240,y=-s*.22+Math.sin(q*TAU*cycles)*s*.055;i?c.lineTo(left+q*width,y):c.moveTo(left+q*width,y);}c.strokeStyle=muted;c.lineWidth=1.5;c.stroke();
+    this.text('MEC II · PRECESSION',left,-s*.05,gold,this.mobile?9:12);
+    this.text('MEC III · LOCKING',left,s*.2,blue,this.mobile?9:12);
+    for(let k=0;k<cycles;k++){
+      const pre=(k+.83-k*.1)/cycles,lock=(k+.58)/cycles;
+      this.line(left+pre*width,s*.02,left+pre*width,s*.12,gold,k===active?4:2);
+      this.line(left+lock*width,s*.25,left+lock*width,s*.35,blue,k===active?4:2);
+    }
+    this.text(`${this.facts.precession_mean}% OF II CELLS`,left,s*.44,gold,this.mobile?9:11);
+    this.text(`${this.facts.locking_mean}% OF III CELLS`,s*.05,s*.44,blue,this.mobile?9:11);
   }
   neurons(){const s=this.size,c=this.ctx,left=-s*.44,w=s*.88,gold=this.colors[3],blue=this.colors[4],muted=this.colors[2];
     this.text('ACCUMULATE → THRESHOLD → RESET',left,-s*.35,gold,this.mobile?8:10);
