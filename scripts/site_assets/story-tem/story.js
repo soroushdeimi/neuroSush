@@ -50,6 +50,17 @@ try {
   }
 }
 
+// Short figure labels for the native result panels, keyed by chapter. The full
+// citation lives in entry.source; the panel shows the compact figure tag.
+const FIGURE_SHORT = {11: 'Fig 3C', 12: 'Fig 4C', 13: 'Figs 5–6', 14: 'Table 2', 15: 'Fig 7', 16: 'Fig 8A', 17: 'Fig 13C'};
+// Panel 11 plots the grid-cell fraction over training iterations; the manifest
+// caption's lattice-geometry sentence does not describe what is drawn, so the
+// panel shows a caption about the fraction, not a lattice.
+const CAPTION_OVERRIDE = {11: 'Reported fraction of classified grid cells during training (mean ± SD across four simulation runs).'};
+function figureSourceLabel(chapter, entry) {
+  const short = FIGURE_SHORT[chapter] || (entry?.source ? entry.source.split(',').pop().trim() : '');
+  return entry?.approx ? short + ' · Digitized approximation' : short;
+}
 let chapter = -1;
 let presenting = false;
 let showDetails = false;
@@ -111,8 +122,8 @@ function renderFigure() {
   figureButton.setAttribute('aria-pressed', String(visible));
   figureButton.textContent = visible ? 'Explainer' : 'Results';
   if (!visible) { destroyChart(); renderCallout(); return; }
-  q('#paper-caption').textContent = item.caption || '';
-  q('#paper-source').textContent = entry?.approx ? 'Fig ' + (chapter - 10) + ' · Digitized approximation' : 'Fig ' + (chapter - 10);
+  q('#paper-caption').textContent = CAPTION_OVERRIDE[chapter] || item.caption || '';
+  q('#paper-source').textContent = figureSourceLabel(chapter, entry);
   const provenance = q('#paper-provenance');
   provenance.hidden = !entry?.provenance;
   q('#paper-provenance-text').textContent = entry?.provenance || '';

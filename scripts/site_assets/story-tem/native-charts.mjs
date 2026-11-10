@@ -159,10 +159,40 @@ function yGrid(svg, yScale, dLo, dHi, x0, x1) {
   return g;
 }
 
+// Compact axis-tick label: 20000 -> "20k", 1500 -> "1.5k", 0 -> "0". Keeps long
+// numeric axes (e.g. training iterations) readable instead of "1.00e+4".
+function formatTick(v) {
+  if (v === 0) return '0';
+  const a = Math.abs(v);
+  if (a >= 1e6) return `${Number((v / 1e6).toPrecision(3))}M`;
+  if (a >= 1e3) return `${Number((v / 1e3).toPrecision(3))}k`;
+  return String(Number(v.toPrecision(4)));
+}
+
+// Numeric x-axis ticks sized to the available pixels: the step is the smallest
+// "nice" (1/2/5 × 10^n) value that keeps labels at least `minGap` px apart, so
+// wide ranges get fewer, readable ticks instead of a jammed row.
+function numericXTicks(xLo, xHi, x0, x1, minGap = 100) {
+  const range = xHi - xLo;
+  if (range <= 0) return [xLo];
+  const maxTicks = Math.max(2, Math.floor((x1 - x0) / minGap));
+  const rawStep = range / maxTicks;
+  const mag = 10 ** Math.floor(Math.log10(rawStep));
+  const norm = rawStep / mag;
+  const step = (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
+  const ticks = [];
+  for (let t = Math.ceil(xLo / step) * step; t <= xHi + step * 1e-9; t += step) {
+    ticks.push(Math.abs(t) < step * 1e-9 ? 0 : t);
+  }
+  return ticks;
+}
+
 function xLabels(svg, labels, xAt, y1, cls = 'nc-tick') {
   const g = el('g', {class: 'nc-xlabels'}, svg);
   const n = labels.length;
-  const skip = Math.max(1, Math.ceil(n / 12)); // keep mobile labels from colliding
+  const span = n > 1 ? Math.abs(xAt(n - 1) - xAt(0)) : 0;
+  const minGap = 48; // px between label centers, keeps mobile labels from colliding
+  const skip = Math.max(1, Math.ceil(n / 12), span ? Math.ceil((n * minGap) / span) : 1);
   labels.forEach((lab, i) => {
     if (i % skip !== 0 && i !== n - 1) return;
     text(g, xAt(i), y1 + 20, String(lab), cls);
@@ -220,7 +250,7 @@ function lineChart(ctx, entry) {
   yGrid(svg, yScale, yLo - pad, yHi + pad, x0, x1);
   if (numeric) {
     const g = el('g', {class: 'nc-xlabels'}, svg);
-    for (const t of niceTicks(xLo, xHi, 6)) text(g, xScale(t), y1 + 20, formatValue(t), 'nc-tick');
+    for (const t of numericXTicks(xLo, xHi, x0 + 12, x1 - 12)) text(g, xScale(t), y1 + 20, formatTick(t), 'nc-tick');
   } else {
     xLabels(svg, labels, xScale, y1);
   }

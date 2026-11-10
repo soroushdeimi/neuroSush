@@ -1,12 +1,13 @@
-import {spawn} from 'node:child_process';
-import {mkdir,writeFile,rm,access} from 'node:fs/promises';
+import {spawn,execFileSync} from 'node:child_process';
+import {mkdir,writeFile,rm,access,readFile} from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const directory=process.argv[2]||'/private/tmp/tem-native-review';await mkdir(directory,{recursive:true});
 const root=new URL('../..',import.meta.url).pathname;
-const siteDir=path.join(root,'scripts','site_assets');
+const siteDir=process.env.TEM_BROWSER_SITE_DIR;
+assert.ok(siteDir, 'Set TEM_BROWSER_SITE_DIR to the built site directory');
 const server=http.createServer((req,res)=>{
  const p=path.join(siteDir,req.url.split('?')[0]);
  fs.readFile(p,(err,data)=>{
@@ -20,8 +21,53 @@ const chrome=spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 const delay=ms=>new Promise(r=>setTimeout(r,ms));let ws,next=0;const pending=new Map(),errors=[],pngRequests=[];
 function send(method,params={}){return new Promise((resolve,reject)=>{const id=++next;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}));});}
 async function evaluate(expression){const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value;}
-async function snap(name){const r=await send('Page.captureScreenshot',{format:'png'});await writeFile(`${directory}/${name}.png`,Buffer.from(r.data,'base64'));}
+async function snap(name){const r=await send('Page.captureScreenshot',{format:'png'});await writeFile(`${directory}/${name}.png`,Buffer.from(r.data,'base64'));assertVisible(name);}
+// Objective pixel guard: a screenshot is blank if every pixel is (near) the
+// same colour, and two captures are duplicates if their pixels are identical.
+// Runs PIL in a subprocess so the guard is independent of the page's DOM.
+function pixelStats(file){
+ const script=`
+import sys
+from PIL import Image
+im=Image.open(sys.argv[1]).convert('RGB')
+px=list(im.getdata())
+n=len(px)
+uniq=len(set(px))
+r=sum(p[0] for p in px)//n;g=sum(p[1] for p in px)//n;b=sum(p[2] for p in px)//n
+print(f'{uniq} {r} {g} {b}')
+`;
+ const out=execFileSync('python3',['-c',script,file],{encoding:'utf8'}).trim();
+ const [uniq,avgR,avgG,avgB]=out.split(' ').map(Number);
+ return {uniq,avg:[avgR,avgG,avgB]};
+}
+const shotStats=new Map();
+function assertVisible(name){
+ const s=pixelStats(`${directory}/${name}.png`);
+ shotStats.set(name,s);
+ assert.ok(s.uniq>50,`${name} looks blank: only ${s.uniq} distinct pixels, avg rgb ${s.avg}`);
+ for(const [other,o]of shotStats){
+  if(other!==name&&o.uniq===s.uniq&&o.avg.every((v,i)=>v===s.avg[i]))
+   assert.fail(`${name} is pixel-identical to ${other}`);
+ }
+}
 async function settle(){await evaluate('new Promise(resolve=>{const check=()=>{if(Math.abs(storyEngine.t-storyEngine.target)<.000001)resolve();else requestAnimationFrame(check)};requestAnimationFrame(check)})');}
+// The chart is created while the engine plays, so its CSS entrance animation
+// runs; a paused chart would freeze the marks at opacity 0. Wait until every
+// mark has faded in, then assert the actual marks are visible (not just axes).
+async function waitChartSettled(){
+ for(let i=0;i<100;i++){
+  const pending=await evaluate(`[...document.querySelectorAll('#native-figure-chart .nc-fade,#native-figure-chart .nc-grow,#native-figure-chart .nc-draw')].some(n=>parseFloat(getComputedStyle(n).opacity)<.99)`);
+  if(!pending)return;
+  await delay(100);
+ }
+ assert.fail('chart entrance animation did not finish');
+}
+async function assertMarksVisible(kind){
+ const sel={line:'.nc-line, .nc-dot',bars:'.nc-bar',histograms:'.nc-bar',heatmaps:'.nc-cell'}[kind];
+ const r=await evaluate(`(()=>{const els=[...document.querySelectorAll('#native-figure-chart ${sel}')];if(!els.length)return{count:0,visible:0};return{count:els.length,visible:els.filter(n=>parseFloat(getComputedStyle(n).opacity)>.99).length}})()`);
+ assert.ok(r.count>0,`no ${kind} marks found`);
+ assert.equal(r.visible,r.count,`${kind} marks not fully visible: ${r.visible}/${r.count}`);
+}
 try{
  let targets;for(let i=0;i<50;i++){try{targets=await(await fetch('http://127.0.0.1:9348/json')).json();break;}catch{await delay(100);}}
  ws=new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r,{once:true}));
@@ -54,19 +100,31 @@ try{
  assert.ok(await evaluate('storyEngine.drawCount')>0,'plasticity scene did not draw');
  await snap('plasticity-scene');
  // Native results: present mode, panels 11..17 render native SVG, no PNG.
- const nativeAvailable=await access(path.join(siteDir,'paper-figures','native-data.json')).then(()=>true,()=>false);
+ const nativeAvailable=await access(path.join(siteDir,'story-tem','paper-figures','native-data.json')).then(()=>true,()=>false);
+ assert.ok(nativeAvailable, 'Native dataset must exist before verifying result charts');
  if(nativeAvailable){
+  const nativeData=JSON.parse(await readFile(path.join(siteDir,'story-tem','paper-figures','native-data.json'),'utf8'));
   await evaluate('document.querySelector("#presenter-toggle").click()');await delay(100);
   assert.equal(await evaluate('document.querySelector("#presenter-toggle").getAttribute("aria-pressed")'),'true');
   const pngBefore=pngRequests.length;
   for(let i=11;i<=17;i++){
-   await evaluate(`storyEngine.setTarget(storyEngine.keys[${i}].t);storyEngine.setPlaying(false)`);await settle();await delay(150);
+   // Render while the engine plays so the chart's CSS entrance animation runs;
+   // a chart created while paused freezes its marks at opacity 0.
+   await evaluate(`storyEngine.setPlaying(true);storyEngine.setTarget(storyEngine.keys[${i}].t)`);await settle();
    assert.equal(await evaluate('document.querySelector("#paper-figure").hidden'),false,`figure hidden at ${i}`);
    assert.equal(await evaluate('document.querySelector("#native-figure-chart svg")!==null'),true,`no native SVG at ${i}`);
    assert.equal(await evaluate('document.querySelector("#native-figure-unavailable").hidden'),true,`unavailable shown at ${i}`);
-   assert.equal(await evaluate('document.querySelector("#paper-caption").textContent.length>0'),true,`no caption at ${i}`);
-   assert.equal(await evaluate('document.querySelector("#paper-source").textContent'),`Fig ${i-10}`);
+   const caption=await evaluate('document.querySelector("#paper-caption").textContent');
+   assert.ok(caption.length>0,`no caption at ${i}`);
+   if(i===11)assert.ok(!/lattice/i.test(caption),`panel 11 caption claims a lattice: ${caption}`);
+   const figureShort={11:'Fig 3C',12:'Fig 4C',13:'Figs 5–6',14:'Table 2',15:'Fig 7',16:'Fig 8A',17:'Fig 13C'}[i];
+   const sourceLabel=figureShort+(nativeData[i].approx?' · Digitized approximation':'');
+   assert.equal(await evaluate('document.querySelector("#paper-source").textContent'),sourceLabel,`source label at ${i}`);
    assert.equal(await evaluate('document.querySelector("#paper-audit-link").hidden'),false,`no audit link at ${i}`);
+   await waitChartSettled();
+   await assertMarksVisible(nativeData[i].kind);
+   // Pause now that the entrance has finished, for a stable capture.
+   await evaluate('storyEngine.setPlaying(false)');await delay(150);
    await snap(`native-panel-${i}`);
   }
   assert.equal(pngRequests.length,pngBefore,'PNG requested during native results');
@@ -76,7 +134,10 @@ try{
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'h',code:'KeyH'});await delay(100);
   assert.equal(await evaluate('document.querySelector("#paper-highlight-text").hidden'),false,'highlight text not shown');
   await snap('native-highlight');
-  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'h',code:'KeyH'});await delay(100);
+  // Cycle through every callout then one more to clear; count is data-driven, not assumed.
+  for(let h=0;h<10 && !(await evaluate('document.querySelector("#paper-highlight-text").hidden'));h++){
+   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'h',code:'KeyH'});await delay(100);
+  }
   assert.equal(await evaluate('document.querySelector("#paper-highlight-text").hidden'),true,'highlight not cleared');
   // Theme toggle updates without error.
   await evaluate('document.querySelector("#theme").click()');await delay(100);
@@ -118,10 +179,9 @@ try{
  assert.equal(await evaluate('storyEngine.drawCount'),stillDraws,'reduced-motion renderer active');
  await snap('reduced-motion');
  await send('Emulation.setEmulatedMedia',{features:[]});
- // Peer files 404 until merged; tokens.css/favicon 404 are dev-server artifacts (source served unbuilt).
- const ignorePaths=['native-data.json','native-charts.mjs','native-charts.css','tokens.css','favicon.ico'];
- const realErrors=errors.filter(e=>!(e.url&&ignorePaths.some(p=>e.url.includes(p))));
- assert.equal(realErrors.length,0,JSON.stringify(realErrors));
- await writeFile(`${directory}/report.json`,JSON.stringify({nativeAvailable,pngRequests,errors,realErrors},null,2));
+ // The site is served from the built output: every asset must resolve, so
+ // there are no 404s to ignore.
+ assert.equal(errors.length,0,'built site must serve every asset (no 404s): '+JSON.stringify(errors));
+ await writeFile(`${directory}/report.json`,JSON.stringify({nativeAvailable,pngRequests,errors},null,2));
  console.log(JSON.stringify({directory,nativeAvailable,pngRequests,errors}));
 }finally{ws?.close();chrome.kill();server.close();await delay(500);await rm('/tmp/tem-native-chrome',{recursive:true,force:true}).catch(()=>{});}
