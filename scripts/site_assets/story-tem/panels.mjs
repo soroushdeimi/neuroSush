@@ -4,7 +4,7 @@ export const panels = [
     note:'These ingredients do not establish that a map will emerge. Illustration, not trained activity.',
     facts:['opening_ingredients','theta_hz'], source:'Preprint pp. 3–4, 8', badge:'SCHEMATIC', label:'World → spikes'},
   {chapter:1, scene:'fields', title:'One place.<br>Many <em>places.</em>',
-    copy:'In the animated view, move the pointer or tap either map to compare the same location. A place cell fires most strongly near a particular location. A grid cell fires at repeated locations, forming a spatial pattern. These are firing fields: maps of where a neuron tends to be active. The pattern belongs to a cell, not to the animal’s path.',
+    copy:'Move the pointer or tap either map to compare one location. A place cell fires most strongly near a particular location. A grid cell fires at repeated locations, forming a spatial pattern. These are firing fields: maps of where a neuron tends to be active. The pattern belongs to a cell, not to the animal’s path.',
     note:'The rate and example spike indicators are schematic illustrations, not recordings or learned outputs from the spiking network.',
     facts:['place_grid_definition'], source:'Preprint pp. 1–2, Introduction', badge:'SCHEMATIC', label:'World → firing fields'},
   {chapter:2, scene:'circuit', title:'Follow the<br><em>two routes.</em>',
