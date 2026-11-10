@@ -15,12 +15,22 @@ const panels = templates.map(p => ({
   }),
 }));
 
-// Paper figures supplement the canvas. A missing optional manifest must not stop the story.
+// Native result charts supplement the canvas. A missing optional module or data
+// file must not stop the story; the presenter then shows an honest fallback.
 let paperFigures = {};
+let nativeData = {};
+let renderNativeChart = null;
 try {
   const figuresResponse = await fetch(new URL('./paper-figures/manifest.json', import.meta.url));
   if (figuresResponse.ok) paperFigures = await figuresResponse.json();
 } catch { /* Keep the schematic presentation available. */ }
+try {
+  const nativeResponse = await fetch(new URL('./paper-figures/native-data.json', import.meta.url));
+  if (nativeResponse.ok) nativeData = await nativeResponse.json();
+} catch { /* Native charts stay unavailable; the schematic story still runs. */ }
+try {
+  renderNativeChart = (await import('./native-charts.mjs')).renderNativeChart;
+} catch { /* Renderer not merged yet; results mode falls back to a notice. */ }
 
 // A failed replay is isolated to its panel; the rest of the sourced story still runs.
 let replays = [];
@@ -45,27 +55,20 @@ let presenting = false;
 let showDetails = false;
 let showFigure = false;
 let calloutIndex = -1;
-const paperImage = q('#paper-image');
+let chartController = null;
 const figureElement = q('#paper-figure');
 const figureButton = q('#figure-toggle');
 const highlightButton = q('#highlight-next');
-const calloutLayer = q('#paper-callout-layer');
 
-function syncCalloutLayer() {
-  if (figureElement.hidden || calloutLayer.hidden) return;
-  const imageBox = paperImage.getBoundingClientRect();
-  const figureBox = figureElement.getBoundingClientRect();
-  calloutLayer.style.left = `${imageBox.left - figureBox.left}px`;
-  calloutLayer.style.top = `${imageBox.top - figureBox.top}px`;
-  calloutLayer.style.width = `${imageBox.width}px`;
-  calloutLayer.style.height = `${imageBox.height}px`;
+function destroyChart() {
+  if (chartController) { chartController.destroy(); chartController = null; }
+  engine.chartController = chartController;
 }
 function renderCallout() {
   const callouts = paperFigures?.[chapter]?.callouts;
   const available = presenting && !figureElement.hidden && Array.isArray(callouts) && callouts.length > 0;
   highlightButton.hidden = !available;
   const current = available ? callouts[calloutIndex] : null;
-  calloutLayer.hidden = !current;
   const text = q('#paper-highlight-text');
   text.hidden = !current;
   if (!current) {
@@ -73,15 +76,10 @@ function renderCallout() {
     highlightButton.setAttribute('aria-label', 'Show first figure highlight');
     return;
   }
-  const ring = q('#paper-callout-ring');
-  for (const [property, value] of Object.entries({left: current.x, top: current.y, width: current.w, height: current.h})) {
-    ring.style[property] = `${value * 100}%`;
-  }
-  q('#paper-callout-number').textContent = String(calloutIndex + 1);
   text.textContent = `${calloutIndex + 1} / ${callouts.length} · ${current.label}`;
   highlightButton.textContent = calloutIndex + 1 === callouts.length ? 'Clear highlight (H)' : 'Next highlight (H)';
   highlightButton.setAttribute('aria-label', calloutIndex + 1 === callouts.length ? 'Clear figure highlight' : 'Show next figure highlight');
-  requestAnimationFrame(syncCalloutLayer);
+  chartController?.highlight(calloutIndex);
 }
 function cycleCallout() {
   const callouts = paperFigures?.[chapter]?.callouts;
@@ -104,29 +102,45 @@ function renderCopy() {
 }
 function renderFigure() {
   const item = paperFigures?.[chapter];
+  const entry = nativeData?.[chapter];
   const available = Boolean(item && typeof item.src === 'string' && item.src.startsWith('paper-figures/'));
+  const native = Boolean(available && renderNativeChart && entry);
   figureButton.hidden = !presenting || !available;
   const visible = presenting && showFigure && available;
   figureElement.hidden = !visible;
   figureButton.setAttribute('aria-pressed', String(visible));
-  figureButton.textContent = visible ? 'Animation' : 'Paper figure';
-  if (!visible) { renderCallout(); return; }
-  paperImage.src = new URL(item.src, import.meta.url).href;
-  paperImage.alt = item.caption || 'Figure from the presentation deck';
+  figureButton.textContent = visible ? 'Explainer' : 'Results';
+  if (!visible) { destroyChart(); renderCallout(); return; }
   q('#paper-caption').textContent = item.caption || '';
-  q('#paper-source').textContent = item.source || 'Adapted from the presentation deck';
+  q('#paper-source').textContent = entry?.approx ? 'Fig ' + (chapter - 10) + ' · Digitized approximation' : 'Fig ' + (chapter - 10);
+  const provenance = q('#paper-provenance');
+  provenance.hidden = !entry?.provenance;
+  q('#paper-provenance-text').textContent = entry?.provenance || '';
+  const auditLink = q('#paper-audit-link');
+  auditLink.hidden = !available;
+  auditLink.href = new URL(item.src, import.meta.url).href;
+  const chartHost = q('#native-figure-chart');
+  const unavailable = q('#native-figure-unavailable');
+  if (!native) {
+    destroyChart();
+    chartHost.hidden = true;
+    unavailable.hidden = false;
+    renderCallout();
+    return;
+  }
+  unavailable.hidden = true;
+  chartHost.hidden = false;
+  destroyChart();
+  try {
+    chartController = renderNativeChart(chartHost, entry, {playing: engine.playing, reducedMotion: motion.matches});
+  } catch {
+    chartController = null;
+    chartHost.hidden = true;
+    unavailable.hidden = false;
+  }
+  engine.chartController = chartController;
   renderCallout();
 }
-paperImage.addEventListener('load', syncCalloutLayer);
-new ResizeObserver(syncCalloutLayer).observe(paperImage);
-addEventListener('resize', syncCalloutLayer);
-paperImage.addEventListener('error', () => {
-  figureElement.hidden = true;
-  figureButton.hidden = true;
-  figureButton.setAttribute('aria-pressed', 'false');
-  calloutIndex = -1;
-  renderCallout();
-});
 function setPresenting(value) {
   presenting = Boolean(value);
   document.body.classList.toggle('presenting', presenting);
@@ -182,6 +196,7 @@ q('#recorded-step').addEventListener('input', event => {
   engine.setPlaying(false);
   q('#play').textContent = 'Animate';
   q('#play').setAttribute('aria-pressed', 'false');
+  syncChartPlaying();
   const world = engine.replays[engine.replayVariant].worlds[engine.replayWorld];
   engine.phase = Number(event.target.value) * (world.walk.length - 1) / 4;
   engine.wake();
@@ -215,10 +230,12 @@ addEventListener('keydown', event => {
   else if (key.toLowerCase() === 'i' && !figureButton.hidden) { showFigure = !showFigure; calloutIndex = -1; renderFigure(); }
   else if (key.toLowerCase() === 'h') cycleCallout();
 });
+function syncChartPlaying() { chartController?.setPlaying(engine.playing); }
 q('#play').addEventListener('click', () => {
   engine.setPlaying(!engine.playing);
   q('#play').setAttribute('aria-pressed', String(engine.playing));
   q('#play').textContent = engine.playing ? 'Pause' : 'Animate';
+  syncChartPlaying();
 });
 q('#figure-toggle').addEventListener('click', () => { showFigure = !showFigure; calloutIndex = -1; renderFigure(); });
 highlightButton.addEventListener('click', cycleCallout);
@@ -257,6 +274,7 @@ let stillsBuilt = false;
 function reducedMotion() {
   engine.reduced = motion.matches;
   resize();
+  renderFigure();
   if (motion.matches) {
     cancelAnimationFrame(engine.raf);
     engine.raf = 0;
