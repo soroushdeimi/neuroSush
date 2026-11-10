@@ -39,6 +39,10 @@ export class ZoomEngine {
     this.keys = panels.map((p,i)=>({t:panels.length===1?0:i/(panels.length-1),x:.5+(p.chapter%2)*.025,y:.5,log:[0,-.15,-.5,-.3,-.5,-.8,0,-.1,-.25,0,.1][p.chapter]}));
     this.target=0; this.t=0; this.active=0; this.playing=true; this.phase=0; this.raf=0; this.drawCount=0; this.camera={}; this.reduced=false;
     this.step=this.step.bind(this); this.resize=this.resize.bind(this);
+    this.fieldPointer=null;
+    canvas.addEventListener('pointerdown',event=>this.setFieldPointer(event));
+    canvas.addEventListener('pointermove',event=>this.setFieldPointer(event));
+    canvas.addEventListener('pointerleave',event=>{if(event.pointerType==='mouse'){this.fieldPointer=null;this.wake();}});
     this.walk=[[3,3]];let seed=17;
     for(let i=0;i<300;i++){seed=(seed*1664525+1013904223)>>>0;const [x,y]=this.walk.at(-1),d=seed%5;this.walk.push([Math.max(0,Math.min(facts.arena_side-1,x+(d===0?1:d===1?-1:0))),Math.max(0,Math.min(facts.arena_side-1,y+(d===2?1:d===3?-1:0)))]);}
     this.resize(); addEventListener('resize',this.resize);
@@ -47,6 +51,20 @@ export class ZoomEngine {
   updateTheme(){const s=getComputedStyle(document.documentElement);this.colors=['--bg','--text','--text-3','--accent-text','--inh','--trace'].map(k=>s.getPropertyValue(k).trim());this.wake();}
   setTarget(t){if(!Number.isFinite(t))throw RangeError('Scroll must be finite.');this.target=clamp(t);this.wake();}
   setPlaying(value){this.playing=value;if(!value)this.t=this.target;this.lastTime=0;this.wake();}
+  setFieldPointer(event){
+    if(this.active!==1||this.reduced||this.panels[1]?.scene!=='fields')return;
+    const rect=this.canvas.getBoundingClientRect();
+    const x=(event.clientX-rect.left)*this.w/rect.width,y=(event.clientY-rect.top)*this.h/rect.height;
+    const key=this.keys[1],scale=10**((key.log-this.camera.log)*.24);
+    const localX=(x-this.cx-(key.x-this.camera.x)*this.size)/scale,localY=(y-this.cy)/scale;
+    const width=this.size*.42,top=-this.size*.23;
+    for(const left of [-this.size*.48,this.size*.05]){
+      if(localX>=left&&localX<=left+width&&localY>=top&&localY<=top+width){
+        this.fieldPointer={x:(localX-left)/width,y:(localY-top)/width};
+        this.wake();return;
+      }
+    }
+  }
   wake(){if(!this.raf&&!this.reduced&&!document.hidden)this.raf=requestAnimationFrame(this.step);}
   step(now){this.raf=0;if(this.reduced||document.hidden)return;const delta=this.target-this.t;this.t=Math.abs(delta)<.000001?this.target:this.t+delta*.16;if(this.playing&&this.lastTime)this.phase+=(now-this.lastTime)/1000;this.lastTime=now;cameraAt(this.t,this.keys,this.camera);this.draw();this.onState(this.active);if(this.playing||Math.abs(this.target-this.t)>.000001)this.wake();}
   line(x,y,xx,yy,color,width=1){const c=this.ctx;c.beginPath();c.moveTo(x,y);c.lineTo(xx,yy);c.strokeStyle=color;c.lineWidth=width;c.stroke();}
@@ -270,19 +288,33 @@ export class ZoomEngine {
   }
   fields(single=false){const c=this.ctx,s=this.size,gold=this.colors[3],blue=this.colors[4],muted=this.colors[2];
     const width=s*(single?.58:.42),top=-s*.23;
+    const teaching=!single&&this.active===1;
+    const q=this.phase*.3,auto={x:.5+.4*Math.sin(q*1.7),y:.5+.4*Math.sin(q*2.3)};
+    const position=teaching&&this.fieldPointer?this.fieldPointer:auto;
+    if(teaching)this.text(this.reduced?'SCHEMATIC · IDEALIZED FIELDS':'SCHEMATIC · MOVE POINTER OR TAP',-s*.48,-s*.37,muted,this.mobile?9:12);
     for(let kind=0;kind<(single?1:2);kind++){
       const left=single?-width/2:kind?s*.05:-s*.48;
-      this.text(kind?'GRID CELL':'PLACE CELL',left,top-18,kind?blue:gold,10);
+      const color=kind?blue:gold;
+      this.text(kind?'GRID CELL':'PLACE CELL',left,top-18,color,this.mobile?9:12);
       for(let row=0;row<40;row++)for(let col=0;col<40;col++){
         const v=fieldAt((col+.5)/40,(row+.5)/40,!!kind);
         c.globalAlpha*=.08+.85*v;c.fillStyle=kind?blue:gold;c.fillRect(left+col/40*width,top+row/40*width,width/40+.3,width/40+.3);c.globalAlpha/=.08+.85*v;
       }
       c.strokeStyle=muted;c.strokeRect(left,top,width,width);
-      const q=this.phase*.3,x=.5+.4*Math.sin(q*1.7),y=.5+.4*Math.sin(q*2.3);
-      const value=fieldAt(x,y,!!kind);this.circle(left+x*width,top+y*width,4,this.colors[1]);
-      this.circle(left+x*width,top+y*width,7+value*9,kind?blue:gold,false);
-      this.text(kind?'REPEATED FIELDS':'LOCAL FIELD',left,top+width+24,muted,9);
+      const {x,y}=position,value=fieldAt(x,y,!!kind);
+      this.circle(left+x*width,top+y*width,4,this.colors[1]);
+      this.circle(left+x*width,top+y*width,7+value*9,color,false);
+      if(teaching){
+        const base=top+width;
+        this.text(`RATE ${Math.round(value*100)}%`,left,base+22,color,this.mobile?9:11);
+        this.line(left,base+32,left+width,base+32,muted,4);
+        this.line(left,base+32,left+width*value,base+32,color,5);
+        const spike=value>.3&&Math.sin(this.phase*12+kind*2)>.65;
+        this.circle(left+5,base+53,spike?6:4,color,spike);
+        this.text('EXAMPLE SPIKE',left+16,base+57,muted,this.mobile?8:10);
+      }else this.text(kind?'REPEATED FIELDS':'LOCAL FIELD',left,top+width+24,muted,9);
     }
+    if(teaching)this.text(this.mobile?'SCHEMATIC · NOT MODEL DATA':'ILLUSTRATIVE RATES & SPIKES · NOT MODEL DATA',-s*.48,this.mobile?s*.48:s*.42,muted,this.mobile?9:10);
   }
   ingredients(){const c=this.ctx,s=this.size,ink=this.colors[1],muted=this.colors[2],gold=this.colors[3],blue=this.colors[4];const left=-s*.45,w=s*.9;
     this.text('INPUT → LEAK → SPIKE',left,-s*.39,muted,10);
