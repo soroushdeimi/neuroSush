@@ -252,7 +252,7 @@ export class ZoomEngine {
     const s=this.size,c=this.ctx,muted=this.colors[2],gold=this.colors[3],blue=this.colors[4],ink=this.colors[1];
     const lag=this.stdpPointerLag??.72*Math.sin(this.phase*.65+.8),delta=stdpTeachingDelta(lag);
     const left=-s*.36,right=s*.36,preY=-s*.21,postY=-s*.08,postX=lag*right;
-    this.text(this.reduced?'SCHEMATIC · SPIKE TIMING':'SCHEMATIC · MOVE POINTER IN TIMING WINDOW',-s*.43,-s*.42,muted,this.mobile?8:11);
+    this.text(this.reduced?'SCHEMATIC · SPIKE TIMING':'STDP · MOVE POINTER OR TAP',-s*.43,-s*.42,muted,this.mobile?8:11);
     c.strokeStyle=muted;c.lineWidth=1;c.strokeRect(-s*.4,-s*.34,s*.8,s*.325);
     for(const [name,y,color,x] of [['PRE',preY,blue,0],['POST',postY,gold,postX]]){
       this.text(name,-s*.43,y-7,color,this.mobile?9:11);
@@ -301,7 +301,7 @@ export class ZoomEngine {
     const width=s*.34,top=-s*.18,worlds=[[[0,0],[2,0],[1,2]],[[2,2],[0,1],[1,0]]];
     const route=[[0,2],[1,2],[1,1],[2,1],[2,0],[1,0],[0,0],[0,1]];
     const at=Math.floor(this.phase*1.2)%route.length,progress=(this.phase*1.2)%1;
-    this.text('ORIGINAL TEM · STRUCTURE + CONTENT',-s*.44,-s*.42,muted,this.mobile?8:11);
+    this.text('TEM · SAME MAP, NEW CLUES',-s*.44,-s*.42,muted,this.mobile?8:11);
     for(let world=0;world<2;world++){
       const left=(world?.08:-.42)*s,step=width/3,shops=worlds[world];
       this.text(world?'WORLD B · NEW SENSES':'WORLD A · FIRST SENSES',left,-s*.27,world?gold:blue,this.mobile?8:11);
@@ -326,7 +326,7 @@ export class ZoomEngine {
     this.line(s*.035,-s*.01,s*.014,-s*.027,gold,2);
     this.line(s*.035,-s*.01,s*.014,s*.007,gold,2);
     this.text('g · SAME STREET GRAPH',-s*.42,s*.27,blue,this.mobile?9:12);
-    this.text('p · PLACE LINKS TO NEW CONTENT',-s*.42,s*.36,gold,this.mobile?8:11);
+    this.text('p · NEW PLACE ASSOCIATIONS',-s*.42,s*.36,gold,this.mobile?8:11);
     this.text('SCHEMATIC · NOT A SPIKING MODEL RESULT',-s*.42,s*.45,muted,this.mobile?8:10);
   }
   remapping(square=false){const s=this.size,c=this.ctx,muted=this.colors[2],gold=this.colors[3],blue=this.colors[4];

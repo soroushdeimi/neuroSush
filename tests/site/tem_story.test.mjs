@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {cameraAt,fieldAt,validateReplay} from '../../scripts/site_assets/story-tem/engine.mjs';
+import {cameraAt,fieldAt,validateReplay,stdpTeachingDelta} from '../../scripts/site_assets/story-tem/engine.mjs';
 const keys=[{t:0,x:0,y:1,log:0},{t:1,x:1,y:0,log:-1}];
 test('TEM camera clamps endpoints and preserves its output object',()=>{
  const out={};assert.equal(cameraAt(.5,keys,out),out);assert.equal(out.x,.5);assert.equal(out.log,-.5);
@@ -31,4 +31,23 @@ test('Published replays have bounded paths and finite signed activity maps',()=>
   assert.throws(()=>validateReplay(truncated),/activity/);
  }
  assert.throws(()=>validateReplay({worlds:[]}),/worlds/);
+});
+
+test('STDP teaching delta has the right sign, zero, and finite endpoints',()=>{
+ assert.equal(stdpTeachingDelta(0),0);
+ assert.ok(stdpTeachingDelta(.25)>0);
+ assert.ok(stdpTeachingDelta(1)>0);
+ assert.ok(stdpTeachingDelta(-.25)<0);
+ assert.ok(stdpTeachingDelta(-1)<0);
+ assert.ok(Number.isFinite(stdpTeachingDelta(1)));
+ assert.ok(Number.isFinite(stdpTeachingDelta(-1)));
+});
+
+test('STDP teaching delta magnitude decays as absolute lag grows',()=>{
+ for(const lag of [.25,.5,1])assert.ok(Math.abs(stdpTeachingDelta(lag))<Math.abs(stdpTeachingDelta(lag/2)));
+ for(const lag of [.25,.5,1])assert.ok(Math.abs(stdpTeachingDelta(-lag))<Math.abs(stdpTeachingDelta(-lag/2)));
+});
+
+test('STDP teaching delta rejects nonfinite and out-of-range lags',()=>{
+ for(const bad of [NaN,Infinity,-Infinity,1.5,-1.5,'0.5'])assert.throws(()=>stdpTeachingDelta(bad),RangeError);
 });
