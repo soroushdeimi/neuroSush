@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Literal
 
 import torch
 import torch.nn.functional as F
@@ -11,7 +12,7 @@ import torch.nn.functional as F
 def s1_response(
     images: torch.Tensor,
     bank: Sequence[torch.Tensor],
-    padding: str = "same",
+    padding: Literal["same", "valid"] = "same",
     normalize: bool = False,
     eps: float = 1e-8,
 ) -> list[torch.Tensor]:

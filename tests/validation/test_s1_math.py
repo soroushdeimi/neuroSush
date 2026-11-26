@@ -42,6 +42,13 @@ class TestS1Response:
         assert norm[0].shape == (1, 1, 1, 1)
         assert norm[0].item() == pytest.approx(1.0, abs=1e-6)
 
+    def test_normalize_uses_eps(self):
+        # raw conv 6.0, local norm sqrt(36 + 64) = 10.0, so the response is 0.6
+        images = torch.full((1, 1, 3, 3), 2.0, dtype=torch.float64)
+        kernel = torch.ones(1, 1, 3, 3, dtype=torch.float64) / 3
+        out = s1_response(images, [kernel], padding="valid", normalize=True, eps=64.0)
+        assert out[0].item() == pytest.approx(0.6, abs=1e-6)
+
     def test_zero_mean_kernel_on_constant_image(self):
         images = torch.full((1, 1, 6, 6), 5.0)
         kernel = torch.tensor([[[[1.0, -1.0, 0.0], [1.0, -1.0, 0.0], [0.0, 0.0, 0.0]]]]) / 2
