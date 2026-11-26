@@ -7,8 +7,6 @@ Kheradpisheh et al. 2018, Eq. 3, and ``stdp_convergence`` reports the Eq. 4 conv
 
 from __future__ import annotations
 
-import math
-
 import torch
 
 
@@ -46,20 +44,16 @@ def select_conv_winners(
             f"{tuple(first_spike_time.shape)} != potential {tuple(potential.shape)}"
         )
     if k < 1:
-        raise ValueError("k must be at least 1")
+        raise ValueError(f"k must be at least 1, got {k}")
     if radius < 0:
-        raise ValueError("radius must be non-negative")
+        raise ValueError(f"radius must be non-negative, got {radius}")
 
-    c, h, w = first_spike_time.shape
+    # Read the tensors once; only finite-time entries are candidates.
+    times = first_spike_time.tolist()
+    pots = potential.tolist()
     candidates = []
-    for ci in range(c):
-        for yi in range(h):
-            for xi in range(w):
-                t = first_spike_time[ci, yi, xi].item()
-                if math.isinf(t):
-                    continue
-                p = potential[ci, yi, xi].item()
-                candidates.append((t, -p, ci, yi, xi))
+    for ci, yi, xi in torch.isfinite(first_spike_time).nonzero().tolist():
+        candidates.append((times[ci][yi][xi], -pots[ci][yi][xi], ci, yi, xi))
     candidates.sort()
 
     winners: list[tuple[int, int, int]] = []

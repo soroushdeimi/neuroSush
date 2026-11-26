@@ -59,12 +59,12 @@ class TestSelectConvWinners:
 
     def test_k0_raises(self):
         fst, pot = fixture_f()
-        with pytest.raises(ValueError, match="k must be at least 1"):
+        with pytest.raises(ValueError, match="got 0"):
             select_conv_winners(fst, pot, k=0, radius=0)
 
     def test_negative_radius_raises(self):
         fst, pot = fixture_f()
-        with pytest.raises(ValueError, match="radius must be non-negative"):
+        with pytest.raises(ValueError, match="got -1"):
             select_conv_winners(fst, pot, k=1, radius=-1)
 
     def test_shape_mismatch_raises(self):
@@ -78,6 +78,51 @@ class TestSelectConvWinners:
         pot = torch.zeros(2, 3, dtype=torch.float64)
         with pytest.raises(ValueError, match="must be 3-D"):
             select_conv_winners(fst, pot, k=1, radius=0)
+
+    def test_matches_brute_force_on_random_maps(self):
+        g = torch.Generator().manual_seed(0)
+        fst = torch.randint(0, 5, (3, 6, 6)).float()
+        flat = fst.flatten()
+        flat[::4] = math.inf
+        fst = flat.view(3, 6, 6)
+        pot = torch.rand((3, 6, 6), generator=g)
+
+        def reference(fst, pot, k, radius):
+            c, h, w = fst.shape
+            cands = []
+            for ci in range(c):
+                for yi in range(h):
+                    for xi in range(w):
+                        t = fst[ci, yi, xi].item()
+                        if math.isinf(t):
+                            continue
+                        cands.append((t, -pot[ci, yi, xi].item(), ci, yi, xi))
+            cands.sort()
+            winners = []
+            for _, _, ci, yi, xi in cands:
+                if len(winners) >= k:
+                    break
+                if any(wc == ci for wc, _, _ in winners):
+                    continue
+                if any(max(abs(yi - wy), abs(xi - wx)) <= radius for _, wy, wx in winners):
+                    continue
+                winners.append((ci, yi, xi))
+            return winners
+
+        expected = [list(w) for w in reference(fst, pot, k=3, radius=2)]
+        assert select_conv_winners(fst, pot, k=3, radius=2).tolist() == expected
+
+    def test_other_map_winner_within_radius_blocks(self):
+        fst = torch.tensor(
+            [
+                [[1.0, math.inf, math.inf, math.inf, math.inf]],
+                [[math.inf, 2.0, math.inf, math.inf, 3.0]],
+            ],
+            dtype=torch.float64,
+        )
+        pot = torch.zeros(2, 1, 5, dtype=torch.float64)
+        winners = select_conv_winners(fst, pot, k=2, radius=1)
+        assert winners.tolist() == [[0, 0, 0], [1, 0, 4]]
 
 
 class TestSimplifiedStdp:
