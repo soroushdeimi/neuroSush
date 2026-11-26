@@ -38,20 +38,17 @@ def spatial_lateral_inhibition(
         raise ValueError(
             f"shape mismatch: potential {tuple(potential.shape)} != spikes {tuple(spikes.shape)}"
         )
-    b, c, h, w = spikes.shape
+    b, _c, h, w = spikes.shape
     if fired.shape != (b, h, w):
         raise ValueError(f"shape mismatch: fired {tuple(fired.shape)} != (B, H, W) = {(b, h, w)}")
     if fired.dtype != torch.bool:
         raise ValueError("fired must be bool")
 
-    # Highest potential per pixel; ties broken by lowest c via a stable argmax over -potential.
-    masked = torch.where(spikes, potential, torch.full_like(potential, float("-inf")))
-    winner_c = torch.argmax(masked, dim=1)  # (B, H, W); argmax is stable (first index on ties)
-
-    any_spike = spikes.any(dim=1)  # (B, H, W); argmax over all -inf is meaningless where False
-    new_spikes = torch.zeros_like(spikes)
-    new_spikes.scatter_(1, winner_c.unsqueeze(1).expand(b, c, h, w), True)
-    new_spikes = new_spikes & any_spike.unsqueeze(1)
+    # Only spiking maps can survive; argmax on a -inf sentinel cannot tell a masked-out map from
+    # a real -inf potential, so compare against the best spiking potential instead.
+    best = potential.masked_fill(~spikes, float("-inf")).amax(dim=1, keepdim=True)
+    cand = spikes & (potential == best)
+    new_spikes = cand & (cand.cumsum(dim=1) == 1)  # first candidate along c wins ties
 
     # Suppress every spike at pixels that already fired.
     new_spikes = new_spikes & ~fired.unsqueeze(1)

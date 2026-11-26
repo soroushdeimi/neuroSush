@@ -7,6 +7,8 @@ Kheradpisheh et al. 2018, Eq. 3, and ``stdp_convergence`` reports the Eq. 4 conv
 
 from __future__ import annotations
 
+import math
+
 import torch
 
 
@@ -34,7 +36,8 @@ def select_conv_winners(
         (0, 3) when nothing is accepted.
 
     Raises:
-        ValueError: If k < 1, radius < 0, the inputs are not 3-D, or their shapes differ.
+        ValueError: If k < 1, radius < 0, the inputs are not 3-D, their shapes differ, any
+            ``first_spike_time`` entry is ``-inf`` or NaN, or any ``potential`` entry is NaN.
     """
     if first_spike_time.dim() != 3 or potential.dim() != 3:
         raise ValueError("first_spike_time and potential must be 3-D")
@@ -47,6 +50,15 @@ def select_conv_winners(
         raise ValueError(f"k must be at least 1, got {k}")
     if radius < 0:
         raise ValueError(f"radius must be non-negative, got {radius}")
+
+    # Only +inf means "never spiked"; -inf and NaN are invalid times.
+    bad_time = ~torch.isposinf(first_spike_time) & ~torch.isfinite(first_spike_time)
+    if bool(bad_time.any()):
+        bad_val = first_spike_time[bad_time].flatten()[0].item()
+        raise ValueError(f"first_spike_time must be finite or +inf, got {bad_val}")
+    bad_pot = torch.isnan(potential)
+    if bool(bad_pot.any()):
+        raise ValueError(f"potential must not be NaN, got {potential[bad_pot].flatten()[0].item()}")
 
     # Read the tensors once; only finite-time entries are candidates.
     times = first_spike_time.tolist()
@@ -96,17 +108,21 @@ def simplified_stdp(
 
     Raises:
         ValueError: If ``w`` and ``pre_time`` shapes differ, any element of ``w`` is outside
-            [0, 1], or ``a_plus`` / ``a_minus`` is negative.
+            [0, 1], ``post_time`` is not finite, or ``a_plus`` / ``a_minus`` is not finite and
+            in [0, 1].
     """
     if w.shape != pre_time.shape:
         raise ValueError(f"shape mismatch: w {tuple(w.shape)} != pre_time {tuple(pre_time.shape)}")
     out_of_range = (w < 0) | (w > 1)
     if bool(out_of_range.any()):
         raise ValueError(f"w must be in [0, 1], got {w[out_of_range].flatten()[0].item()}")
-    if a_plus < 0:
-        raise ValueError(f"a_plus must be non-negative, got {a_plus}")
-    if a_minus < 0:
-        raise ValueError(f"a_minus must be non-negative, got {a_minus}")
+    # STDP is triggered by a postsynaptic spike, so post_time must be finite.
+    if not math.isfinite(post_time):
+        raise ValueError(f"post_time must be finite, got {post_time}")
+    if not math.isfinite(a_plus) or not 0.0 <= a_plus <= 1.0:
+        raise ValueError(f"a_plus must be finite and in [0, 1], got {a_plus}")
+    if not math.isfinite(a_minus) or not 0.0 <= a_minus <= 1.0:
+        raise ValueError(f"a_minus must be finite and in [0, 1], got {a_minus}")
 
     ltp = pre_time <= post_time
     dw = torch.where(ltp, a_plus * w * (1 - w), -a_minus * w * (1 - w))
