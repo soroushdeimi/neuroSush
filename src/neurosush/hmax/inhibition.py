@@ -1,0 +1,60 @@
+"""Spatial lateral inhibition across feature maps at each pixel."""
+
+from __future__ import annotations
+
+import torch
+
+
+def spatial_lateral_inhibition(
+    spikes: torch.Tensor,
+    potential: torch.Tensor,
+    fired: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Apply spatial lateral inhibition across feature maps.
+
+    At each pixel ``(b, y, x)``: if ``fired[b, y, x]`` is True every spike there is suppressed.
+    Otherwise, among the maps that spike at this pixel only the one with the highest potential
+    survives (ties broken by the lowest map index ``c``).
+
+    Args:
+        spikes: Spike mask, bool, shape (B, C, H, W).
+        potential: Potential per entry, float, shape (B, C, H, W).
+        fired: Pixels that already fired, bool, shape (B, H, W).
+
+    Returns:
+        A tuple ``(new_spikes, new_fired)`` where ``new_spikes`` is bool (B, C, H, W) and
+        ``new_fired`` is bool (B, H, W) equal to ``fired | new_spikes.any(dim=1)``. Inputs are not
+        mutated.
+
+    Raises:
+        ValueError: If ``spikes`` is not bool or not 4-D, ``potential`` shape differs from
+            ``spikes``, or ``fired`` is not bool or not shaped (B, H, W).
+    """
+    if spikes.dtype != torch.bool:
+        raise ValueError("spikes must be bool")
+    if spikes.dim() != 4:
+        raise ValueError("spikes must be 4-D")
+    if potential.shape != spikes.shape:
+        raise ValueError(
+            f"shape mismatch: potential {tuple(potential.shape)} != spikes {tuple(spikes.shape)}"
+        )
+    b, c, h, w = spikes.shape
+    if fired.shape != (b, h, w):
+        raise ValueError(f"shape mismatch: fired {tuple(fired.shape)} != (B, H, W) = {(b, h, w)}")
+    if fired.dtype != torch.bool:
+        raise ValueError("fired must be bool")
+
+    # Highest potential per pixel; ties broken by lowest c via a stable argmax over -potential.
+    masked = torch.where(spikes, potential, torch.full_like(potential, float("-inf")))
+    winner_c = torch.argmax(masked, dim=1)  # (B, H, W); argmax is stable (first index on ties)
+
+    any_spike = spikes.any(dim=1)  # (B, H, W); argmax over all -inf is meaningless where False
+    new_spikes = torch.zeros_like(spikes)
+    new_spikes.scatter_(1, winner_c.unsqueeze(1).expand(b, c, h, w), True)
+    new_spikes = new_spikes & any_spike.unsqueeze(1)
+
+    # Suppress every spike at pixels that already fired.
+    new_spikes = new_spikes & ~fired.unsqueeze(1)
+
+    new_fired = fired | new_spikes.any(dim=1)
+    return new_spikes, new_fired
