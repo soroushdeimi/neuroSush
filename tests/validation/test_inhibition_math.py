@@ -32,6 +32,34 @@ class TestSpatialLateralInhibition:
         assert new_spikes.tolist() == [[[[True]], [[False]]]]
         assert new_fired.tolist() == [[[True]]]
 
+    def test_nonspiking_map_cannot_survive_with_neg_inf_potentials(self):
+        spikes = torch.zeros(1, 2, 1, 1, dtype=torch.bool)
+        spikes[0, 1, 0, 0] = True
+        potential = torch.tensor([[[[float("-inf")]], [[float("-inf")]]]], dtype=torch.float64)
+        fired = torch.zeros(1, 1, 1, dtype=torch.bool)
+        new_spikes, new_fired = spatial_lateral_inhibition(spikes, potential, fired)
+        assert new_spikes.tolist() == [[[[False]], [[True]]]]
+        assert new_fired.tolist() == [[[True]]]
+
+    def test_both_neg_inf_lowest_c_survives(self):
+        spikes = torch.zeros(1, 2, 1, 1, dtype=torch.bool)
+        spikes[0, 0, 0, 0] = True
+        spikes[0, 1, 0, 0] = True
+        potential = torch.tensor([[[[float("-inf")]], [[float("-inf")]]]], dtype=torch.float64)
+        fired = torch.zeros(1, 1, 1, dtype=torch.bool)
+        new_spikes, new_fired = spatial_lateral_inhibition(spikes, potential, fired)
+        assert new_spikes.tolist() == [[[[True]], [[False]]]]
+        assert new_fired.tolist() == [[[True]]]
+
+    def test_survivor_must_be_spiking_map(self):
+        spikes = torch.zeros(1, 2, 1, 1, dtype=torch.bool)
+        spikes[0, 1, 0, 0] = True
+        potential = torch.tensor([[[[0.0]], [[-1.0]]]], dtype=torch.float64)
+        fired = torch.zeros(1, 1, 1, dtype=torch.bool)
+        new_spikes, new_fired = spatial_lateral_inhibition(spikes, potential, fired)
+        assert new_spikes.tolist() == [[[[False]], [[True]]]]
+        assert new_fired.tolist() == [[[True]]]
+
     def test_already_fired_pixel_suppresses_all(self):
         spikes = torch.zeros(1, 2, 1, 2, dtype=torch.bool)
         spikes[0, 0, 0, 0] = True

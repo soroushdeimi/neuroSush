@@ -112,6 +112,24 @@ class TestSelectConvWinners:
         expected = [list(w) for w in reference(fst, pot, k=3, radius=2)]
         assert select_conv_winners(fst, pot, k=3, radius=2).tolist() == expected
 
+    def test_neg_inf_time_raises(self):
+        fst = torch.tensor([[[float("-inf")]], [[1.0]]], dtype=torch.float64)
+        pot = torch.zeros(2, 1, 1, dtype=torch.float64)
+        with pytest.raises(ValueError, match="first_spike_time"):
+            select_conv_winners(fst, pot, k=1, radius=0)
+
+    def test_nan_time_raises(self):
+        fst = torch.tensor([[[float("nan")]], [[1.0]]], dtype=torch.float64)
+        pot = torch.zeros(2, 1, 1, dtype=torch.float64)
+        with pytest.raises(ValueError, match="first_spike_time"):
+            select_conv_winners(fst, pot, k=1, radius=0)
+
+    def test_nan_potential_raises(self):
+        fst = torch.tensor([[[1.0]], [[2.0]]], dtype=torch.float64)
+        pot = torch.tensor([[[float("nan")]], [[0.0]]], dtype=torch.float64)
+        with pytest.raises(ValueError, match="potential"):
+            select_conv_winners(fst, pot, k=1, radius=0)
+
     def test_other_map_winner_within_radius_blocks(self):
         fst = torch.tensor(
             [
@@ -184,14 +202,61 @@ class TestSimplifiedStdp:
     def test_negative_a_plus_raises(self):
         w = torch.tensor([0.5], dtype=torch.float64)
         pre = torch.tensor([1.0], dtype=torch.float64)
-        with pytest.raises(ValueError, match="a_plus must be non-negative"):
+        with pytest.raises(ValueError, match="a_plus must be finite and in \\[0, 1\\]"):
             simplified_stdp(w, pre, post_time=2.0, a_plus=-0.004, a_minus=0.003)
 
     def test_negative_a_minus_raises(self):
         w = torch.tensor([0.5], dtype=torch.float64)
         pre = torch.tensor([1.0], dtype=torch.float64)
-        with pytest.raises(ValueError, match="a_minus must be non-negative"):
+        with pytest.raises(ValueError, match="a_minus must be finite and in \\[0, 1\\]"):
             simplified_stdp(w, pre, post_time=2.0, a_plus=0.004, a_minus=-0.003)
+
+    def test_inf_post_time_raises(self):
+        w = torch.tensor([0.5], dtype=torch.float64)
+        pre = torch.tensor([math.inf], dtype=torch.float64)
+        with pytest.raises(ValueError, match="post_time"):
+            simplified_stdp(w, pre, post_time=math.inf, a_plus=0.004, a_minus=0.003)
+
+    def test_neg_inf_post_time_raises(self):
+        w = torch.tensor([0.5], dtype=torch.float64)
+        pre = torch.tensor([1.0], dtype=torch.float64)
+        with pytest.raises(ValueError, match="post_time"):
+            simplified_stdp(w, pre, post_time=float("-inf"), a_plus=0.004, a_minus=0.003)
+
+    def test_nan_post_time_raises(self):
+        w = torch.tensor([0.5], dtype=torch.float64)
+        pre = torch.tensor([1.0], dtype=torch.float64)
+        with pytest.raises(ValueError, match="post_time"):
+            simplified_stdp(w, pre, post_time=float("nan"), a_plus=0.004, a_minus=0.003)
+
+    def test_a_plus_above_one_raises(self):
+        w = torch.tensor([0.5], dtype=torch.float64)
+        pre = torch.tensor([1.0], dtype=torch.float64)
+        with pytest.raises(ValueError, match="a_plus"):
+            simplified_stdp(w, pre, post_time=2.0, a_plus=8.0, a_minus=0.003)
+
+    def test_a_minus_above_one_raises(self):
+        w = torch.tensor([0.5], dtype=torch.float64)
+        pre = torch.tensor([3.0], dtype=torch.float64)
+        with pytest.raises(ValueError, match="a_minus"):
+            simplified_stdp(w, pre, post_time=2.0, a_plus=0.004, a_minus=1.5)
+
+    def test_nan_a_plus_raises(self):
+        w = torch.tensor([0.5], dtype=torch.float64)
+        pre = torch.tensor([1.0], dtype=torch.float64)
+        with pytest.raises(ValueError, match="a_plus"):
+            simplified_stdp(w, pre, post_time=2.0, a_plus=float("nan"), a_minus=0.003)
+
+    def test_unit_rates_keep_weights_in_unit_interval(self):
+        w_grid = torch.linspace(0.0, 1.0, 11, dtype=torch.float64)
+        pre_ltp = torch.full_like(w_grid, 1.0)
+        pre_ltd = torch.full_like(w_grid, 3.0)
+        ltp = simplified_stdp(w_grid, pre_ltp, post_time=2.0, a_plus=1.0, a_minus=1.0)
+        ltd = simplified_stdp(w_grid, pre_ltd, post_time=2.0, a_plus=1.0, a_minus=1.0)
+        assert (ltp >= 0).all()
+        assert (ltp <= 1).all()
+        assert (ltd >= 0).all()
+        assert (ltd <= 1).all()
 
 
 class TestStdpConvergence:
