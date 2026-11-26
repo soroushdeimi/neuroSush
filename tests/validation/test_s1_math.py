@@ -49,6 +49,32 @@ class TestS1Response:
         out = s1_response(images, [kernel], padding="valid", normalize=True, eps=64.0)
         assert out[0].item() == pytest.approx(0.6, abs=1e-6)
 
+    def test_normalize_float16_zero_image(self):
+        # the default eps 1e-8 underflows float16; the normalisation must stay finite
+        images = torch.zeros(1, 1, 3, 3, dtype=torch.float16)
+        kernel = torch.ones(1, 1, 3, 3, dtype=torch.float16)
+        out = s1_response(images, [kernel], padding="valid", normalize=True)
+        assert out[0].dtype == torch.float16
+        assert torch.isfinite(out[0]).all()
+        assert torch.all(out[0] == 0.0)
+
+    def test_normalize_float16_constant_image(self):
+        # raw conv of 2.0 over 9 pixels with ones/3 is 6.0; the local L2 norm is 6.0
+        images = torch.full((1, 1, 3, 3), 2.0, dtype=torch.float16)
+        kernel = torch.ones(1, 1, 3, 3, dtype=torch.float16) / 3
+        out = s1_response(images, [kernel], padding="valid", normalize=True)
+        assert out[0].dtype == torch.float16
+        assert out[0].item() == pytest.approx(1.0, abs=1e-2)
+
+    def test_normalize_uses_each_batch_entry(self):
+        # both constant images must normalise to 1.0 with their own local norm
+        images = torch.stack([torch.full((1, 3, 3), 1.0), torch.full((1, 3, 3), 2.0)])
+        kernel = torch.ones(1, 1, 3, 3) / 3
+        out = s1_response(images, [kernel], padding="valid", normalize=True)
+        assert out[0].shape == (2, 1, 1, 1)
+        assert out[0][0, 0, 0, 0].item() == pytest.approx(1.0, abs=1e-6)
+        assert out[0][1, 0, 0, 0].item() == pytest.approx(1.0, abs=1e-6)
+
     def test_zero_mean_kernel_on_constant_image(self):
         images = torch.full((1, 1, 6, 6), 5.0)
         kernel = torch.tensor([[[[1.0, -1.0, 0.0], [1.0, -1.0, 0.0], [0.0, 0.0, 0.0]]]]) / 2
@@ -101,3 +127,15 @@ class TestS1Response:
     def test_rejects_kernel_larger_than_image_with_valid(self):
         with pytest.raises(ValueError, match="larger"):
             s1_response(torch.zeros(1, 1, 4, 4), [_zero_mean_kernel(5, 1)], padding="valid")
+
+    def test_rejects_integer_images(self):
+        with pytest.raises(ValueError, match="int64"):
+            s1_response(torch.zeros(1, 1, 4, 4, dtype=torch.int64), [_zero_mean_kernel(3, 1)])
+
+    def test_rejects_integer_kernel(self):
+        with pytest.raises(ValueError, match="int64"):
+            s1_response(torch.zeros(1, 1, 4, 4), [torch.zeros(1, 1, 3, 3, dtype=torch.int64)])
+
+    def test_rejects_non_square_kernel(self):
+        with pytest.raises(ValueError, match="3, 1"):
+            s1_response(torch.zeros(1, 1, 5, 5), [torch.zeros(1, 1, 3, 1)])

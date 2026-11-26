@@ -64,11 +64,20 @@ def _gabor_kernel(
         The kernel of shape ``(size, size)``.
 
     Raises:
-        ValueError: If size is even or non-positive, wavelength <= 0, sigma <= 0,
-            gamma <= 0, or the kernel is zero after mean removal.
+        ValueError: If size is even or non-positive, wavelength, sigma, gamma or theta is
+            not finite, wavelength <= 0, sigma <= 0, gamma <= 0, or the kernel is zero
+            after mean removal.
     """
     if size % 2 == 0 or size <= 0:
         raise ValueError(f"size must be a positive odd integer, got {size}")
+    if not math.isfinite(wavelength):
+        raise ValueError(f"wavelength must be finite, got {wavelength}")
+    if not math.isfinite(sigma):
+        raise ValueError(f"sigma must be finite, got {sigma}")
+    if not math.isfinite(gamma):
+        raise ValueError(f"gamma must be finite, got {gamma}")
+    if not math.isfinite(theta):
+        raise ValueError(f"theta must be finite, got {theta}")
     if wavelength <= 0:
         raise ValueError(f"wavelength must be positive, got {wavelength}")
     if sigma <= 0:
@@ -118,9 +127,11 @@ def gabor_bank(
         One tensor of shape ``(len(thetas), 1, size, size)`` per scale.
 
     Raises:
-        ValueError: If the sequences have different lengths, thetas is empty, or any
-            kernel parameter is invalid.
+        ValueError: If dtype is not a floating dtype, the sequences have different lengths,
+            thetas is empty, or any kernel parameter is invalid.
     """
+    if not dtype.is_floating_point:
+        raise ValueError(f"dtype must be a floating dtype, got {dtype}")
     if not thetas:
         raise ValueError("thetas must not be empty")
     if not (len(sizes) == len(wavelengths) == len(sigmas)):
@@ -139,13 +150,16 @@ def gabor_bank(
 
 
 def serre2007_gabor_bank(dtype: torch.dtype = torch.float32) -> list[torch.Tensor]:
-    """The 16 Gabor filters of Serre et al. 2007, Table 1.
+    """The 64 Gabor filters of Serre et al. 2007, Table 1: 16 scales x 4 orientations.
 
     Args:
         dtype: Data type of the returned tensors.
 
     Returns:
         16 tensors; tensor ``i`` has shape ``(4, 1, 7 + 2*i, 7 + 2*i)``.
+
+    Raises:
+        ValueError: If dtype is not a floating dtype.
     """
     sizes: list[int] = []
     sigmas: list[float] = []

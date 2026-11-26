@@ -29,9 +29,10 @@ class TestExactKernel:
 class TestSerreBank:
     def test_zero_mean_unit_norm(self):
         for tensor in serre2007_gabor_bank():
-            for filter_ in tensor[0]:
-                assert abs(filter_.sum().item()) < 1e-5
-                assert abs((filter_**2).sum().item() - 1.0) < 1e-5
+            for orientation in tensor:
+                for filter_ in orientation:
+                    assert abs(filter_.sum().item()) < 1e-5
+                    assert abs((filter_**2).sum().item() - 1.0) < 1e-5
 
     def test_shapes(self):
         bank = serre2007_gabor_bank()
@@ -46,6 +47,19 @@ class TestSerreBank:
         assert SERRE2007_BANDS[7] == GaborBandSpec(8, (35, 37), (17.0, 18.2), (21.2, 22.8), 22, 11)
         for spec in SERRE2007_BANDS:
             assert spec.c1_stride == spec.c1_grid // 2
+
+    def test_all_bands_match_table_1(self):
+        expected = (
+            GaborBandSpec(1, (7, 9), (2.8, 3.6), (3.5, 4.6), 8, 4),
+            GaborBandSpec(2, (11, 13), (4.5, 5.4), (5.6, 6.8), 10, 5),
+            GaborBandSpec(3, (15, 17), (6.3, 7.3), (7.9, 9.1), 12, 6),
+            GaborBandSpec(4, (19, 21), (8.2, 9.2), (10.3, 11.5), 14, 7),
+            GaborBandSpec(5, (23, 25), (10.2, 11.3), (12.7, 14.1), 16, 8),
+            GaborBandSpec(6, (27, 29), (12.3, 13.4), (15.4, 16.8), 18, 9),
+            GaborBandSpec(7, (31, 33), (14.6, 15.8), (18.2, 19.7), 20, 10),
+            GaborBandSpec(8, (35, 37), (17.0, 18.2), (21.2, 22.8), 22, 11),
+        )
+        assert expected == SERRE2007_BANDS
 
 
 class TestOrientation:
@@ -93,6 +107,34 @@ class TestFailures:
         # a single-pixel kernel is constant, so mean removal leaves the zero filter
         with pytest.raises(ValueError, match="norm"):
             gabor_bank([1], [3.5], [2.8], [0.0])
+
+    def test_integer_dtype(self):
+        with pytest.raises(ValueError, match="int64"):
+            gabor_bank([7], [3.5], [2.8], [0.0], dtype=torch.int64)
+
+    def test_integer_dtype_serre_bank(self):
+        with pytest.raises(ValueError, match="int64"):
+            serre2007_gabor_bank(torch.int64)
+
+    def test_nan_wavelength(self):
+        with pytest.raises(ValueError, match="nan"):
+            gabor_bank([7], [float("nan")], [2.8], [0.0])
+
+    def test_inf_wavelength(self):
+        with pytest.raises(ValueError, match="inf"):
+            gabor_bank([7], [float("inf")], [2.8], [0.0])
+
+    def test_nan_sigma(self):
+        with pytest.raises(ValueError, match="nan"):
+            gabor_bank([7], [3.5], [float("nan")], [0.0])
+
+    def test_inf_gamma(self):
+        with pytest.raises(ValueError, match="inf"):
+            gabor_bank([7], [3.5], [2.8], [0.0], gamma=float("inf"))
+
+    def test_nan_theta(self):
+        with pytest.raises(ValueError, match="nan"):
+            gabor_bank([7], [3.5], [2.8], [float("nan")])
 
 
 class TestDocstring:
