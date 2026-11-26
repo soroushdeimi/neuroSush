@@ -36,12 +36,12 @@ c1 = h.c1_pool(s1, h.c1_bands_from_spec(h.SERRE2007_BANDS))
 prototypes = h.sample_c1_patches([band[0] for band in c1[:4]], 10, 4, g)
 s2 = [h.s2_rbf(band, prototypes, beta=0.05) for band in c1[:4]]
 c2 = h.c2_global_max(s2)
-print('image:', tuple(image.shape))
-print('S1:', len(s1), 'scales, each', tuple(s1[0].shape))
-print('C1:', [tuple(band.shape) for band in c1])
-print('prototypes:', tuple(prototypes.shape))
-print('S2:', [tuple(band.shape) for band in s2])
-print('C2:', tuple(c2.shape))
+print("image:", tuple(image.shape))
+print("S1:", len(s1), "scales, each", tuple(s1[0].shape))
+print("C1:", [tuple(band.shape) for band in c1])
+print("prototypes:", tuple(prototypes.shape))
+print("S2:", [tuple(band.shape) for band in s2])
+print("C2:", tuple(c2.shape))
 ```
 
 Printed with the task's Python environment (`PYTHONPATH=src`):
