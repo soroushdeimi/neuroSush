@@ -114,6 +114,24 @@ class TestS2Rbf:
         with pytest.raises(ValueError, match="smaller than prototype 5 x 5"):
             s2_rbf(torch.rand(1, 1, 4, 4), torch.rand(1, 1, 5, 5))
 
+    def test_rejects_integer_c1(self):
+        # integer C1 must be rejected, not silently cast (int 0 vs proto 1 gives RBF 0, not exp(-1))
+        c1 = torch.zeros(1, 1, 1, 1, dtype=torch.int64)
+        p = torch.ones(1, 1, 1, 1, dtype=torch.int64)
+        with pytest.raises(ValueError, match="int64"):
+            s2_rbf(c1, p)
+
+    def test_rejects_integer_prototypes(self):
+        with pytest.raises(ValueError, match="int64"):
+            s2_rbf(torch.zeros(1, 1, 1, 1), torch.ones(1, 1, 1, 1, dtype=torch.int64))
+
+    def test_float64_large_magnitude_limitation(self):
+        # around 1e8 the float64 expansion loses the distance: C1=1e8, P=1e8+1 -> 1.0, not exp(-1)
+        c1 = torch.tensor([[[[1e8]]]])
+        p = torch.tensor([[[[1e8 + 1]]]])
+        out = s2_rbf(c1, p)
+        assert out.item() == pytest.approx(1.0, abs=1e-6)
+
 
 class TestSampleC1Patches:
     def test_same_seed_same_patches(self):
@@ -140,6 +158,19 @@ class TestSampleC1Patches:
         out = sample_c1_patches([small, big], 10, 3, gen(5))
         assert out.shape == (10, 2, 3, 3)
         assert (out == 1.0).all()
+
+    def test_samples_every_valid_row(self):
+        # band rows carry the row index; size=1 must be able to draw the last row too
+        band = torch.arange(4.0).view(1, 4, 1)
+        out = sample_c1_patches([band], 200, 1, gen(0))
+        assert out.shape == (200, 1, 1, 1)
+        assert sorted(out[:, 0, 0, 0].unique().tolist()) == [0.0, 1.0, 2.0, 3.0]
+
+    def test_samples_every_valid_column(self):
+        band = torch.arange(4.0).view(1, 1, 4)
+        out = sample_c1_patches([band], 200, 1, gen(0))
+        assert out.shape == (200, 1, 1, 1)
+        assert sorted(out[:, 0, 0, 0].unique().tolist()) == [0.0, 1.0, 2.0, 3.0]
 
     def test_does_not_mutate_bands(self):
         bands = [torch.rand(2, 5, 5, generator=gen(6)) for _ in range(2)]

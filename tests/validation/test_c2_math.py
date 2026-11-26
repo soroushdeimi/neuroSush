@@ -31,6 +31,14 @@ class TestC2GlobalMax:
         assert out.shape == (2, 3)
         assert torch.allclose(out, torch.tensor([[1.0, 4.0, 1.0], [1.0, 1.0, 6.0]]))
 
+    def test_all_negative_values(self):
+        # the maximum of negative numbers stays negative (no clamping to zero)
+        band0 = torch.tensor([[[[-3.0, -1.0]]]])
+        band1 = torch.tensor([[[[-2.0, -5.0]]]])
+        out = c2_global_max([band0, band1])
+        assert out.shape == (1, 1)
+        assert torch.allclose(out, torch.tensor([[-1.0]]))
+
     def test_does_not_mutate_inputs(self):
         band0 = torch.tensor([[[[1.0, 7.0]]]])
         band1 = torch.tensor([[[[9.0, 2.0]]]])
@@ -48,6 +56,15 @@ class TestC2GlobalMaxFailures:
     def test_3d_tensor(self):
         with pytest.raises(ValueError, match="4-D"):
             c2_global_max([torch.zeros(1, 1, 2)])
+
+    def test_0d_first_tensor(self):
+        # a 0-D first element must raise ValueError, not IndexError
+        with pytest.raises(ValueError, match=r"\(\)"):
+            c2_global_max([torch.tensor(1.0)])
+
+    def test_1d_first_tensor(self):
+        with pytest.raises(ValueError, match=r"\(3,\)"):
+            c2_global_max([torch.tensor([1.0, 2.0, 3.0])])
 
     def test_p_mismatch(self):
         with pytest.raises(ValueError, match="P differs"):

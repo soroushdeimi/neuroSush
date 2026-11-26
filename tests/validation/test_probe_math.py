@@ -42,6 +42,11 @@ class TestShiftImage:
         img = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
         assert torch.equal(shift_image(img, -1, 0), torch.tensor([[3.0, 4.0], [0.0, 0.0]]))
 
+    def test_shift_left(self):
+        # a negative horizontal shift must read the right columns, not the left
+        img = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
+        assert torch.equal(shift_image(img, 0, -1), torch.tensor([[2.0, 0.0], [4.0, 0.0]]))
+
     def test_zero_shift_is_a_copy(self):
         img = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
         out = shift_image(img, 0, 0)
@@ -85,6 +90,37 @@ class TestBarImage:
         img = bar_image(5, 5, 1, "h", (0, 2))
         assert img.sum().item() == 5.0
         assert torch.equal(img[0], torch.ones(5))
+
+    def test_left_border_centre(self):
+        # centre on the left border: the bar is clipped, not wrapped to the right edge
+        img = bar_image(5, 3, 1, "h", (2, 0))
+        assert img.sum().item() == 2.0
+        assert torch.equal(img[2], torch.tensor([1.0, 1.0, 0.0, 0.0, 0.0]))
+        assert img[0].sum().item() == 0.0
+        assert img[4].sum().item() == 0.0
+
+    def test_right_border_centre(self):
+        img = bar_image(5, 3, 1, "h", (2, 4))
+        assert img.sum().item() == 2.0
+        assert torch.equal(img[2], torch.tensor([0.0, 0.0, 0.0, 1.0, 1.0]))
+
+    def test_top_border_centre(self):
+        img = bar_image(5, 3, 1, "v", (0, 2))
+        assert img.sum().item() == 2.0
+        assert torch.equal(img[:, 2], torch.tensor([1.0, 1.0, 0.0, 0.0, 0.0]))
+
+    def test_bottom_border_centre(self):
+        img = bar_image(5, 3, 1, "v", (4, 2))
+        assert img.sum().item() == 2.0
+        assert torch.equal(img[:, 2], torch.tensor([0.0, 0.0, 0.0, 1.0, 1.0]))
+
+    def test_corner_centre(self):
+        # centre on the top-left corner: a length-3 width-1 "h" bar keeps only (0,0),(0,1)
+        img = bar_image(5, 3, 1, "h", (0, 0))
+        assert img.sum().item() == 2.0
+        assert img[0, 0].item() == 1.0
+        assert img[0, 1].item() == 1.0
+        assert img[1, 0].item() == 0.0
 
     def test_rejects_even_length(self):
         with pytest.raises(ValueError, match="odd"):

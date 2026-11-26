@@ -22,10 +22,12 @@ def c2_global_max(s2: list[torch.Tensor]) -> torch.Tensor:
     if not s2:
         raise ValueError("s2 must not be empty")
 
-    b, p = s2[0].shape[0], s2[0].shape[1]
     for i, t in enumerate(s2):
         if t.dim() != 4:
-            raise ValueError(f"s2[{i}] must be 4-D, got {t.dim()}-D")
+            raise ValueError(f"s2[{i}] must be 4-D, got shape {tuple(t.shape)}")
+
+    b, p = s2[0].shape[0], s2[0].shape[1]
+    for i, t in enumerate(s2):
         if t.shape[0] != b:
             raise ValueError(f"s2[{i}]: B differs: {t.shape[0]} vs {b}")
         if t.shape[1] != p:

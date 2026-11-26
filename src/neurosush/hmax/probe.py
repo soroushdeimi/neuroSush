@@ -45,10 +45,10 @@ def bar_image(
     img = torch.zeros(size, size)
     if orientation == "h":
         r0, c0 = row - width // 2, col - length // 2
-        img[r0 : r0 + width, c0 : c0 + length] = value
+        img[max(0, r0) : min(size, r0 + width), max(0, c0) : min(size, c0 + length)] = value
     else:
         r0, c0 = row - length // 2, col - width // 2
-        img[r0 : r0 + length, c0 : c0 + width] = value
+        img[max(0, r0) : min(size, r0 + length), max(0, c0) : min(size, c0 + width)] = value
     return img
 
 
