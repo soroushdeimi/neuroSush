@@ -25,11 +25,20 @@ def s2_rbf(c1: torch.Tensor, prototypes: torch.Tensor, beta: float = 1.0) -> tor
 
     Raises:
         ValueError: If beta <= 0, c1 is not 4-D, prototypes is not 4-D, the
-            time dimensions differ, a prototype is not square, or the image is
+            orientation channels differ, a prototype is not square, or the image is
             smaller than the prototype.
+
+    Notes:
+        The float64 expansion loses the distance when responses are around 1e8 or
+        larger (e.g. C1=1e8, P=1e8+1 returns 1.0 instead of exp(-1)); C1 values are
+        expected to be of order 1. CPU only (float64 is not available on MPS).
     """
     if beta <= 0:
         raise ValueError(f"beta must be positive, got {beta}")
+    if not c1.is_floating_point():
+        raise ValueError(f"c1 must be floating-point, got dtype {c1.dtype}")
+    if not prototypes.is_floating_point():
+        raise ValueError(f"prototypes must be floating-point, got dtype {prototypes.dtype}")
     if c1.dim() != 4:
         raise ValueError(f"c1 must be 4-D, got shape {tuple(c1.shape)}")
     if prototypes.dim() != 4:
@@ -58,14 +67,14 @@ def sample_c1_patches(
     size: int,
     generator: torch.Generator,
 ) -> torch.Tensor:
-    """Randomly sample C1 patches of a single image across its orientation bands.
+    """Randomly sample C1 patches of a single image across its scale bands.
 
     For each patch a band is drawn uniformly among the bands large enough to
     hold a ``size x size`` patch, then a top-left corner uniformly over the
     valid positions.
 
     Args:
-        c1_bands: One tensor of shape ``(T, H, W)`` per orientation band.
+        c1_bands: One tensor of shape ``(T, H, W)`` per scale band.
         n_patches: Number of patches to draw.
         size: Side length of each square patch.
         generator: Torch generator for all randomness.
@@ -74,9 +83,9 @@ def sample_c1_patches(
         Patches of shape ``(n_patches, T, size, size)``; copies, not views.
 
     Raises:
-        ValueError: If n_patches < 1, size < 1, a band is not 3-D, the time
-            dimensions differ between bands, no band is large enough, or the
-            list is empty.
+        ValueError: If n_patches < 1, size < 1, a band is not 3-D, the
+            orientation channels differ between bands, no band is large enough,
+            or the list is empty.
     """
     if n_patches < 1:
         raise ValueError(f"n_patches must be at least 1, got {n_patches}")

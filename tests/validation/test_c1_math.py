@@ -87,6 +87,15 @@ class TestC1PoolFailures:
         with pytest.raises(ValueError, match="out of range"):
             c1_pool([torch.zeros(1, 1, 2, 2), torch.zeros(1, 1, 2, 2)], [(7, 1, 2, 2)])
 
+    def test_negative_scale_a_rejected(self):
+        # a negative index must not silently wrap to the last scale
+        with pytest.raises(ValueError, match="out of range"):
+            c1_pool([torch.zeros(1, 1, 2, 2), torch.zeros(1, 1, 2, 2)], [(-1, 1, 1, 1)])
+
+    def test_negative_scale_b_rejected(self):
+        with pytest.raises(ValueError, match="out of range"):
+            c1_pool([torch.zeros(1, 1, 2, 2), torch.zeros(1, 1, 2, 2)], [(0, -1, 1, 1)])
+
     def test_grid_zero(self):
         with pytest.raises(ValueError, match="grid must be at least 1"):
             c1_pool([torch.zeros(1, 1, 2, 2), torch.zeros(1, 1, 2, 2)], [(0, 1, 0, 1)])
