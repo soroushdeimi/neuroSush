@@ -1,6 +1,6 @@
 # Public site
 
-The Pages workflow runs `python scripts/build_site.py` and publishes `site/`.
+The Pages workflow runs `python3 scripts/build_site.py` and publishes `site/`.
 The deterministic builder exports every shipped teaching plate and the talk demo,
 and adds shared navigation, tokens, theme control and footer to the exported plates.
 Standalone library exports remain self-contained and unchanged.
@@ -24,6 +24,18 @@ The browser check uses Node 22+ and local Chrome through CDP without npm package
 It checks themes, search, local requests, console errors, reduced motion and overflow
 at 390, 1440 and 1920 pixels. It captures six story positions in both themes on desktop
 and mobile, plus the gallery and two teaching plates.
+
+## Atlas & Taxonomy (`atlas.json`)
+
+The Atlas gallery page (`gallery.html`) is structured from `scripts/site_assets/atlas.json`.
+It features:
+1. **Hero section**: 2 sentences explaining the purpose of the Atlas.
+2. **4-step path**: Guided sequence (M03 Nernst -> N01 LIF -> N05 Hodgkin-Huxley -> Y01 STDP) rendered as a horizontal stepper (vertical on mobile).
+3. **Sticky filter bar**: Group chips, level chips, and live text search across titles, learn lines, and tags (with no-JS fallback showing all items).
+4. **Group sections**: Anchored at `#foundations`, `#neurons`, `#synapses`, `#memory`, `#research`, and `#tools`, featuring responsive cards with ID badges, titles, learn lines (max 14 words), level, minutes, status chips, and prerequisite links.
+5. **Empty state & Result count**: Dynamic status messages when filters yield no matches.
+
+`scripts/check_site.py` rigorously enforces that every shipped plate from `neurosush.viz.export.available_plates()` is present in `atlas.json` exactly once, and that no un-shipped plates are listed.
 
 The seeded `neuron.js` module samples a pyramidal soma, recursive dendritic tubes
 with spines, apical tuft, basal arbor, myelinated axon and terminal boutons.

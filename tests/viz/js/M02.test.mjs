@@ -257,3 +257,11 @@ test('the string table is English and complete', () => {
   assert.ok(S.glossary.length >= 8);
   for (const cap of S.chapterCaps) assert.ok(cap.length > 20);
 });
+
+test('failure proof edge case: invalid negative probability p = -0.1 throws error in binomialPmf', () => {
+  assert.throws(() => core.binomialPmf(1, 4, -0.1), /p must be in \[0, 1\]/);
+});
+
+test('failure proof edge case: invalid seed float 1.5 throws error in mulberry32', () => {
+  assert.throws(() => core.mulberry32(1.5), /seed must be an integer/);
+});

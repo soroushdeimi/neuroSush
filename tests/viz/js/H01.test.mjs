@@ -139,3 +139,11 @@ test('logComb and formatSci behave', () => {
   assert.equal(core.formatSci(0), '0');
   assert.equal(core.formatSci(0.5), '0.5');
 });
+
+test('noisyPattern throws when not enough inactive bits exist', () => {
+  assert.throws(() => core.noisyPattern([0, 1, 2, 3], 4, 4, 1, () => 0.5), /not enough inactive bits to refill/);
+});
+
+test('overlapPmf throws on invalid arguments', () => {
+  assert.throws(() => core.overlapPmf(0, 1, 1), /need n >= 1/);
+});

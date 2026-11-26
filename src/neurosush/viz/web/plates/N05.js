@@ -22,7 +22,7 @@
     title: 'Hodgkin-Huxley: how a neuron fires',
     titleFa: 'هادگکین–هاکسلی: مقطع غشا، کانال‌های یونی سدیم و پتاسیم، دروازه‌های m و h و n',
     source: 'live',
-    libraryMirror: 'neurosush.neurons.hodgkin_huxley (when released) — JS port; the library model is validated against the same values.',
+    libraryMirror: 'neurosush.neurons.hodgkin_huxley — same HH ODEs at 6.3°C; JS RK4 differs from the library integrator',
 
     // Marginalia
     eqTitle: 'Governing Equation',
@@ -53,13 +53,13 @@
     glossaryM: 'm gate: Fast Na⁺ activation; 3 subunits (P_open = m³). Opens sharply on depolarization.',
     glossaryH: 'h gate: Slow Na⁺ inactivation; ball-and-chain plug (P_open = h). Shuts pore at positive voltages.',
     glossaryN: 'n gate: Delayed-rectifier K⁺ activation; 4 subunits (P_open = n⁴). Repolarizes the spike.',
-    glossaryTTX: 'TTX (Tetrodotoxin): Selective Na⁺ channel blocker; abolishes regenerative spikes.',
-    glossaryTEA: 'TEA (Tetraethylammonium): Selective K⁺ channel blocker; prevents repolarization.',
+    glossaryTTX: 'TTX (Tetrodotoxin): Selective Na⁺ channel blocker; regenerative Na⁺ spikes disappear; voltage-dependent K⁺ and leak currents remain.',
+    glossaryTEA: 'TEA (Tetraethylammonium): Selective K⁺ channel blocker; reduces delayed K⁺ repolarization and can broaden spikes.',
     glossaryDriving: 'Driving force: (V - E_ion) sets the direction and magnitude of passive ion flux.',
 
     // Hero figure labels
-    outside: 'OUTSIDE (Extracellular fluid: high Na⁺, [Na⁺] = 145 mM)',
-    inside: 'INSIDE (Intracellular cytosol: high K⁺, [K⁺] = 140 mM)',
+    outside: 'OUTSIDE (high Na⁺; concentrations shown schematically; fixed squid-model reversal potentials)',
+    inside: 'INSIDE (high K⁺; concentrations shown schematically)',
     lipidBilayer: 'Lipid Bilayer Patch',
     naChannel: 'Na⁺ Channel (m³h)',
     kChannel: 'K⁺ Channel (n⁴)',
@@ -84,7 +84,7 @@
     traceVoltage: 'Membrane Potential V(t)',
     traceConductance: 'Conductances gNa(t) & gK(t)',
     traceGates: 'Gating Variables m, h, n',
-    traceClampCurrent: 'Clamp Current I_clamp(t)',
+    traceClampCurrent: 'Ionic holding current (capacitive transient omitted)',
     steadyStateCurves: 'Steady-State Curves x_inf(V)',
 
     // Chapters
@@ -94,7 +94,7 @@
     btnNext: 'Next →',
     btnChallenge: 'Challenge [P]',
     ch1Title: 'Resting Equilibrium',
-    ch1Body: 'At rest (-65 mV), K⁺ leak balances the tiny Na⁺ window current. Gating particles are quiet: m ≈ 0.05, h ≈ 0.60, n ≈ 0.32. The membrane sits close to EK (-77 mV).',
+    ch1Body: 'At rest (-65 mV), Outward delayed-rectifier K⁺ current balances inward Na⁺ and mixed leak currents. Gating particles are quiet: m ≈ 0.05, h ≈ 0.60, n ≈ 0.32. The membrane sits close to EK (-77 mV).',
     ch2Title: 'Depolarization & Explosive Na⁺ Influx',
     ch2Body: 'Stimulus pushes V above threshold. Fast 3-subunit m gates swing open wide, allowing Na⁺ ions to rush in down their electrochemical gradient (positive feedback).',
     ch3Title: 'Peak & Inactivation Ball Docking',
@@ -102,7 +102,7 @@
     ch4Title: 'Undershoot & Slow Recovery',
     ch4Body: 'Delayed-rectifier n gates close slowly, leaving K⁺ conductance elevated even after V drops below rest. This hyperpolarizes the membrane toward EK (-77 mV).',
     ch5Title: 'Refractory State',
-    ch5Body: 'The h inactivation balls recover slowly at negative potentials. While h is docked, a second stimulus cannot open Na⁺ pores, enforcing the refractory period.',
+    ch5Body: 'The h inactivation balls recover slowly at negative potentials. While h is docked, reduced Na⁺ availability and elevated K⁺ conductance create absolute and relative refractoriness.',
 
     // Predict-then-reveal
     predictTitle: 'Predict-Then-Reveal',
@@ -112,7 +112,7 @@
     predictOptC: 'C) No action potential fires; only a small passive bump occurs',
     predictSubmit: 'Commit Prediction',
     predictRevealedTitle: 'Experimental Reveal',
-    predictExplanation: 'Correct! Regenerative spikes require fast Na⁺ influx through voltage-gated channels. With TTX blocking Na⁺ pores, only passive RC charging and outward leak remain.',
+    predictExplanation: 'Correct! Regenerative spikes require fast Na⁺ influx through voltage-gated channels. With TTX blocking Na⁺ pores, regenerative Na⁺ spikes disappear; voltage-dependent K⁺ and leak currents remain.',
     predictTryBtn: 'Run TTX Experiment Now',
   };
 
@@ -181,15 +181,16 @@
 
     derivatives(state, I_ext = 0, opts = {}) {
       const { V, m, h, n } = state;
-      const gNa = opts.ttx ? 0 : this.G_NA;
-      const gK = opts.tea ? 0 : this.G_K;
+      const C_M = opts.C_M !== undefined ? opts.C_M : this.C_M;
+      const gNa = opts.ttx ? 0 : (opts.gNa !== undefined ? opts.gNa : this.G_NA);
+      const gK = opts.tea ? 0 : (opts.gK !== undefined ? opts.gK : this.G_K);
       const gL = this.G_L;
 
       const I_Na = gNa * (m * m * m) * h * (V - this.E_NA);
       const I_K = gK * (n * n * n * n) * (V - this.E_K);
       const I_L = gL * (V - this.E_L);
 
-      const dV = (I_ext - I_Na - I_K - I_L) / this.C_M;
+      const dV = (I_ext - I_Na - I_K - I_L) / C_M;
       const dm = this.alpha_m(V) * (1 - m) - this.beta_m(V) * m;
       const dh = this.alpha_h(V) * (1 - h) - this.beta_h(V) * h;
       const dn = this.alpha_n(V) * (1 - n) - this.beta_n(V) * n;
@@ -263,7 +264,7 @@
         const t = i * dt;
         const curI = typeof I_ext === 'function' ? I_ext(t) : I_ext;
         state = this.rk4Step(state, curI, dt, opts);
-        history.push({ t, ...state });
+        history.push({ t: t + dt, ...state });
       }
       return { state, history };
     },
@@ -319,25 +320,23 @@
     },
 
     sampleChannels(channels, m, h, n, rng) {
-      const pM = Math.max(0, Math.min(1, m * m * m));
       const pH = Math.max(0, Math.min(1, h));
-      const pN = Math.max(0, Math.min(1, n * n * n * n));
 
       for (const ch of channels) {
         if (ch.type === 'na') {
-          ch.mOpen = rng() < pM;
-          ch.hOpen = rng() < pH;
-          ch.isOpen = ch.mOpen && ch.hOpen;
           ch.mSubunits[0] = rng() < m;
           ch.mSubunits[1] = rng() < m;
           ch.mSubunits[2] = rng() < m;
+          ch.mOpen = ch.mSubunits.every(Boolean);
+          ch.hOpen = rng() < pH;
+          ch.isOpen = ch.mOpen && ch.hOpen;
         } else if (ch.type === 'k') {
-          ch.nOpen = rng() < pN;
-          ch.isOpen = ch.nOpen;
           ch.nSubunits[0] = rng() < n;
           ch.nSubunits[1] = rng() < n;
           ch.nSubunits[2] = rng() < n;
           ch.nSubunits[3] = rng() < n;
+          ch.nOpen = ch.nSubunits.every(Boolean);
+          ch.isOpen = ch.nOpen;
         } else if (ch.type === 'leak') {
           ch.isOpen = true;
         }
@@ -404,6 +403,9 @@
         I_L: 0,
         I_ext: 0,
       },
+      C_m: core.C_M,
+      gNaVal: core.G_NA,
+      gKVal: core.G_K,
       I_ext_slider: 0,
       pulseRemainingMs: 0,
       isPoking: false,
@@ -446,6 +448,120 @@
       figureContainer.style.height = (typeof window !== 'undefined' && window.innerWidth < 560) ? '460px' : '420px';
       figureContainer.style.maxHeight = '520px';
     }
+
+    // 0. Learn Panel (Collapsible: default open on desktop >= 768px, closed on mobile)
+    let learnPanel = document.getElementById('n05-learn-panel');
+    if (!learnPanel) {
+      learnPanel = document.createElement('details');
+      learnPanel.id = 'n05-learn-panel';
+      const isOpen = typeof window !== 'undefined' && window.innerWidth >= 768;
+      if (isOpen) learnPanel.setAttribute('open', '');
+      learnPanel.style.cssText = 'background:var(--paper-card); border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px; margin-bottom:8px; font-size:12px;';
+      learnPanel.innerHTML = `
+        <summary style="font-weight:600; cursor:pointer; color:var(--volt); outline:none;">Learn: the math, the brain, the ML analogy</summary>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-top:8px; line-height:1.4; color:var(--ink);">
+          <div>
+            <div style="font-weight:600; margin-bottom:2px; color:var(--volt);">1. What you see</div>
+            <p style="margin:0;">A squid giant axon membrane patch with voltage-gated sodium (m³h) and potassium (n⁴) channels, passing ions across the bilayer. A thermometer voltmeter tracks membrane potential V(t), and oscilloscope panes show V(t) spikes, conductances, and gating variables.</p>
+          </div>
+          <div>
+            <div style="font-weight:600; margin-bottom:2px; color:var(--exc);">2. The math</div>
+            <p style="margin:0;">C_m dV/dt = I_ext - g_Na m³h (V - E_Na) - g_K n⁴ (V - E_K) - g_L (V - E_L). C_m = 1.0 µF/cm², g_Na = 120, g_K = 36, g_L = 0.3 mS/cm², E_Na = 50, E_K = -77, E_L = -54.387 mV. Gate kinetics dx/dt = α_x(1-x) - β_x x (1952 squid data at 6.3°C).</p>
+          </div>
+          <div>
+            <div style="font-weight:600; margin-bottom:2px; color:var(--inh);">3. In the brain</div>
+            <p style="margin:0;">Action potentials propagate along neuronal axons via regenerative sodium influx and delayed potassium efflux. At 6.3°C in squid axons, resting potential is -65 mV, spiking peaks near +40 mV, and refractory periods enforce unidirectional propagation.</p>
+          </div>
+          <div>
+            <div style="font-weight:600; margin-bottom:2px; color:var(--mod);">4. Like classic ML</div>
+            <p style="margin:0;">Coupled recurrent gates act like multiplicative gating units (similar to LSTM or GRU input/forget gates) modulating effective conductances based on voltage state. Unlike artificial neural networks, these physical gates operate on continuous current balance and chemical kinetics without gradient descent, backpropagation, or loss minimization. *Breaks where*: biological channels exhibit stochastic opening and thermal noise, whereas artificial gates are deterministic smooth activations.</p>
+          </div>
+        </div>
+      `;
+      figureSection.insertBefore(learnPanel, figureContainer);
+    }
+
+    // 0.5 Customization & Parameters Panel
+    let customPanel = document.getElementById('n05-custom-panel');
+    if (!customPanel) {
+      customPanel = document.createElement('div');
+      customPanel.id = 'n05-custom-panel';
+      customPanel.style.cssText = 'background:var(--paper-card); border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; margin-bottom:6px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:11px;';
+      customPanel.innerHTML = `
+        <div style="display:flex; align-items:center; gap:4px;">
+          <label for="n05-cm-slider" class="atlas-serif" style="font-weight:600;">C_m:</label>
+          <input type="range" id="n05-cm-slider" min="0.5" max="3.0" step="0.1" value="1.0" style="width:65px; cursor:pointer;" />
+          <span class="atlas-mono" id="n05-cm-val">1.0 µF</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <label for="n05-gna-slider" class="atlas-serif" style="font-weight:600;">g_Na:</label>
+          <input type="range" id="n05-gna-slider" min="0" max="250" step="5" value="120" style="width:65px; cursor:pointer;" />
+          <span class="atlas-mono" id="n05-gna-val">120 mS</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <label for="n05-gk-slider" class="atlas-serif" style="font-weight:600;">g_K:</label>
+          <input type="range" id="n05-gk-slider" min="0" max="100" step="2" value="36" style="width:65px; cursor:pointer;" />
+          <span class="atlas-mono" id="n05-gk-val">36 mS</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <button class="atlas-btn" id="n05-btn-preset-default" style="padding:1px 6px; font-size:10px;">Default</button>
+          <button class="atlas-btn" id="n05-btn-preset-hyper" style="padding:1px 6px; font-size:10px;">Hyper</button>
+          <button class="atlas-btn" id="n05-btn-reset" style="padding:1px 6px; font-size:10px;">Reset</button>
+        </div>
+      `;
+      figureSection.insertBefore(customPanel, figureContainer);
+    }
+
+    const cmSlider = document.getElementById('n05-cm-slider');
+    const cmVal = document.getElementById('n05-cm-val');
+    const gnaSlider = document.getElementById('n05-gna-slider');
+    const gnaVal = document.getElementById('n05-gna-val');
+    const gkSlider = document.getElementById('n05-gk-slider');
+    const gkVal = document.getElementById('n05-gk-val');
+    const btnReset = document.getElementById('n05-btn-reset');
+    const btnPresetDefault = document.getElementById('n05-btn-preset-default');
+    const btnPresetHyper = document.getElementById('n05-btn-preset-hyper');
+
+    cmSlider.addEventListener('input', (e) => {
+      state.C_m = parseFloat(e.target.value);
+      cmVal.textContent = `${state.C_m.toFixed(1)} µF`;
+    });
+    gnaSlider.addEventListener('input', (e) => {
+      state.gNaVal = parseFloat(e.target.value);
+      gnaVal.textContent = `${state.gNaVal.toFixed(0)} mS`;
+    });
+    gkSlider.addEventListener('input', (e) => {
+      state.gKVal = parseFloat(e.target.value);
+      gkVal.textContent = `${state.gKVal.toFixed(0)} mS`;
+    });
+
+    btnReset.addEventListener('click', () => {
+      state.C_m = core.C_M;
+      state.gNaVal = core.G_NA;
+      state.gKVal = core.G_K;
+      cmSlider.value = String(core.C_M);
+      gnaSlider.value = String(core.G_NA);
+      gkSlider.value = String(core.G_K);
+      cmVal.textContent = `${core.C_M.toFixed(1)} µF`;
+      gnaVal.textContent = `${core.G_NA.toFixed(0)} mS`;
+      gkVal.textContent = `${core.G_K.toFixed(0)} mS`;
+    });
+
+    btnPresetDefault.addEventListener('click', () => {
+      btnReset.click();
+    });
+
+    btnPresetHyper.addEventListener('click', () => {
+      state.C_m = 0.8;
+      state.gNaVal = 180;
+      state.gKVal = 25;
+      cmSlider.value = '0.8';
+      gnaSlider.value = '180';
+      gkSlider.value = '25';
+      cmVal.textContent = '0.8 µF';
+      gnaVal.textContent = '180 mS';
+      gkVal.textContent = '25 mS';
+    });
 
     // 1. Build Marginalia (Equation, Live Terms, Glossary)
     if (marginContainer) {
@@ -879,7 +995,7 @@
 
     // 5. Main Simulation & Animation Loop
     const dt = 0.025; // 0.025 ms RK4 timestep
-    const substepsPerFrame = 20; // 0.50 ms per frame: captures peak spike and dynamic ion fluxes majestically
+    const substepsPerFrame = 20; // 0.50 ms per frame
 
     ctx.onFrame(() => {
       let prevV = state.sim.V;
@@ -887,7 +1003,7 @@
       for (let s = 0; s < substepsPerFrame; s++) {
         let curI = state.I_ext_slider;
         if (state.pulseRemainingMs > 0) {
-          curI += 15.0; // 15 µA/cm² depolarizing pulse
+          curI += 15.0;
           state.pulseRemainingMs -= dt;
         }
         if (state.isPoking) {
@@ -897,6 +1013,9 @@
         const opts = {
           ttx: state.ttx,
           tea: state.tea,
+          C_M: state.C_m,
+          gNa: state.gNaVal,
+          gK: state.gKVal,
           clamp: state.voltageClamp,
           clampV: state.voltageClamp ? (state.clampTimeMs > 2.0 ? state.clampStepV : state.clampHoldV) : undefined,
         };
@@ -925,7 +1044,7 @@
         }
       }
 
-      // Update trace histories
+      // Update trace histories (using t + dt as fixed by audit fix)
       state.voltageHistory.push(currentSim.V);
       if (state.voltageHistory.length > state.maxHistory) {
         state.voltageHistory.shift();
@@ -935,8 +1054,8 @@
         state.spikes = state.spikes.filter((sp) => sp.step >= 0);
       }
 
-      const gNa = state.ttx ? 0 : core.G_NA * (currentSim.m ** 3) * currentSim.h;
-      const gK = state.tea ? 0 : core.G_K * (currentSim.n ** 4);
+      const gNa = state.ttx ? 0 : state.gNaVal * (currentSim.m ** 3) * currentSim.h;
+      const gK = state.tea ? 0 : state.gKVal * (currentSim.n ** 4);
       state.gNaHistory.push(gNa);
       state.gKHistory.push(gK);
       if (state.gNaHistory.length > state.maxHistory) {
@@ -954,7 +1073,7 @@
       }
 
       if (state.voltageClamp) {
-        const netClampI = currentSim.I_Na + currentSim.I_K + currentSim.I_L;
+        const netClampI = currentSim.I_Na + currentSim.I_K + currentSim.I_L - currentSim.I_ext;
         state.clampHistory.push(netClampI);
         if (state.clampHistory.length > state.maxHistory) state.clampHistory.shift();
       }
@@ -1008,7 +1127,6 @@
       const ions = s.ions;
       const channels = s.channels;
 
-      // Current driving magnitudes
       const naFlowSpeed = Math.min(0.025, 0.004 + Math.abs(sim.I_Na) * 0.00005);
       const kFlowSpeed = Math.min(0.025, 0.004 + Math.abs(sim.I_K) * 0.00005);
 
@@ -1030,7 +1148,6 @@
           const isOpenNaPore = nearCh && nearCh.type === 'na' && nearCh.isOpen && !s.ttx;
 
           if (isPoreZone && isOpenNaPore) {
-            // Sucked downward into intracellular fluid (inward current)
             ion.x += (nearCh.xRatio - ion.x) * 0.28;
             ion.vy = naFlowSpeed;
             ion.y += ion.vy;
@@ -1058,7 +1175,6 @@
           const isOpenKPore = nearCh && nearCh.type === 'k' && nearCh.isOpen && !s.tea;
 
           if (isPoreZone && isOpenKPore) {
-            // Sucked upward into extracellular fluid (outward current)
             ion.x += (nearCh.xRatio - ion.x) * 0.28;
             ion.vy = -kFlowSpeed;
             ion.y += ion.vy;
@@ -1084,7 +1200,6 @@
           }
         }
 
-        // Boundary containment
         if (ion.x < 0.02) ion.x = 0.98;
         if (ion.x > 0.98) ion.x = 0.02;
         if (ion.y < 0.04) {
@@ -1122,7 +1237,6 @@
       ctx2d.fillStyle = colors.paperCard;
       ctx2d.fillRect(0, 0, W, H);
 
-      // Top 52% = Hero membrane patch; Bottom 48% = 3 Oscilloscope trace panes
       const topH = Math.round(H * 0.52);
       const bottomH = H - topH;
 
@@ -1145,11 +1259,9 @@
       const isSpiking = s.sim.V > 0;
       const vNorm = Math.max(0, Math.min(1, (s.sim.V - core.E_K) / (core.E_NA - core.E_K)));
 
-      // Extracellular fluid (top)
       ctx2d.fillStyle = colors.paperElevated;
       ctx2d.fillRect(8, 6, patchW, topLeafletY - 6);
 
-      // Intracellular fluid (bottom) with voltage charge glow
       if (isSpiking) {
         ctx2d.fillStyle = `rgba(180, 83, 9, ${0.08 + vNorm * 0.16})`;
       } else {
@@ -1157,16 +1269,13 @@
       }
       ctx2d.fillRect(8, btmLeafletY, patchW, H - btmLeafletY - 6);
 
-      // Hydrophobic core between leaflets
       ctx2d.fillStyle = colors.paperCard;
       ctx2d.fillRect(8, topLeafletY, patchW, bilayerThickness);
 
-      // Lipid Bilayer Heads & Hairline Tails
       const headRadius = 4.2;
       const headSpacing = 11;
       const numHeads = Math.floor((patchW - 16) / headSpacing);
 
-      // Tails
       ctx2d.lineWidth = 0.8;
       ctx2d.strokeStyle = colors.border;
       for (let i = 0; i < numHeads; i++) {
@@ -1186,7 +1295,6 @@
         ctx2d.stroke();
       }
 
-      // Heads
       ctx2d.fillStyle = colors.paperElevated;
       ctx2d.strokeStyle = colors.inkMuted;
       ctx2d.lineWidth = 1;
@@ -1203,7 +1311,6 @@
         ctx2d.stroke();
       }
 
-      // Draw Channels
       const channelH = bilayerThickness + 14;
 
       for (const ch of s.channels) {
@@ -1216,12 +1323,10 @@
           const isHighlighted = s.hoverTerm === 'INa';
           const isBlocked = s.ttx;
 
-          // Protein barrel walls
           ctx2d.fillStyle = isHighlighted ? 'rgba(15, 118, 110, 0.25)' : colors.paperElevated;
           ctx2d.strokeStyle = isHighlighted ? colors.volt : colors.exc;
           ctx2d.lineWidth = 1.4;
 
-          // Left subunit
           ctx2d.beginPath();
           ctx2d.moveTo(cx - 15, cy - channelH / 2);
           ctx2d.quadraticCurveTo(cx - 6, cy, cx - 15, cy + channelH / 2);
@@ -1231,7 +1336,6 @@
           ctx2d.fill();
           ctx2d.stroke();
 
-          // Right subunit
           ctx2d.beginPath();
           ctx2d.moveTo(cx + 15, cy - channelH / 2);
           ctx2d.quadraticCurveTo(cx + 6, cy, cx + 15, cy + channelH / 2);
@@ -1241,18 +1345,15 @@
           ctx2d.fill();
           ctx2d.stroke();
 
-          // Open pore visible gap luminous glow
           if (ch.isOpen && !isBlocked) {
             ctx2d.fillStyle = 'rgba(15, 118, 110, 0.35)';
             ctx2d.fillRect(cx - 5, cy - channelH / 2 + 2, 10, channelH - 4);
           }
 
-          // 3 visible "m" activation gates at extracellular mouth
           ctx2d.strokeStyle = colors.exc;
           ctx2d.lineWidth = 2.0;
 
           if (ch.mOpen && !isBlocked) {
-            // Gates swung open outward leaving wide gap
             ctx2d.beginPath();
             ctx2d.moveTo(cx - 6, cy - channelH / 2);
             ctx2d.lineTo(cx - 4, cy - channelH / 2 - 8);
@@ -1262,7 +1363,6 @@
             ctx2d.lineTo(cx + 4, cy - channelH / 2 - 8);
             ctx2d.stroke();
           } else {
-            // Closed: 3 m gates meet across the mouth
             ctx2d.beginPath();
             ctx2d.moveTo(cx - 6, cy - channelH / 2);
             ctx2d.lineTo(cx - 1, cy - channelH / 2);
@@ -1273,7 +1373,6 @@
             ctx2d.stroke();
           }
 
-          // "h" inactivation gate: ball-and-chain
           const chainAnchorX = cx - 9;
           const chainAnchorY = cy + channelH / 2;
           ctx2d.strokeStyle = colors.mod;
@@ -1281,20 +1380,17 @@
           ctx2d.lineWidth = 1.2;
 
           if (!ch.hOpen || isBlocked) {
-            // Ball docked inside cytoplasmic pore mouth
             ctx2d.beginPath();
             ctx2d.moveTo(chainAnchorX, chainAnchorY);
             ctx2d.quadraticCurveTo(cx - 4, chainAnchorY + 4, cx, chainAnchorY);
             ctx2d.stroke();
 
-            // Docked inactivation ball (plugs the pore)
             ctx2d.beginPath();
             ctx2d.arc(cx, chainAnchorY - 2, 4.5, 0, Math.PI * 2);
             ctx2d.fill();
             ctx2d.strokeStyle = colors.paper;
             ctx2d.stroke();
           } else {
-            // Open: ball swings freely in intracellular fluid
             const ballX = cx - 13;
             const ballY = chainAnchorY + 11;
             ctx2d.beginPath();
@@ -1307,7 +1403,6 @@
             ctx2d.fill();
           }
 
-          // TTX blocker molecule wedged in outer pore
           if (isBlocked) {
             ctx2d.fillStyle = colors.inh;
             ctx2d.strokeStyle = colors.paper;
@@ -1327,7 +1422,6 @@
           ctx2d.strokeStyle = isHighlighted ? colors.volt : colors.inh;
           ctx2d.lineWidth = 1.4;
 
-          // Protein barrel walls
           ctx2d.beginPath();
           ctx2d.moveTo(cx - 14, cy - channelH / 2);
           ctx2d.quadraticCurveTo(cx - 5, cy, cx - 14, cy + channelH / 2);
@@ -1351,12 +1445,10 @@
             ctx2d.fillRect(cx - 5, cy - channelH / 2 + 2, 10, channelH - 4);
           }
 
-          // 4 visible "n" activation gate subunits at cytoplasmic constriction
           ctx2d.strokeStyle = colors.inh;
           ctx2d.lineWidth = 2.0;
 
           if (ch.nOpen && !isBlocked) {
-            // Swung open outward
             ctx2d.beginPath();
             ctx2d.moveTo(cx - 5, cy + channelH / 2);
             ctx2d.lineTo(cx - 3, cy + channelH / 2 + 7);
@@ -1364,7 +1456,6 @@
             ctx2d.lineTo(cx + 3, cy + channelH / 2 + 7);
             ctx2d.stroke();
           } else {
-            // Closed: 4 n gates meet in center
             ctx2d.beginPath();
             ctx2d.moveTo(cx - 6, cy + channelH / 2);
             ctx2d.lineTo(cx - 1, cy + channelH / 2);
@@ -1373,7 +1464,6 @@
             ctx2d.stroke();
           }
 
-          // TEA blocker
           if (isBlocked) {
             ctx2d.fillStyle = colors.mod;
             ctx2d.strokeStyle = colors.paper;
@@ -1386,7 +1476,6 @@
           }
 
         } else if (ch.type === 'leak') {
-          // Narrow passive leak pore
           const isHighlighted = s.hoverTerm === 'IL';
           ctx2d.fillStyle = isHighlighted ? 'rgba(180, 83, 9, 0.25)' : colors.paperCard;
           ctx2d.strokeStyle = colors.inkMuted;
@@ -1404,7 +1493,6 @@
         ctx2d.restore();
       }
 
-      // Draw Ion Particles with visible charge symbol
       for (const ion of s.ions) {
         const px = 14 + ion.x * patchW;
         const py = ion.y * H;
@@ -1419,13 +1507,11 @@
         }
         ctx2d.fill();
 
-        // Small white plus inside ion
         ctx2d.fillStyle = colors.paperElevated;
         ctx2d.font = '8px ui-sans-serif, sans-serif';
         ctx2d.fillText('+', px - 2.5, py + 2.5);
       }
 
-      // Stimulus Electrode Needle in Cytosol
       const isStimulating = s.pulseRemainingMs > 0 || s.isPoking || s.I_ext_slider > 0;
       if (isStimulating) {
         ctx2d.save();
@@ -1450,7 +1536,6 @@
         ctx2d.restore();
       }
 
-      // Fluid labels with clean badge backgrounds drawn after channels & ions so nothing occludes them
       ctx2d.save();
       const outText = isMobile ? 'OUTSIDE (high Na⁺)' : S.outside;
       const inText = isMobile ? 'INSIDE (high K⁺)' : S.inside;
@@ -1458,7 +1543,6 @@
       ctx2d.textBaseline = 'middle';
       ctx2d.textAlign = 'left';
 
-      // Badge for OUTSIDE
       const outW = ctx2d.measureText(outText).width;
       const outX = isMobile ? 12 : 16;
       const outY = isMobile ? 6 : 8;
@@ -1474,7 +1558,6 @@
       ctx2d.fillStyle = colors.ink;
       ctx2d.fillText(outText, outX, outY + badgeH / 2);
 
-      // Badge for INSIDE
       const inW = ctx2d.measureText(inText).width;
       const inX = isMobile ? 12 : 16;
       const inY = H - (isMobile ? 24 : 26);
@@ -1490,13 +1573,11 @@
       ctx2d.fillText(inText, inX, inY + badgeH / 2);
       ctx2d.restore();
 
-      // B. Glass Thermometer Voltmeter with Nernst Lines & Amber Glow Needle
       renderThermometer(ctx2d, W - thermW + 2, 8, thermW - 8, H - 16, s, colors);
 
       ctx2d.restore();
     }
 
-    // Thermometer Voltmeter component
     function renderThermometer(ctx2d, tx, ty, tw, th, s, colors) {
       ctx2d.save();
 
@@ -1509,42 +1590,33 @@
       const tubeBottomY = bulbCy - 6;
       const tubeH = tubeBottomY - tubeTopY;
 
-      // Voltage mapping: EK (-77) at bottom bulb, ENa (+50) at top
       const vToY = (v) => tubeBottomY - ((v - core.E_K) / (core.E_NA - core.E_K)) * tubeH;
 
-      // Outer glass casing and empty tube background
       ctx2d.fillStyle = colors.paper;
       ctx2d.strokeStyle = colors.border;
       ctx2d.lineWidth = 1.2;
 
-      // Bulb glass
       ctx2d.beginPath();
       ctx2d.arc(tubeX + tubeW / 2, bulbCy, bulbRadius, 0, Math.PI * 2);
       ctx2d.fill();
       ctx2d.stroke();
 
-      // Tube glass
       ctx2d.fillRect(tubeX, tubeTopY, tubeW, tubeH);
       ctx2d.strokeRect(tubeX, tubeTopY, tubeW, tubeH);
 
-      // Liquid column filled from bulbCy up to liquidTopY
       const liquidTopY = Math.max(tubeTopY, Math.min(tubeBottomY, vToY(s.sim.V)));
       const isSpike = s.sim.V > 0;
 
-      // Inner liquid column (narrower than tube so glass walls are visible)
       const liquidW = tubeW - 4;
       const liquidX = tubeX + 2;
 
       ctx2d.fillStyle = isSpike ? colors.volt : colors.inh;
-      // Bulb liquid
       ctx2d.beginPath();
       ctx2d.arc(tubeX + tubeW / 2, bulbCy, bulbRadius - 2.5, 0, Math.PI * 2);
       ctx2d.fill();
 
-      // Tube liquid column (rises up to liquidTopY)
       ctx2d.fillRect(liquidX, liquidTopY, liquidW, tubeBottomY - liquidTopY + 2);
 
-      // Etched Nernst Equilibrium Lines
       const drawNernstLine = (v, label, color) => {
         const ly = vToY(v);
         ctx2d.strokeStyle = color;
@@ -1566,7 +1638,6 @@
       drawNernstLine(core.REST_V, isMobile ? '-65' : '-65 Vrest', colors.volt);
       drawNernstLine(core.E_K, isMobile ? '-77' : '-77 EK', colors.inh);
 
-      // Active Needle & Meniscus Glow
       const needleY = Math.max(tubeTopY, Math.min(tubeBottomY + 4, vToY(s.sim.V)));
 
       if (isSpike) {
@@ -1578,13 +1649,11 @@
       ctx2d.fillStyle = colors.volt;
       ctx2d.lineWidth = 2.4;
 
-      // Pointer needle
       ctx2d.beginPath();
       ctx2d.moveTo(tubeX - 6, needleY);
       ctx2d.lineTo(tubeX + tubeW + 6, needleY);
       ctx2d.stroke();
 
-      // Indicator triangle pointing into tube
       ctx2d.beginPath();
       ctx2d.moveTo(tubeX - 6, needleY);
       ctx2d.lineTo(tubeX - (isMobile ? 11 : 13), needleY - 4);
@@ -1592,7 +1661,6 @@
       ctx2d.closePath();
       ctx2d.fill();
 
-      // Live reading text (right-aligned before pointer)
       ctx2d.font = (isMobile ? '9px' : '10px') + ' ui-monospace, monospace';
       ctx2d.textAlign = 'right';
       ctx2d.fillText(`${s.sim.V.toFixed(0)}`, tubeX - (isMobile ? 14 : 16), needleY + 3);
@@ -1604,7 +1672,6 @@
     function renderOscilloscope(ctx2d, X, Y, W, H, s, colors) {
       ctx2d.save();
 
-      // Separator line
       ctx2d.strokeStyle = colors.border;
       ctx2d.lineWidth = 1;
       ctx2d.beginPath();
@@ -1613,7 +1680,6 @@
       ctx2d.stroke();
 
       if (s.voltageClamp) {
-        // 2 Panes for Voltage Clamp
         const paneW = (W - 28) / 2;
 
         renderTracePane(ctx2d, X + 8, Y + 8, paneW, H - 16, {
@@ -1625,7 +1691,7 @@
         }, colors);
 
         renderTracePane(ctx2d, X + 16 + paneW, Y + 8, paneW, H - 16, {
-          title: 'Clamp Current I_clamp (µA/cm²)',
+          title: S.traceClampCurrent,
           minY: -600,
           maxY: +1200,
           ticks: [-500, 0, +500, +1000],
@@ -1633,11 +1699,9 @@
         }, colors);
 
       } else {
-        // 3 Panes for Current Clamp (V, g, gates)
         const isMobile = W < 520;
         const paneW = (W - 36) / 3;
 
-        // Pane 1: Membrane Potential V(t)
         renderTracePane(ctx2d, X + 8, Y + 8, paneW, H - 16, {
           title: isMobile ? 'V(t) (mV)' : S.traceVoltage,
           minY: -90,
@@ -1649,7 +1713,6 @@
           cursorVal: s.sim.V,
         }, colors);
 
-        // Pane 2: Conductances gNa and gK (auto-scaled so peak fills plot)
         const maxRecentG = Math.max(35, ...s.gNaHistory, ...s.gKHistory);
         renderTracePane(ctx2d, X + 16 + paneW, Y + 8, paneW, H - 16, {
           title: isMobile ? 'g(t) mS/cm²' : S.traceConductance,
@@ -1663,7 +1726,6 @@
           legend: !isMobile,
         }, colors);
 
-        // Pane 3: Gating Variables m, h, n + Theory Ghost
         renderTracePane(ctx2d, X + 24 + paneW * 2, Y + 8, paneW, H - 16, {
           title: s.theoryActive ? (isMobile ? 'x_inf' : S.steadyStateCurves) : (isMobile ? 'Gates' : S.traceGates),
           minY: 0,
@@ -1695,14 +1757,12 @@
       ctx2d.fillRect(px, py, pw, ph);
       ctx2d.strokeRect(px, py, pw, ph);
 
-      // Title
       ctx2d.font = '10px ui-serif, Georgia, serif';
       ctx2d.fillStyle = colors.inkMuted;
       ctx2d.fillText(cfg.title, px + 8, py + 12);
 
       const toY = (v) => py + ph - 8 - ((v - cfg.minY) / (cfg.maxY - cfg.minY)) * (ph - 24);
 
-      // Grid lines
       if (cfg.ticks) {
         ctx2d.font = '9px ui-monospace, monospace';
         ctx2d.fillStyle = colors.inkMuted;
@@ -1724,7 +1784,6 @@
         ctx2d.setLineDash([]);
       }
 
-      // Legend if requested
       if (cfg.legend && cfg.series) {
         ctx2d.font = '9px ui-monospace, monospace';
         let lx = px + pw - 8;
@@ -1739,7 +1798,6 @@
         }
       }
 
-      // Theory Ghost steady-state curves
       if (cfg.theoryOverlay) {
         ctx2d.save();
         ctx2d.lineWidth = 1.2;
@@ -1763,7 +1821,6 @@
         drawInfCurve(core.h_inf, colors.mod);
         drawInfCurve(core.n_inf, colors.inh);
 
-        // Moving state dots at current V
         const dotX = px + 26 + ((cfg.currentV - (-90)) / 145) * (pw - 30);
         if (dotX >= px + 24 && dotX <= px + pw - 6) {
           ctx2d.setLineDash([]);
@@ -1788,7 +1845,6 @@
         return;
       }
 
-      // Draw series curves
       for (const s of cfg.series) {
         const data = s.data;
         if (!data || data.length < 2) continue;
@@ -1807,7 +1863,6 @@
         ctx2d.stroke();
       }
 
-      // Draw Spike Markers
       if (cfg.spikes && cfg.spikes.length > 0) {
         ctx2d.font = '9px ui-monospace, monospace';
         const stepX = (pw - 32) / (state.maxHistory - 1);
@@ -1828,7 +1883,6 @@
         }
       }
 
-      // Moving Cursor / Playhead indicator at leading edge
       if (cfg.showCursor && cfg.series && cfg.series[0] && cfg.series[0].data.length > 0) {
         const data = cfg.series[0].data;
         const lastVal = data[data.length - 1];

@@ -54,3 +54,12 @@ test('memory ablation freezes M; a new world resets bindings and retains structu
   assert.equal(fresh.seen.size,1); assert.notDeepEqual(fresh.m,w.m);
   assert.deepEqual(core.neighbors(fresh.pos),core.neighbors(0));
 });
+
+test('Learn section is present with four blocks',()=>{
+  const plateSource = readFileSync(new URL('../../../src/neurosush/viz/web/plates/T01.js', import.meta.url), 'utf8');
+  assert.ok(plateSource.includes('Learn: the math, the brain, the ML analogy'));
+  assert.ok(plateSource.includes('What you see:'));
+  assert.ok(plateSource.includes('The math:'));
+  assert.ok(plateSource.includes('In the brain:'));
+  assert.ok(plateSource.includes('Like classic ML:'));
+});

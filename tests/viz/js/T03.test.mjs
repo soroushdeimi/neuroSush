@@ -36,3 +36,12 @@ test('T03 mutation check fails when weights or states are corrupted', () => {
   const t03 = golden.t03;
   assert.throws(() => close([1], t03.retrieval_history[1])); // Numerical comparison rejects changed result.
 });
+
+test('Learn section is present with four blocks',()=>{
+  const plateSource = readFileSync(new URL('../../../src/neurosush/viz/web/plates/T03.js', import.meta.url), 'utf8');
+  assert.ok(plateSource.includes('Learn: the math, the brain, the ML analogy'));
+  assert.ok(plateSource.includes('What you see:'));
+  assert.ok(plateSource.includes('The math:'));
+  assert.ok(plateSource.includes('In the brain:'));
+  assert.ok(plateSource.includes('Like classic ML:'));
+});

@@ -1,0 +1,1363 @@
+{
+  "sources": {
+    "deck": {
+      "citation": "Deimi. What is a neuron? The_Neuron_v2, slides 11–12, 18, 20, 26–28.",
+      "url": "",
+      "opened": "Local rendered slides p01–p30"
+    },
+    "anatomy": {
+      "citation": "National Research Council (1992). Environmental Neurotoxicology, chapter 2, p. 22. National Academies Press.",
+      "url": "https://www.nationalacademies.org/read/1801/chapter/4",
+      "opened": "Structure of the Neuron"
+    },
+    "azevedo": {
+      "citation": "Azevedo et al. (2009). J Comp Neurol 513:532–541, abstract.",
+      "url": "https://gwern.net/doc/psychology/neuroscience/2009-azevedo.pdf",
+      "opened": "PDF p. 532"
+    },
+    "energy": {
+      "citation": "Levy & Calvert (2021). PNAS 118:e2008173118, Energy Audit.",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8106317/",
+      "opened": "Abstract and Results / Energy Audit"
+    },
+    "lif": {
+      "citation": "neuroSush, neurons/dynamics.py, lif_terms and lif_rate; N01 audit §§2–5.",
+      "url": "",
+      "opened": "Local code and audit"
+    },
+    "hh": {
+      "citation": "Hodgkin & Huxley (1952). J Physiol 117:500–544. Numerical implementation: neuroSush neurons/hodgkin_huxley.py, gate_rates, hh_currents, resting_potential and HodgkinHuxley; N05 audit §§2–5.",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC1392413/",
+      "opened": "Local code and audit; original article landing-page title and author metadata checked; scanned original pages not read"
+    },
+    "stdp": {
+      "citation": "neuroSush, synapses/traces.py trace_step and synapses/plasticity.py stdp_dense; Y01 audit §§2–5.",
+      "url": "",
+      "opened": "Local code and audit; illustrative Y01 parameters"
+    },
+    "nernst": {
+      "citation": "M03 audit §§2–5: Nernst equation and physical constants; deck p26–28: concentrations.",
+      "url": "",
+      "opened": "Local audit and deck; no library Nernst function exists"
+    },
+    "synapse": {
+      "citation": "neuroSush, neurons/dendrite.py, conductance_step; deck p18.",
+      "url": "",
+      "opened": "Local code and rendered slide"
+    },
+    "boal": {
+      "citation": "Boal (2012). Mechanics of the Cell, 2nd ed., §1.2.1, p. 10. Cambridge University Press.",
+      "url": "https://assets.cambridge.org/97805211/13762/excerpt/9780521113762_excerpt.pdf",
+      "opened": "PDF downloaded and read with PDFKit, §1.2.1"
+    },
+    "shannon": {
+      "citation": "Shannon (1976). Acta Crystallogr A32:751–767, Table 1, pp. 752–753.",
+      "url": "https://nilab.physics.ucla.edu/sites/default/files/shannon-1976-radius.pdf",
+      "opened": "Table 1 Na and K, six-coordinate CR and IR columns"
+    },
+    "hydration": {
+      "citation": "Mähler & Persson (2012). Inorganic Chemistry 51:425–438, abstract.",
+      "url": "https://research.slu.se/en/publications/a-study-of-the-hydration-of-the-alkali-metal-ions-in-aqueous-solu/",
+      "opened": "Author institution abstract: mean ion–water oxygen distances"
+    },
+    "zhou": {
+      "citation": "Zhou et al. (2001). Nature 414:43–48, abstract and figure captions.",
+      "url": "https://www.nature.com/articles/35102009",
+      "opened": "Publisher abstract, displacement of water and carbonyl coordination; full paper inaccessible"
+    },
+    "doyle": {
+      "citation": "Doyle et al. (1998). Science 280:69–77, pp. 69–71 and 75.",
+      "url": "https://lab.rockefeller.edu/chait/pdf/98/98_doyle_science.pdf",
+      "opened": "Original PDF: throughput, pore length, filter length, carbonyl coordination"
+    },
+    "si": {
+      "citation": "NIST (2019/2022). SI Brochure §2 and CODATA, elementary charge and Avogadro constant.",
+      "url": "https://www.nist.gov/pml/special-publication-330/sp-330-section-2",
+      "opened": "SI defining constants and NIST elementary-charge value"
+    },
+    "fusion": {
+      "citation": "Siepi et al. (2011). Biophysical Journal 100:2412–2421, Table 2, adopting Nightingale (1959) hydrated radii.",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3093559/",
+      "opened": "Table 2 HTML read directly; original Nightingale full text inaccessible"
+    },
+    "single_channel": {
+      "citation": "Llano, Webb & Bezanilla (1988). J Gen Physiol 92:179–196, abstract.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/3171538/",
+      "opened": "PubMed abstract HTML read directly; reported single-channel conductances"
+    },
+    "hille_pore": {
+      "citation": "Hille (1973). J Gen Physiol 61:669–686, abstract and p. 683.",
+      "url": "https://pdfs.semanticscholar.org/0408/bf0bdee90a70935b8c898e0404c9f7f18013.pdf",
+      "opened": "Original PDF: hypothesized oxygen-lined narrow pore of about 3 Å; p. 683 gives 3.0–3.3 Å"
+    },
+    "design": {
+      "citation": "Story camera and interaction specification (manager, November 2026). Authored visualization parameters; not biological measurements.",
+      "url": "",
+      "opened": "Manager messages in this session"
+    }
+  },
+  "facts": [
+    {
+      "id": "power",
+      "value": 20,
+      "unit": "W",
+      "source": "energy",
+      "status": "VERIFIED",
+      "note": "Nominal whole-brain glucose energy budget, not ATP watts exclusively available for computation."
+    },
+    {
+      "id": "neurons",
+      "value": 86.1,
+      "unit": "billion neurons",
+      "source": "azevedo",
+      "status": "VERIFIED",
+      "note": "Mean NeuN-positive cell estimate in the adult male sample; not an exact count for every brain."
+    },
+    {
+      "id": "soma_min",
+      "value": 10,
+      "unit": "µm",
+      "source": "anatomy",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "soma_max",
+      "value": 100,
+      "unit": "µm",
+      "source": "anatomy",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "soma",
+      "value": 20,
+      "unit": "µm",
+      "source": "deck",
+      "status": "VERIFIED",
+      "note": "Illustrative spherical cell from slide 11; branching geometry is schematic."
+    },
+    {
+      "id": "lif_tau",
+      "value": 20,
+      "unit": "ms",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_rest",
+      "value": -70,
+      "unit": "mV",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_threshold",
+      "value": -40,
+      "unit": "mV",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_reset",
+      "value": -75,
+      "unit": "mV",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_resistance",
+      "value": 10,
+      "unit": "MΩ",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_refractory",
+      "value": 2,
+      "unit": "ms",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_dt",
+      "value": 0.1,
+      "unit": "ms",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_input",
+      "value": 3.5,
+      "unit": "nA",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_input_max",
+      "value": 12,
+      "unit": "nA",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_duration",
+      "value": 400,
+      "unit": "ms",
+      "source": "lif",
+      "status": "VERIFIED",
+      "note": "Illustrative N01 teaching parameter; not cell-specific calibration."
+    },
+    {
+      "id": "lif_rheobase",
+      "value": 3,
+      "unit": "nA",
+      "source": "lif",
+      "status": "VERIFIED",
+      "formula": "(lif_threshold-lif_rest)/lif_resistance",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "lif_rate",
+      "value": 22.94165686199676,
+      "unit": "Hz",
+      "source": "lif",
+      "status": "VERIFIED",
+      "formula": "lif_rate(current=lif_input)",
+      "tolerance": 1e-09
+    },
+    {
+      "id": "nernst_initial",
+      "value": 0,
+      "unit": "mV",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "note": "M03 illustrative initial voltage; relaxation starts after a voltage perturbation."
+    },
+    {
+      "id": "temperature",
+      "value": 37,
+      "unit": "°C",
+      "source": "nernst",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "gas_constant",
+      "value": 8.314462618,
+      "unit": "J mol⁻¹ K⁻¹",
+      "source": "nernst",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "faraday",
+      "value": 96485.332,
+      "unit": "C mol⁻¹",
+      "source": "nernst",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "kelvin_offset",
+      "value": 273.15,
+      "unit": "K",
+      "source": "nernst",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "k_in",
+      "value": 140,
+      "unit": "mM",
+      "source": "deck",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "k_out",
+      "value": 5,
+      "unit": "mM",
+      "source": "deck",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "na_in",
+      "value": 12,
+      "unit": "mM",
+      "source": "deck",
+      "status": "VERIFIED",
+      "note": "Cell-type dependent; M03/N05 plates instead illustrate 15 mM and approximately +60.6 mV. Neither concentration is universal."
+    },
+    {
+      "id": "na_out",
+      "value": 145,
+      "unit": "mM",
+      "source": "deck",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "thermal",
+      "value": 26.726659146207837,
+      "unit": "mV",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "formula": "1000*gas_constant*(temperature+kelvin_offset)/faraday",
+      "tolerance": 1e-10
+    },
+    {
+      "id": "k_ratio",
+      "value": 0.03571428571428571,
+      "unit": "out/in",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "formula": "k_out/k_in",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "e_k",
+      "value": -89.05869414890911,
+      "unit": "mV",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "formula": "thermal*ln(k_ratio)",
+      "tolerance": 1e-09
+    },
+    {
+      "id": "na_ratio",
+      "value": 12.083333333333334,
+      "unit": "out/in",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "formula": "na_out/na_in",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "e_na",
+      "value": 66.59821335607687,
+      "unit": "mV",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "formula": "thermal*ln(na_ratio)",
+      "tolerance": 1e-09
+    },
+    {
+      "id": "hh_c",
+      "value": 1,
+      "unit": "µF/cm²",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_g_na",
+      "value": 120,
+      "unit": "mS/cm²",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_g_k",
+      "value": 36,
+      "unit": "mS/cm²",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_g_leak",
+      "value": 0.3,
+      "unit": "mS/cm²",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_e_na",
+      "value": 50,
+      "unit": "mV",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_e_k",
+      "value": -77,
+      "unit": "mV",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_e_leak",
+      "value": -54.387,
+      "unit": "mV",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_temperature",
+      "value": 6.3,
+      "unit": "°C",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_v_spike",
+      "value": 0,
+      "unit": "mV",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_dt",
+      "value": 0.025,
+      "unit": "ms",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_duration",
+      "value": 30,
+      "unit": "ms",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_pulse",
+      "value": 15,
+      "unit": "µA/cm²",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_pulse_start",
+      "value": 2,
+      "unit": "ms",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "hh_pulse_end",
+      "value": 4,
+      "unit": "ms",
+      "source": "hh",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "stdp_a_plus",
+      "value": 0.02,
+      "unit": "weight units",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "note": "Illustrative Y01 parameter, explicitly supplied to library; not a library default."
+    },
+    {
+      "id": "stdp_a_minus",
+      "value": 0.021,
+      "unit": "weight units",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "note": "Illustrative Y01 parameter, explicitly supplied to library; not a library default."
+    },
+    {
+      "id": "stdp_tau",
+      "value": 20,
+      "unit": "ms",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "note": "Illustrative Y01 parameter, explicitly supplied to library; not a library default."
+    },
+    {
+      "id": "stdp_dt",
+      "value": 1,
+      "unit": "ms",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "note": "Illustrative Y01 parameter, explicitly supplied to library; not a library default."
+    },
+    {
+      "id": "stdp_lag",
+      "value": 20,
+      "unit": "ms",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "note": "Illustrative Y01 parameter, explicitly supplied to library; not a library default."
+    },
+    {
+      "id": "stdp_positive",
+      "value": 0.0071697184481708375,
+      "unit": "weight units",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "formula": "stdp_a_plus*(1-stdp_dt/stdp_tau)^(stdp_lag/stdp_dt)",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "stdp_negative",
+      "value": -0.00752820437057938,
+      "unit": "weight units",
+      "source": "stdp",
+      "status": "VERIFIED",
+      "formula": "-stdp_a_minus*(1-stdp_dt/stdp_tau)^(stdp_lag/stdp_dt)",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "synapse_gap",
+      "value": 20,
+      "unit": "nm",
+      "source": "deck",
+      "status": "VERIFIED",
+      "note": "Approximate chemical synapse cleft; slide 18."
+    },
+    {
+      "id": "layers",
+      "value": 6,
+      "unit": "layers",
+      "source": "deck",
+      "status": "VERIFIED",
+      "note": "Neocortical layer scheme, slide 20; not every cortex region has an identical laminar structure."
+    },
+    {
+      "id": "bilayer",
+      "value": 5,
+      "unit": "nm",
+      "source": "boal",
+      "status": "VERIFIED",
+      "note": "Upper end of the textbook 4–5 nm range; lipid bilayer, not a universal full membrane-protein thickness."
+    },
+    {
+      "id": "na_radius",
+      "value": 0.116,
+      "unit": "nm",
+      "source": "shannon",
+      "status": "VERIFIED",
+      "note": "Six-coordinate Shannon crystal radius, CR column, p. 753. A radius convention, not a rigid sphere in solution."
+    },
+    {
+      "id": "k_radius",
+      "value": 0.152,
+      "unit": "nm",
+      "source": "shannon",
+      "status": "VERIFIED",
+      "note": "Six-coordinate Shannon crystal radius, CR column, p. 752."
+    },
+    {
+      "id": "shell_na",
+      "value": 0.243,
+      "unit": "nm",
+      "source": "hydration",
+      "status": "VERIFIED",
+      "note": "Mean Na–water oxygen distance; shell ring marks oxygen centers, not outer hydrated or hydrodynamic radius."
+    },
+    {
+      "id": "shell_k",
+      "value": 0.281,
+      "unit": "nm",
+      "source": "hydration",
+      "status": "VERIFIED",
+      "note": "Mean K–water oxygen distance; shell ring marks oxygen centers, not outer hydrated or hydrodynamic radius."
+    },
+    {
+      "id": "coordination",
+      "value": 6,
+      "unit": "oxygen neighbors",
+      "source": "shannon",
+      "status": "VERIFIED",
+      "note": "Coordination number for the chosen crystal radii."
+    },
+    {
+      "id": "na_effective_radius",
+      "value": 0.102,
+      "unit": "nm",
+      "source": "shannon",
+      "status": "VERIFIED",
+      "note": "Six-coordinate IR column; distinct from CR values used for the circles."
+    },
+    {
+      "id": "k_effective_radius",
+      "value": 0.138,
+      "unit": "nm",
+      "source": "shannon",
+      "status": "VERIFIED",
+      "note": "Six-coordinate IR column; distinct from CR values used for the circles."
+    },
+    {
+      "id": "filter_length",
+      "value": 1.2,
+      "unit": "nm",
+      "source": "doyle",
+      "status": "VERIFIED",
+      "note": "KcsA structural filter, not a full voltage-gated channel structure."
+    },
+    {
+      "id": "pore_length",
+      "value": 4.5,
+      "unit": "nm",
+      "source": "doyle",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "filter_spacing",
+      "value": 0.75,
+      "unit": "nm",
+      "source": "doyle",
+      "status": "VERIFIED",
+      "note": "Approximate center separation of two occupied ions in Doyle 1998; not all adjacent binding sites simultaneously occupied."
+    },
+    {
+      "id": "grid_angle",
+      "value": 60,
+      "unit": "degrees",
+      "source": "deck",
+      "status": "VERIFIED",
+      "note": "Three-wave idealized grid illustration, slide 21; not an experimentally measured firing map."
+    },
+    {
+      "id": "filter_coordination",
+      "value": 8,
+      "unit": "oxygen ligands",
+      "source": "zhou",
+      "status": "VERIFIED",
+      "note": "Square antiprism around a K binding site; diagram projects coordination schematically."
+    },
+    {
+      "id": "channel_rate",
+      "value": 100000000.0,
+      "unit": "ions/s",
+      "source": "doyle",
+      "status": "VERIFIED",
+      "note": "Throughput up to this order; not a universal rate or the playback speed."
+    },
+    {
+      "id": "elementary_charge",
+      "value": 1.602176634e-19,
+      "unit": "C",
+      "source": "si",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "avogadro",
+      "value": 6.02214076e+23,
+      "unit": "mol⁻¹",
+      "source": "si",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "voltage_swing",
+      "value": 100,
+      "unit": "mV",
+      "source": "deck",
+      "status": "VERIFIED",
+      "note": "Illustrative capacitive voltage excursion, not the integrated HH sodium charge."
+    },
+    {
+      "id": "rest_na_weight",
+      "value": 0.15,
+      "unit": "g_Na/g_K",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "note": "Chosen illustrative conductance ratio; ignores Cl and voltage dependence. Conductance-weighted simplification of the multi-ion resting-potential idea, not GHK."
+    },
+    {
+      "id": "weighted_rest",
+      "value": -68.75561925695442,
+      "unit": "mV",
+      "source": "nernst",
+      "status": "VERIFIED",
+      "formula": "(e_k+rest_na_weight*e_na)/(1+rest_na_weight)",
+      "tolerance": 1e-09
+    },
+    {
+      "id": "budget_area",
+      "value": 1.2566370614359176e-09,
+      "unit": "m²",
+      "source": "deck",
+      "status": "VERIFIED",
+      "formula": "pi*(soma*1e-6)^2",
+      "tolerance": 1.2566370614359177e-19,
+      "note": "Spherical cell estimate; capacitive lower bound, not total actual Na entry. Deck warns real entry is several times greater."
+    },
+    {
+      "id": "budget_volume",
+      "value": 4.188790204786392e-15,
+      "unit": "m³",
+      "source": "deck",
+      "status": "VERIFIED",
+      "formula": "pi*(soma*1e-6)^3/6",
+      "tolerance": 4.188790204786393e-25,
+      "note": "Spherical cell estimate; capacitive lower bound, not total actual Na entry. Deck warns real entry is several times greater."
+    },
+    {
+      "id": "budget_capacitance",
+      "value": 1.2566370614359176e-11,
+      "unit": "F",
+      "source": "deck",
+      "status": "VERIFIED",
+      "formula": "area*hh_c*.01",
+      "tolerance": 1.2566370614359176e-21,
+      "note": "Spherical cell estimate; capacitive lower bound, not total actual Na entry. Deck warns real entry is several times greater."
+    },
+    {
+      "id": "budget_charge",
+      "value": 1.2566370614359177e-12,
+      "unit": "C",
+      "source": "deck",
+      "status": "VERIFIED",
+      "formula": "capacitance*voltage_swing*.001",
+      "tolerance": 1.2566370614359178e-22,
+      "note": "Spherical cell estimate; capacitive lower bound, not total actual Na entry. Deck warns real entry is several times greater."
+    },
+    {
+      "id": "budget_crossing",
+      "value": 7843311.6222559875,
+      "unit": "ions",
+      "source": "deck",
+      "status": "VERIFIED",
+      "formula": "charge/elementary_charge",
+      "tolerance": 0.0007843311622255988,
+      "note": "Spherical cell estimate; capacitive lower bound, not total actual Na entry. Deck warns real entry is several times greater."
+    },
+    {
+      "id": "budget_inside",
+      "value": 30270581072.799454,
+      "unit": "ions",
+      "source": "deck",
+      "status": "VERIFIED",
+      "formula": "na_in*volume*avogadro",
+      "tolerance": 3.0270581072799456,
+      "note": "Spherical cell estimate; capacitive lower bound, not total actual Na entry. Deck warns real entry is several times greater."
+    },
+    {
+      "id": "budget_percent",
+      "value": 0.025910674140655437,
+      "unit": "%",
+      "source": "deck",
+      "status": "VERIFIED",
+      "formula": "100*crossing/inside",
+      "tolerance": 2.591067414065544e-12,
+      "note": "Spherical cell estimate; capacitive lower bound, not total actual Na entry. Deck warns real entry is several times greater."
+    },
+    {
+      "id": "hh_rest",
+      "value": -64.99637933119206,
+      "unit": "mV",
+      "source": "hh",
+      "status": "VERIFIED",
+      "formula": "resting_potential()",
+      "tolerance": 1e-09
+    },
+    {
+      "id": "hh_rest_m",
+      "value": 0.052955086813008125,
+      "unit": "probability",
+      "source": "hh",
+      "status": "VERIFIED",
+      "formula": "gate_steady_state(hh_rest).m",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "hh_rest_h",
+      "value": 0.5959941247398638,
+      "unit": "probability",
+      "source": "hh",
+      "status": "VERIFIED",
+      "formula": "gate_steady_state(hh_rest).h",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "hh_rest_n",
+      "value": 0.31773239976086576,
+      "unit": "probability",
+      "source": "hh",
+      "status": "VERIFIED",
+      "formula": "gate_steady_state(hh_rest).n",
+      "tolerance": 1e-12
+    },
+    {
+      "id": "hh_detection",
+      "value": 0.0,
+      "unit": "mV",
+      "source": "hh",
+      "status": "VERIFIED",
+      "formula": "HodgkinHuxley().v_spike",
+      "tolerance": 1e-12,
+      "note": "Event detection crossing; not a fixed biological excitability threshold."
+    },
+    {
+      "id": "hh_charge_density",
+      "value": 1416.7085061332855,
+      "unit": "µA ms/cm²",
+      "source": "hh",
+      "status": "VERIFIED",
+      "formula": "sum(max(0,-I_Na)*hh_dt) over hh_duration",
+      "tolerance": 1e-08
+    },
+    {
+      "id": "hh_ions_entered",
+      "value": 111116862.91504115,
+      "unit": "ions",
+      "source": "hh",
+      "status": "VERIFIED",
+      "formula": "hh_charge_density*1e-9*budget_area*1e4/elementary_charge",
+      "tolerance": 0.0001,
+      "note": "Integrated sodium entry for the stated HH pulse; hybrid scaling to the illustrative spherical cell area, not an observed mammalian or squid count."
+    },
+    {
+      "id": "cl_in",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "Audit gives illustrative concentrations but no named primary or textbook concentration source was opened. Omitted; free Ca and Cl are cell-type dependent."
+    },
+    {
+      "id": "cl_out",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "Audit gives illustrative concentrations but no named primary or textbook concentration source was opened. Omitted; free Ca and Cl are cell-type dependent."
+    },
+    {
+      "id": "ca_in",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "Audit gives illustrative concentrations but no named primary or textbook concentration source was opened. Omitted; free Ca and Cl are cell-type dependent."
+    },
+    {
+      "id": "ca_out",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "Audit gives illustrative concentrations but no named primary or textbook concentration source was opened. Omitted; free Ca and Cl are cell-type dependent."
+    },
+    {
+      "id": "hydrated_na",
+      "value": 0.358,
+      "unit": "nm",
+      "source": "fusion",
+      "status": "VERIFIED",
+      "note": "Approximate effective hydrated radius, model dependent; Nightingale values reproduced in Table 2. Not a hard outer molecular boundary or the oxygen-center radius."
+    },
+    {
+      "id": "hydrated_k",
+      "value": 0.331,
+      "unit": "nm",
+      "source": "fusion",
+      "status": "VERIFIED",
+      "note": "Approximate effective hydrated radius, model dependent; Nightingale values reproduced in Table 2."
+    },
+    {
+      "id": "channel_conductance",
+      "value": 20,
+      "unit": "pS",
+      "source": "single_channel",
+      "status": "VERIFIED",
+      "note": "Most frequently observed conductance in this cut-open squid-axon study; not a universal channel conductance."
+    },
+    {
+      "id": "filter_width",
+      "value": 0.3,
+      "unit": "nm",
+      "source": "hille_pore",
+      "status": "VERIFIED",
+      "note": "Approximate historical functional pore estimate; not a precise KcsA structural measurement. Diagram aperture schematic; CR ionic radii are a different radius convention."
+    },
+    {
+      "id": "neurons_error",
+      "value": 8.1,
+      "unit": "billion neurons",
+      "source": "azevedo",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_smoothing",
+      "value": 0.12,
+      "unit": "fraction/frame",
+      "source": "design",
+      "status": "VERIFIED",
+      "note": "Camera/ruler configuration; physical values refer to separately sourced biological facts."
+    },
+    {
+      "id": "slider_min",
+      "value": 0,
+      "unit": "nA",
+      "source": "design",
+      "status": "VERIFIED",
+      "note": "Camera/ruler configuration; physical values refer to separately sourced biological facts."
+    },
+    {
+      "id": "concentration_min",
+      "value": 1,
+      "unit": "mM",
+      "source": "design",
+      "status": "VERIFIED",
+      "note": "Camera/ruler configuration; physical values refer to separately sourced biological facts."
+    },
+    {
+      "id": "concentration_max",
+      "value": 200,
+      "unit": "mM",
+      "source": "design",
+      "status": "VERIFIED",
+      "note": "Camera/ruler configuration; physical values refer to separately sourced biological facts."
+    },
+    {
+      "id": "stimulus_min",
+      "value": 0,
+      "unit": "µA/cm²",
+      "source": "design",
+      "status": "VERIFIED",
+      "note": "Camera/ruler configuration; physical values refer to separately sourced biological facts."
+    },
+    {
+      "id": "stimulus_max",
+      "value": 30,
+      "unit": "µA/cm²",
+      "source": "design",
+      "status": "VERIFIED",
+      "note": "Camera/ruler configuration; physical values refer to separately sourced biological facts."
+    },
+    {
+      "id": "timing_min",
+      "value": 1,
+      "unit": "ms",
+      "source": "design",
+      "status": "VERIFIED",
+      "note": "Camera/ruler configuration; physical values refer to separately sourced biological facts."
+    },
+    {
+      "id": "timing_max",
+      "value": 15,
+      "unit": "ms",
+      "source": "design",
+      "status": "VERIFIED",
+      "note": "Camera/ruler configuration; physical values refer to separately sourced biological facts."
+    },
+    {
+      "id": "ruler_soma",
+      "value": 2e-05,
+      "unit": "m",
+      "source": "design",
+      "status": "VERIFIED",
+      "note": "Camera/ruler configuration; physical values refer to separately sourced biological facts."
+    },
+    {
+      "id": "ruler_cleft",
+      "value": 2e-08,
+      "unit": "m",
+      "source": "design",
+      "status": "VERIFIED",
+      "note": "Camera/ruler configuration; physical values refer to separately sourced biological facts."
+    },
+    {
+      "id": "ruler_membrane",
+      "value": 5e-09,
+      "unit": "m",
+      "source": "design",
+      "status": "VERIFIED",
+      "note": "Camera/ruler configuration; physical values refer to separately sourced biological facts."
+    },
+    {
+      "id": "ruler_k",
+      "value": 1.52e-10,
+      "unit": "m",
+      "source": "design",
+      "status": "VERIFIED",
+      "note": "Camera/ruler configuration; physical values refer to separately sourced biological facts."
+    },
+    {
+      "id": "brain_length",
+      "value": null,
+      "unit": "m",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "Ruler shows name only until a primary or textbook size source is opened."
+    },
+    {
+      "id": "axon_diameter",
+      "value": null,
+      "unit": "m",
+      "source": null,
+      "status": "NOT VERIFIED",
+      "note": "Ruler shows name only until a primary or textbook size source is opened."
+    },
+    {
+      "id": "camera_0_t",
+      "value": 0,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_0_log",
+      "value": -1,
+      "unit": "log10(m)",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_0_x",
+      "value": 0.5,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_0_y",
+      "value": 0.5,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_1_t",
+      "value": 0.1,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_1_log",
+      "value": -4,
+      "unit": "log10(m)",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_1_x",
+      "value": 0.48,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_1_y",
+      "value": 0.48,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_2_t",
+      "value": 0.2,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_2_log",
+      "value": -5,
+      "unit": "log10(m)",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_2_x",
+      "value": 0.5,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_2_y",
+      "value": 0.46,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_3_t",
+      "value": 0.35,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_3_log",
+      "value": -8,
+      "unit": "log10(m)",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_3_x",
+      "value": 0.52,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_3_y",
+      "value": 0.48,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_4_t",
+      "value": 0.42,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_4_log",
+      "value": -8.5,
+      "unit": "log10(m)",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_4_x",
+      "value": 0.51,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_4_y",
+      "value": 0.49,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_5_t",
+      "value": 0.5,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_5_log",
+      "value": -10,
+      "unit": "log10(m)",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_5_x",
+      "value": 0.5,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_5_y",
+      "value": 0.5,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_6_t",
+      "value": 0.65,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_6_log",
+      "value": -6,
+      "unit": "log10(m)",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_6_x",
+      "value": 0.52,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_6_y",
+      "value": 0.48,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_7_t",
+      "value": 0.72,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_7_log",
+      "value": -6,
+      "unit": "log10(m)",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_7_x",
+      "value": 0.54,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_7_y",
+      "value": 0.48,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_8_t",
+      "value": 0.8,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_8_log",
+      "value": -7,
+      "unit": "log10(m)",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_8_x",
+      "value": 0.5,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_8_y",
+      "value": 0.5,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_9_t",
+      "value": 0.86,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_9_log",
+      "value": -6,
+      "unit": "log10(m)",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_9_x",
+      "value": 0.49,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_9_y",
+      "value": 0.49,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_10_t",
+      "value": 1,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_10_log",
+      "value": -2,
+      "unit": "log10(m)",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_10_x",
+      "value": 0.5,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    },
+    {
+      "id": "camera_10_y",
+      "value": 0.5,
+      "unit": "fraction",
+      "source": "design",
+      "status": "VERIFIED"
+    }
+  ],
+  "camera": [
+    {
+      "t": "camera_0_t",
+      "log": "camera_0_log",
+      "x": "camera_0_x",
+      "y": "camera_0_y"
+    },
+    {
+      "t": "camera_1_t",
+      "log": "camera_1_log",
+      "x": "camera_1_x",
+      "y": "camera_1_y"
+    },
+    {
+      "t": "camera_2_t",
+      "log": "camera_2_log",
+      "x": "camera_2_x",
+      "y": "camera_2_y"
+    },
+    {
+      "t": "camera_3_t",
+      "log": "camera_3_log",
+      "x": "camera_3_x",
+      "y": "camera_3_y"
+    },
+    {
+      "t": "camera_4_t",
+      "log": "camera_4_log",
+      "x": "camera_4_x",
+      "y": "camera_4_y"
+    },
+    {
+      "t": "camera_5_t",
+      "log": "camera_5_log",
+      "x": "camera_5_x",
+      "y": "camera_5_y"
+    },
+    {
+      "t": "camera_6_t",
+      "log": "camera_6_log",
+      "x": "camera_6_x",
+      "y": "camera_6_y"
+    },
+    {
+      "t": "camera_7_t",
+      "log": "camera_7_log",
+      "x": "camera_7_x",
+      "y": "camera_7_y"
+    },
+    {
+      "t": "camera_8_t",
+      "log": "camera_8_log",
+      "x": "camera_8_x",
+      "y": "camera_8_y"
+    },
+    {
+      "t": "camera_9_t",
+      "log": "camera_9_log",
+      "x": "camera_9_x",
+      "y": "camera_9_y"
+    },
+    {
+      "t": "camera_10_t",
+      "log": "camera_10_log",
+      "x": "camera_10_x",
+      "y": "camera_10_y"
+    }
+  ]
+}

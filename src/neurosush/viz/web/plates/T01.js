@@ -1,4 +1,4 @@
-/** T01: imposed structure and world-specific Hebbian binding. */
+/** T01: imposed structure and world-specific Hebbian binding. Mirrors neurosush.memory.hebbian.hebbian_update and attractor. All states/weights are dimensionless; updates are per observation. */
 (function () {
   'use strict';
   const zeros = n => Array(n).fill(0);
@@ -94,18 +94,29 @@
       </div>
       <div class="t01-panels">
         <section><h3>World · 4 × 4, no wrap</h3><svg viewBox="0 0 240 240" role="img" aria-label="Graph with agent and revealed sensory symbols"></svg><p data-position></p></section>
-        <section><h3>(a) Structure g · GIVEN / imposed</h3><p>Actions path-integrate an exact position. One of 16 location units is active. No transition weights are learned.</p><code data-g></code><h3>(b) Sensory x</h3><p data-x></p><code data-filter></code></section>
+        <section><h3>(a) Structure g · GIVEN / imposed</h3><p>Moves update the exact graph-node index; this is a supplied position code, not learned or noisy neural path integration. One of 16 location units is active. No transition weights are learned.</p><code data-g></code><h3>(b) Sensory x</h3><p data-x></p><code data-filter></code></section>
         <section><h3>(c) Conjunction p = g ⊗ filtered x</h3><p>16 rows × 4 sensory channels. Filter: xᶠ ← 0.1xᶠ + 0.9x.</p><canvas data-p width="4" height="16" role="img" aria-label="Conjunctive pattern, location by sensory channel"></canvas></section>
-        <section><h3>(d) World-specific memory M · 64 × 64</h3><canvas data-m width="64" height="64" role="img" aria-label="Hebbian matrix, positive and negative weights"></canvas><p>Positive: excitation colour; negative: inhibition colour; intensity: magnitude.</p></section>
-        <section style="grid-column:1/-1"><h3>(e) Predict before revealing</h3><p data-last aria-live="polite"></p><table><thead><tr><th>Predictor</th><th>Correct / eligible</th><th>Accuracy</th></tr></thead><tbody data-scores></tbody></table><p>Eligible = first traversal of a directed edge to an already seen node. All predictors use only past observations; ties choose A. Sensory-only predicts from counts of successive symbols, without position. Frequency predicts the most common past symbol.</p></section>
-      </div><p>Real: the library’s Hebbian update and attractor retrieval equations. Simplified: a small graph, imposed g and hand-set binding/filter. This is not the trained TEM model and shows no grid cells. New world keeps the imposed transition structure and resets sensory bindings, memory and scores.</p>
+        <section><h3>(d) World-specific memory M · 64 × 64</h3><canvas data-m width="64" height="64" role="img" aria-label="Hebbian matrix, positive and negative weights"></canvas><p>Positive and negative abstract memory coefficients; colours indicate sign and intensity indicates magnitude. These are not identified excitatory/inhibitory neurons.</p></section>
+        <section style="grid-column:1/-1"><h3>(e) Predict before revealing</h3><p data-last aria-live="polite"></p><table><thead><tr><th>Predictor</th><th>Correct / eligible</th><th>Accuracy</th></tr></thead><tbody data-scores></tbody></table><p>Eligible = first traversal of a directed edge to an already seen node. This score tests recall at previously visited destinations, not generalization to unvisited nodes; each eligible directed edge is scored once. All predictors use only past observations; ties choose A. Sensory-only predicts from counts of successive symbols, without position. Frequency predicts the most common past symbol.</p></section>
+      </div><p>Implemented exactly: the library’s abstract Hebbian update and iterative retrieval equations. Simplified: a small graph, imposed g and hand-set binding/filter. This is not the trained TEM model and shows no grid cells. New world keeps the imposed transition structure and resets sensory bindings, memory and scores.</p>
       <a href="https://github.com/soroushdeimi/neuroSush/blob/main/docs/TEM.md">Read docs/TEM.md</a>
     </div>`;
     ctx.margin.innerHTML = `<h3>Binding and recall</h3><p>First predict with the old M; then reveal x and store p.</p>
       <p><code>M ← clamp(λM + η(p − p̂)(p + p̂)ᵀ, −1, 1)</code></p>
-      <p>λ = 0.9999, η = 0.5</p><p><code>h ← min(1, leaky_relu(0.8h + Mh, 0.01))</code></p>
+      <p>λ = 0.9999 per observation, η = 0.5; states and weights are dimensionless</p><p><code>h ← min(1, leaky_relu(0.8h + Mh, 0.01))</code></p>
       <p>Start h from g tiled across four sensory channels (0.25 each). Read the destination row. p̂ uses the same retrieval before storing.</p>
-      <p>Memory off disables retrieval and updates; existing M is retained until reset. Scores restart when memory or iterations change.</p>`;
+      <p>Memory off disables retrieval and updates; existing M is retained until reset. Scores restart when memory or iterations change.</p>
+      <div class="atlas-margin-section" id="t01-margin-learn">
+        <details ${window.innerWidth >= 640 ? 'open' : ''} style="font-size: 11px; line-height: 1.4; margin-top: 12px;">
+          <summary style="font-weight: 600; cursor: pointer; margin-bottom: 6px;">Learn: the math, the brain, the ML analogy</summary>
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+            <div><b>What you see:</b> A 4×4 graph world with an agent walking edges, conjunctive position-sensory pattern p, Hebbian binding matrix M (64×64), and recall accuracy scores across predictors.</div>
+            <div><b>The math:</b> M_new = clip(λM + η(p - p̂)(p + p̂)ᵀ, -c, c). Retrieval: h_new = min(cap, leakyReLU(κh + Mh, α)). Here λ = 0.9999 per observation, η = 0.5, κ = 0.8, all states and weights are dimensionless.</div>
+            <div><b>In the brain:</b> Inspired by Tolman-Eichenbaum Machine (TEM) models of hippocampus and entorhinal cortex, simulating Hebbian association between location codes and sensory inputs.</div>
+            <div><b>Like classic ML:</b> Fast associative key/value memory conditioned on a supplied location code. Break: spatial structure is provided exactly, not learned; 5 recurrent updates need not converge; eligible-score accuracy cannot establish trained TEM generalization or grid-cell emergence.</div>
+          </div>
+        </details>
+      </div>`;
     const q = s => el.querySelector(s), symbols = ['A','B','C','D'];
     let w = createWorld(), timer = null;
     const opts = () => ({memory:q('[data-memory]').checked, iterations:Number(q('[data-iterations]').value)});

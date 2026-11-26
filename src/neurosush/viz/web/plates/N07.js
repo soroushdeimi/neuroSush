@@ -21,7 +21,7 @@
     id: 'N07',
     title: 'Conductance synapse: tug of war',
     source: 'live',
-    mirror: 'neurosush.neurons.dendrite.ConductanceIntegration · conductance_step',
+        mirror: 'neurosush.neurons.dendrite.conductance_step (conductances held constant within each step)',
 
     // Equations & Marginalia
     eqTitle: 'GOVERNING EQUATIONS',
@@ -36,7 +36,7 @@
     readoutIe: 'Exc force Ie = ge(Ee − v)',
     readoutIi: 'Inh force Ii = gi(Ei − v)',
     readoutIL: 'Leak force IL = gL(EL − v)',
-    readoutDiff: 'Theory error |v − v∞|',
+    readoutDiff: 'Distance to equilibrium |v − v∞|',
     readoutModelDiff: 'Contrast |vcond − vcurr|',
 
     // Parameter Sliders in Margin
@@ -49,7 +49,7 @@
     glossaryTitle: 'GLOSSARY & DYNAMICS',
     glossaryConductance: 'Conductance (g): Ease of ion flux across open channels (µS).',
     glossaryReversal: 'Reversal potential (E): Destination potential for an ion pathway (Ee = 0 mV, Ei = −80 mV, EL = −65 mV).',
-    glossaryDriving: 'Driving force (E − v): Electrical gradient; force vanishes as v reaches reversal.',
+    glossaryDriving: 'Electrochemical driving potential: force vanishes as v reaches reversal.',
     glossaryShunting: 'Shunting inhibition: High gi increases total conductance, shortening τeff and attenuating subsequent excitatory pulls even at resting voltage.',
 
     // Controls
@@ -79,10 +79,10 @@
     c3b: 'Opening inhibitory channels (gi > 0) introduces an opposing team pulling toward Ei = −80 mV. The two teams engage in a true tug of war, settling at a weighted compromise v∞.',
 
     c4t: '4. Shunting inhibition at rest',
-    c4b: 'Set Ei = EL = −65 mV. Because (Ei − v) = 0 at rest, the inhibitory team exerts 0 pA. Yet gi raises total conductance, shortening τeff from 10 ms to 1.3 ms and dividing any excitatory pull!',
+    c4b: 'Set Ei = EL = −65 mV. Because (Ei − v) = 0 at rest, the inhibitory team exerts 0 nA. Yet gi raises total conductance, shortening τeff from 10 ms to 1.3 ms and dividing any excitatory pull!',
 
     c5t: '5. Current versus conductance',
-    c5b: 'A current synapse injects a fixed push regardless of membrane voltage. A conductance synapse weakens as v approaches Ee (driving force shrinks). The dashed ghost shows the runaway linear current model.',
+    c5b: 'A current synapse injects a fixed push regardless of membrane voltage. A conductance synapse weakens as v approaches Ee (driving force shrinks). The dashed ghost shows the larger, finite equilibrium of the fixed-current model.',
 
     // Predict-then-reveal
     predictTitle: 'PREDICT, THEN REVEAL',
@@ -90,7 +90,7 @@
     optNo: 'No effect — resting driving force is zero',
     optYes: 'Yes — it shunts and shrinks excitatory responses',
     commit: 'Commit prediction',
-    feedbackCorrect: 'Correct! Although resting current is 0 pA, gi adds to total conductance: τeff plunges from 10 ms to 1.3 ms and subsequent excitatory responses are shunted by over 65%.',
+    feedbackCorrect: 'Correct! Although resting current is 0 nA, gi adds to total conductance: τeff plunges from 10 ms to 1.3 ms and weak steady current responses are reduced by 87.5%; attenuation of finite conductance pulses depends on pulse size and duration.',
     feedbackWrong: 'Not quite. Although the resting current is zero, gi adds to total membrane conductance: τeff becomes much faster and subsequent excitatory pulls are strongly attenuated.',
 
     // Canvas hero labels
@@ -112,7 +112,7 @@
     unitsMv: 'mV',
     unitsUs: 'µS',
     unitsMs: 'ms',
-    unitsPa: 'pA',
+    unitsPa: 'nA',
   };
 
   function mulberry32(seed) {
@@ -131,7 +131,7 @@
     E_L: -65.0,
     E_E: 0.0,
     E_I: -80.0,
-    C: 1.0,
+    C: 1.0, // nF; g in µS, v in mV, currents in nA, time in ms
     mulberry32,
 
     validate(p) {
@@ -349,6 +349,7 @@
             <div class="n07-term" data-term="tau" style="cursor:help; margin-top:4px; color:var(--mod);">
               ${S.eqTau}
             </div>
+            <div style="font-size:10px; color:var(--ink-muted); margin-top:4px;">C = 1.0 nF · g in µS · v, E in mV · I in nA · t in ms</div>
           </div>
         </div>
 
@@ -372,15 +373,15 @@
           </div>
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px;">
             <span class="atlas-serif" style="font-size:12px; color:var(--exc); font-weight:600;">${S.readoutIe}:</span>
-            <span class="atlas-mono" id="n07-val-ie" style="color:var(--exc); font-size:13px; font-weight:600;">0.00 pA</span>
+            <span class="atlas-mono" id="n07-val-ie" style="color:var(--exc); font-size:13px; font-weight:600;">0.00 nA</span>
           </div>
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px;">
             <span class="atlas-serif" style="font-size:12px; color:var(--inh); font-weight:600;">${S.readoutIi}:</span>
-            <span class="atlas-mono" id="n07-val-ii" style="color:var(--inh); font-size:13px; font-weight:600;">0.00 pA</span>
+            <span class="atlas-mono" id="n07-val-ii" style="color:var(--inh); font-size:13px; font-weight:600;">0.00 nA</span>
           </div>
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px;">
             <span class="atlas-serif" style="font-size:12px; color:var(--ink-muted);">${S.readoutIL}:</span>
-            <span class="atlas-mono" id="n07-val-il" style="font-size:13px;">0.00 pA</span>
+            <span class="atlas-mono" id="n07-val-il" style="font-size:13px;">0.00 nA</span>
           </div>
           <div style="display:flex; justify-content:space-between; align-items:baseline; border-top:1px dashed var(--border); padding-top:4px; margin-top:4px;">
             <span class="atlas-serif" style="font-size:12px;">${S.readoutDiff}:</span>
@@ -428,6 +429,16 @@
           <p style="margin:0 0 5px 0;">• ${S.glossaryDriving}</p>
           <p style="margin:0;">• ${S.glossaryShunting}</p>
         </div>
+
+        <details class="atlas-margin-section" id="n07-learn-panel" ${typeof window !== 'undefined' && window.innerWidth > 720 ? 'open' : ''} style="font-size:12px; line-height:1.45;">
+          <summary style="font-weight:600; cursor:pointer; margin-bottom:6px;">Learn: the math, the brain, the ML analogy</summary>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+            <div><strong>(a) What you see:</strong> A passive neuronal membrane (C = 1.0 nF, gL = 0.1 µS) undergoing a tug-of-war between excitatory (Ee = 0 mV) and inhibitory (Ei = −80 mV) synaptic conductances. As channels open, v shifts toward a compromise equilibrium v∞ while effective time constant τeff accelerates.</div>
+            <div><strong>(b) The math:</strong> Governing ODE: C dv/dt = gL(EL − v) + ge(Ee − v) + gi(Ei − v). Dividing by C yields dv/dt = (v∞ − v)/τeff, where v∞ = (gL EL + ge Ee + gi Ei)/gtot and τeff = C/gtot. Units: 1 µS × 1 mV = 1 nA; 1 nF / 1 µS = 1 ms. Unshunted τ = 10 ms; with gi = 0.7 µS, τ drops to 1.25 ms.</div>
+            <div><strong>(c) In the brain:</strong> Represents dendritic integration and synaptic shunting. Excitatory inputs depolarize toward threshold, while inhibitory inputs counteract excitation. High inhibitory conductance shunts incoming signals by accelerating membrane time constant and dividing voltage deflections, implementing divisive normalization in neural circuits.</div>
+            <div><strong>(d) Like classic ML:</strong> Equivalent to a leaky integrator or exponential moving average with conductances acting as time-varying mixing weights. Breaks because physical conductances change integration time and driving forces concurrently, whereas ML weights are arbitrary signed learned coefficients.</div>
+          </div>
+        </details>
 
         <div class="atlas-margin-section" style="font-size:12px; color:var(--ink-muted); line-height:1.4;">
           <div class="atlas-mono" style="font-size:11px; text-transform:uppercase;">Source: LIVE</div>
@@ -1133,7 +1144,7 @@
         c.fillStyle = col.exc;
         c.textAlign = 'left';
         c.textBaseline = 'top';
-        c.fillText(`+${currentValues.exc.toFixed(1)} pA`, knotX + 16, ropeY + 15);
+        c.fillText(`+${currentValues.exc.toFixed(1)} nA`, knotX + 16, ropeY + 15);
       }
 
       if (p.gi > 0.001 && Math.abs(currentValues.inh) >= 0.5) {
@@ -1143,7 +1154,7 @@
         c.fillStyle = col.inh;
         c.textAlign = 'right';
         c.textBaseline = 'top';
-        c.fillText(`${currentValues.inh.toFixed(1)} pA`, knotX - 16, ropeY + 15);
+        c.fillText(`${currentValues.inh.toFixed(1)} nA`, knotX - 16, ropeY + 15);
       }
 
       // 8. Theory Ghost Knot at vInfinity
@@ -1382,9 +1393,9 @@
       if (byId('n07-val-vinf')) byId('n07-val-vinf').textContent = vinf.toFixed(1) + ' mV';
       if (byId('n07-val-tau')) byId('n07-val-tau').textContent = tau.toFixed(2) + ' ms';
       if (byId('n07-val-gtot')) byId('n07-val-gtot').textContent = core.totalConductance(p).toFixed(2) + ' µS';
-      if (byId('n07-val-ie')) byId('n07-val-ie').textContent = currentValues.exc.toFixed(1) + ' pA';
-      if (byId('n07-val-ii')) byId('n07-val-ii').textContent = currentValues.inh.toFixed(1) + ' pA';
-      if (byId('n07-val-il')) byId('n07-val-il').textContent = currentValues.leak.toFixed(1) + ' pA';
+      if (byId('n07-val-ie')) byId('n07-val-ie').textContent = currentValues.exc.toFixed(1) + ' nA';
+      if (byId('n07-val-ii')) byId('n07-val-ii').textContent = currentValues.inh.toFixed(1) + ' nA';
+      if (byId('n07-val-il')) byId('n07-val-il').textContent = currentValues.leak.toFixed(1) + ' nA';
       if (byId('n07-val-diff')) byId('n07-val-diff').textContent = Math.abs(state.v - vinf).toFixed(3) + ' mV';
       if (byId('n07-val-model-diff')) byId('n07-val-model-diff').textContent = Math.abs(state.v - state.vCurrent).toFixed(3) + ' mV';
     }

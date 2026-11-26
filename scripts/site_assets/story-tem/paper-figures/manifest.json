@@ -1,0 +1,53 @@
+{
+  "11": {
+    "src": "paper-figures/grid-emergence.png",
+    "caption": "Reported fraction of classified grid cells during training (mean ± SD across four simulation runs). The plotted lattice is square or diamond shaped.",
+    "source": "Kawahara & Fujisawa (2025 preprint), Fig. 3C; cropped from Spiking_TEM.pdf, slide 16. CC BY 4.0 attribution shown in the deck.",
+    "callouts": [
+      {"x": 0.91, "y": 0.33, "w": 0.08, "h": 0.13, "label": "At 24,000 iterations, 59.6% of MEC II cells passed the paper's gridness cutoff on average."},
+      {"x": 0.92, "y": 0.25, "w": 0.07, "h": 0.28, "label": "The uncertainty bar is wide: 18 percentage points of standard deviation across four runs."}
+    ]
+  },
+  "12": {
+    "src": "paper-figures/ca1-theta.png",
+    "caption": "CA1 spatial-information distributions with theta present, and with theta removed before training. These are model results, not neural recordings.",
+    "source": "Kawahara & Fujisawa (2025 preprint), Fig. 4C; cropped from Spiking_TEM.pdf, slide 17. CC BY 4.0 attribution shown in the deck."
+  },
+  "13": {
+    "src": "paper-figures/remapping.png",
+    "caption": "Example simulated MEC II fields realign and CA1 place-like fields move after sensory input changes; examples do not quantify identical field locations.",
+    "source": "Kawahara & Fujisawa (2025 preprint), Figs. 5A and 6A; cropped from Spiking_TEM.pdf, slide 18. CC BY 4.0 attribution shown in the deck."
+  },
+  "14": {
+    "src": "paper-figures/ablations.png",
+    "caption": "Grid-cell classification under model ablations. Bars and uncertainty are a presenter redraw of the paper's Table 2, with four runs per condition.",
+    "source": "Presenter redraw from Kawahara & Fujisawa (2025 preprint), Table 2; cropped from Spiking_TEM.pdf, slide 19.",
+    "callouts": [
+      {"x": 0.72, "y": 0.05, "w": 0.06, "h": 0.1, "label": "Baseline classification is about 60%; the error bar shows variation across four runs."},
+      {"x": 0.26, "y": 0.52, "w": 0.06, "h": 0.31, "label": "Without the sparsity constraint or gain, grid classification approaches zero in this model."}
+    ]
+  },
+  "15": {
+    "src": "paper-figures/sensory-ambiguity.png",
+    "caption": "The reported grid-cell fraction peaks at moderate sensory ambiguity in this task. The 20-neuron value differs from the paper's baseline table.",
+    "source": "Kawahara & Fujisawa (2025 preprint), Fig. 7; cropped from Spiking_TEM.pdf, slide 20. CC BY 4.0 attribution shown in the deck.",
+    "callouts": [
+      {"x": 0.38, "y": 0.39, "w": 0.06, "h": 0.36, "label": "The highest mean here occurs at 20 sensory neurons, with substantial variation."},
+      {"x": 0.69, "y": 0.68, "w": 0.23, "h": 0.07, "label": "At 40–80 sensory neurons, classified grids are rare in this sweep."}
+    ]
+  },
+  "16": {
+    "src": "paper-figures/predictive-mec-iii.png",
+    "caption": "Example MEC III simulated firing maps look more grid-like when aligned with the next position, consistent with the module's explicit prediction target.",
+    "source": "Kawahara & Fujisawa (2025 preprint), Fig. 8A; cropped from Spiking_TEM.pdf, slide 21. CC BY 4.0 attribution shown in the deck."
+  },
+  "17": {
+    "src": "paper-figures/phase-precession-locking.png",
+    "caption": "With gain and imposed theta inhibition together, model MEC II cells mostly precess and MEC III cells mostly lock to theta phase.",
+    "source": "Kawahara & Fujisawa (2025 preprint), Fig. 13C; cropped from Spiking_TEM.pdf, slide 22. CC BY 4.0 attribution shown in the deck.",
+    "callouts": [
+      {"x": 0.35, "y": 0.23, "w": 0.06, "h": 0.57, "label": "MEC II model cells mostly show phase precession: 80.2% of the classified grid cells."},
+      {"x": 0.65, "y": 0.2, "w": 0.06, "h": 0.6, "label": "MEC III model cells mostly phase lock: 86.7% with gain and imposed theta inhibition."}
+    ]
+  }
+}

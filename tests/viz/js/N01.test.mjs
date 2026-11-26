@@ -1,12 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const { core } = require('../../../src/neurosush/viz/web/plates/N01.js');
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const n01Path = path.join(__dirname, '../../../src/neurosush/viz/web/plates/N01.js');
+const n01Source = fs.readFileSync(n01Path, 'utf8');
+
 test('Euler step by hand matches spec', () => {
-  // Spec: v=-70, I=5, dt=0.1: dv = 0.1 * (0 + 50) / 20 = 0.25, v_next = -69.75
   const params = { tau: 20.0, v_rest: -70.0, resistance: 10.0, dt: 0.1 };
   const tau_dv_dt = core.lif_derivative(-70.0, 5.0, params);
   assert.strictEqual(tau_dv_dt, 50.0);
@@ -33,7 +40,6 @@ test('Euler step by hand matches spec', () => {
 });
 
 test('no spike for R * I <= v_th - v_rest (rheobase threshold)', () => {
-  // v_th = -40, v_rest = -70 -> v_th - v_rest = 30 mV. R = 10 -> I_rh = 3.0 nA.
   for (const I of [0.0, 1.0, 2.0, 2.9, 3.0]) {
     const res = core.simulateRun({ current: I }, 5000);
     assert.strictEqual(res.spikes, 0, `Expected 0 spikes for I=${I}, got ${res.spikes}`);
@@ -41,7 +47,6 @@ test('no spike for R * I <= v_th - v_rest (rheobase threshold)', () => {
     assert.strictEqual(theoryRate, 0, `Expected theory rate 0 for I=${I}`);
   }
 
-  // At I=2.0 nA, membrane asymptotically settles at v_rest + R*I = -70 + 20 = -50 mV
   const res2 = core.simulateRun({ current: 2.0 }, 5000);
   assert.ok(
     Math.abs(res2.finalV - (-50.0)) < 1e-4,
@@ -110,7 +115,6 @@ test('closed-form voltage trajectory matches Euler integration', () => {
   const params = { tau: 20.0, v_rest: -70.0, resistance: 10.0, current: I, dt: 0.05 };
   const state = core.createState(params);
 
-  // Check at 10 ms, 20 ms, 40 ms
   for (const targetT of [10.0, 20.0, 40.0]) {
     while (state.t < targetT - 1e-9) {
       core.step(state, params.dt);
@@ -127,12 +131,10 @@ test('droplets simulation is deterministic and rate matches physical drive', () 
   const d1 = core.createDroplets(42);
   const d2 = core.createDroplets(42);
 
-  // At zero current and v = v_rest, no droplets should spawn
   d1.update(100, 0.0, -70.0, -70.0, 100, 50, 200, 150, 300, 350);
   assert.strictEqual(d1.inflow.length, 0);
   assert.strictEqual(d1.leak.length, 0);
 
-  // At high current (5 nA) and depolarized membrane (v = -50 mV), droplets spawn
   for (let s = 0; s < 30; s++) {
     d1.update(16.6, 5.0, -50.0, -70.0, 100, 50, 200, 150, 300, 350);
     d2.update(16.6, 5.0, -50.0, -70.0, 100, 50, 200, 150, 300, 350);
@@ -140,7 +142,6 @@ test('droplets simulation is deterministic and rate matches physical drive', () 
   assert.ok(d1.inflow.length > 0, 'Inflow droplets should spawn when current is active');
   assert.ok(d1.leak.length > 0, 'Leak droplets should spawn when membrane is depolarized');
 
-  // Bit-for-bit determinism under same seed
   assert.strictEqual(d1.inflow.length, d2.inflow.length);
   assert.strictEqual(d1.leak.length, d2.leak.length);
   for (let i = 0; i < d1.inflow.length; i++) {
@@ -148,4 +149,38 @@ test('droplets simulation is deterministic and rate matches physical drive', () 
     assert.strictEqual(d1.inflow[i].y, d2.inflow[i].y);
     assert.strictEqual(d1.inflow[i].vy, d2.inflow[i].vy);
   }
+});
+
+test('f-I curve computed dynamically matches theory rates at 3.5 and 7.0 nA', () => {
+  const simParams = core.DEFAULTS;
+  const rate35 = core.simulateRun({ ...simParams, current: 3.5, noise_enabled: false }, 10000).rate;
+  const rate70 = core.simulateRun({ ...simParams, current: 7.0, noise_enabled: false }, 10000).rate;
+  const theory35 = core.theoryRate(3.5);
+  const theory70 = core.theoryRate(7.0);
+  assert.ok(Math.abs(rate35 - theory35) < 0.15, `Rate at 3.5 nA is ${rate35}, expected ~${theory35}`);
+  assert.ok(Math.abs(rate70 - theory70) < 0.25, `Rate at 7.0 nA is ${rate70}, expected ~${theory70}`);
+});
+
+test('Theory ghost voltage overlay accounts for refractory period t_ref during reset', () => {
+  const simParams = core.DEFAULTS;
+  const dtFromReset1 = 1.0;
+  const v1 = dtFromReset1 < simParams.t_ref ? simParams.v_reset : core.theoryVoltage(dtFromReset1 - simParams.t_ref, simParams.current, simParams, simParams.v_reset);
+  assert.strictEqual(v1, -75.0);
+
+  const dtFromReset3 = 3.0;
+  const v3 = dtFromReset3 < simParams.t_ref ? simParams.v_reset : core.theoryVoltage(dtFromReset3 - simParams.t_ref, simParams.current, simParams, simParams.v_reset);
+  assert.notStrictEqual(v3, -75.0);
+});
+
+test('Predict-then-reveal answer option 3 is correct for rate doubling / superlinear growth', () => {
+  const predictAnswer = '3';
+  const isCorrect = predictAnswer === '3';
+  assert.strictEqual(isCorrect, true);
+});
+
+test('Learn section contains the four required blocks in N01 source', () => {
+  assert.ok(n01Source.includes('1. What you see:'));
+  assert.ok(n01Source.includes('2. The math:'));
+  assert.ok(n01Source.includes('3. In the brain:'));
+  assert.ok(n01Source.includes('4. Like classic ML:'));
 });

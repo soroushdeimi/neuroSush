@@ -27,7 +27,7 @@
     // Marginalia equations
     eqTitle: 'Governing Equations',
     eqV: 'τ · dv/dt = (v_rest − v) + ΔT · exp((v − θ_rh) / ΔT) + R · (I − ω)',
-    eqW: 'τ_w · dω/dt = a · (v − v_rest) − ω  +  b · ∑ δ(t − t_spk)',
+    eqW: 'τ_w · dω/dt = a · (v − v_rest) − ω  +  τ_w · b · ∑ δ(t − t_spk)',
     eqTermV: 'v: membrane potential (mV)',
     eqTermW: 'ω: adaptation current (nA)',
     eqTermI: 'I: injected current drive (nA)',
@@ -102,9 +102,9 @@
     ch3Title: '3. Each Spike Strengthens the Brake (b)',
     ch3Body: 'Every action potential delivers a discrete jump +b (0.5 nA) to ω at reset, seen as a purple jump arrow. As ω accumulates, subsequent spikes take longer to reach threshold: the ISI bars step upward.',
     ch4Title: '4. The Brake Leaks Away (τ_w)',
-    ch4Body: 'Between action potentials, ω decays back toward baseline with time constant τ_w (240 ms). A long τ_w preserves adaptation across consecutive spikes; a short τ_w allows fast recovery.',
+    ch4Body: 'Between action potentials, ω relaxes toward a · (v − v_rest), which changes with voltage. A long τ_w preserves adaptation across consecutive spikes; a short τ_w allows fast recovery.',
     ch5Title: '5. Bursting: Depolarized Reset',
-    ch5Body: 'When reset voltage sits above the rheobase knee (v_reset = -47 mV > -50 mV), each reset immediately triggers another spike. A rapid burst fires until accumulated ω finally quenches the cluster, permitting a recovery pause.',
+    ch5Body: 'When reset voltage sits above the rheobase knee (v_reset = -47 mV > -50 mV), the depolarized reset can support rapid repeat firing until adaptation suppresses it. A rapid burst fires until accumulated ω finally quenches the cluster, permitting a recovery pause.',
 
     // Predict-then-reveal
     predictTitle: 'Predict-then-Reveal Challenge',
@@ -119,7 +119,7 @@
     // Glossary
     glossaryTitle: 'Glossary',
     glossaryW: 'Adaptation current (ω): A slow hyperpolarizing outward current that subtracts from injected drive.',
-    glossaryNull: 'Nullcline: The locus where dv/dt = 0 (exponential U-curve) or dω/dt = 0 (linear line); their intersection sets the fixed point.',
+    glossaryNull: 'Nullcline: The locus where dv/dt = 0 (exponential U-curve) or dω/dt = 0 (linear line); their intersections are fixed points; existence and stability depend on parameters.',
     glossaryISI: 'Inter-spike interval (ISI): The elapsed time from one action potential peak to the next.',
     glossaryB: 'Jump parameter (b): Discrete increment added to ω at each spike, establishing spike-frequency adaptation.',
     glossaryTauW: 'Adaptation time constant (τ_w): Relaxation timescale over which ω decays back toward steady state.',
@@ -188,7 +188,7 @@
     positive('dt', p.dt);
 
     const h = p.dt / p.tau;
-    const clampedVExp = Math.min(25.0, (v - p.theta_rh) / p.delta);
+    const clampedVExp = (v - p.theta_rh) / p.delta;
     return {
       leak: (p.v_rest - v) * h,
       input: p.resistance * current * h,
@@ -297,7 +297,7 @@
    */
   function nullclineV(v, params) {
     const p = merged(params);
-    const expTerm = p.delta * Math.exp(Math.min(25.0, (v - p.theta_rh) / p.delta));
+    const expTerm = p.delta * Math.exp((v - p.theta_rh) / p.delta);
     return (p.v_rest - v + expTerm + p.resistance * p.current) / p.resistance;
   }
 
@@ -328,11 +328,11 @@
    */
   function theorySteadyStateOmega(f, vMean, params) {
     const p = merged(params);
-    return p.tau_w * (p.a * (vMean - p.v_rest) + p.b * (f / 1000.0));
+    return p.a * (vMean - p.v_rest) + p.tau_w * p.b * (f / 1000.0);
   }
 
   /**
-   * Standard dynamic parameter presets.
+   * Illustrative dynamic parameter presets; not fitted biological cells.
    */
   function presets(name) {
     if (name === 'tonic') {
@@ -552,6 +552,18 @@
             <div>• <b>b:</b> ${S.glossaryB}</div>
             <div>• <b>τ_w:</b> ${S.glossaryTauW}</div>
           </div>
+        </div>
+
+        <div class="atlas-margin-section" id="n03-margin-learn">
+          <details ${window.innerWidth >= 640 ? 'open' : ''} style="font-size: 11px; line-height: 1.4;">
+            <summary style="font-weight: 600; cursor: pointer; margin-bottom: 6px;">Learn: the math, the brain, the ML analogy</summary>
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+              <div><b>What you see:</b> AdEx membrane potential V(t) trace, phase plane of V vs adaptation current ω with dv/dt and dω/dt nullclines, and inter-spike intervals (ISIs) reflecting spike-frequency adaptation under constant or step current drive.</div>
+              <div><b>The math:</b> C dV/dt = g_L(E_L - V) + g_L ΔT exp((V - V_T)/ΔT) + I - ω; τ_w dω/dt = a(V - E_L) - ω + τ_w b ∑ δ(t - t_spk). Here τ = C/g_L (20 ms), E_L = -65 mV, V_T = -50 mV, ΔT = 2 mV, a = 0.02 nA/mV, b = 0.5 nA, τ_w = 120 ms.</div>
+              <div><b>In the brain:</b> The adaptive exponential integrate-and-fire model captures pyramidal neuron excitability. Slow outward potassium currents (M-current / SK) provide negative feedback, causing spike-frequency adaptation during sustained depolarization with time constants around 100–300 ms.</div>
+              <div><b>Like classic ML:</b> A recurrent unit with a slow negative-feedback state and event-triggered fatigue. Break: no learned gradient or optimizer; firing/reset are hybrid dynamical events, not differentiable activation functions.</div>
+            </div>
+          </details>
         </div>
 
         <div style="font-size: 10px; color: var(--ink-muted); margin-top: auto; padding: 4px;">

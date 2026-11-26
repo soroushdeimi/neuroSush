@@ -14,6 +14,8 @@ on:
       - '.github/workflows/pages.yml'
   workflow_dispatch:
   workflow_call:
+  schedule:
+    - cron: '0 4 * * 1'
 
 permissions:
   contents: read
@@ -23,6 +25,27 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      library: ${{ steps.filter.outputs.library == 'true' || github.event_name != 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            library:
+              - 'src/neurosush/**'
+              - '!src/neurosush/viz/web/**'
+              - 'tests/**'
+              - '!tests/viz/js/**'
+              - '!tests/site/**'
+              - 'examples/**'
+              - 'benchmarks/**'
+              - 'pyproject.toml'
+              - '.github/workflows/ci.yml'
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -31,6 +54,7 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
+          cache-dependency-path: pyproject.toml
       - run: pip install pre-commit
       - run: pre-commit run --all-files --show-diff-on-failure
 
@@ -42,32 +66,38 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
+          cache-dependency-path: pyproject.toml
       - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
       - run: pip install "mypy>=1.10"
       - run: mypy
 
   test:
+    needs: changes
+    if: needs.changes.outputs.library == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
-        python: ['3.10', '3.11', '3.12', '3.13']
-        torch: [latest]
         include:
-          - os: macos-latest
+          - os: ubuntu-latest
+            python: '3.10'
+            torch: latest
+          - os: ubuntu-latest
             python: '3.12'
             torch: latest
-          # the oldest torch that pyproject.toml allows: catches newer-only APIs
+          - os: ubuntu-latest
+            python: '3.13'
+            torch: latest
           - os: ubuntu-latest
             python: '3.10'
             torch: '2.1.0'
-    steps:
+    steps: &test-steps
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
           cache: pip
+          cache-dependency-path: pyproject.toml
       - if: runner.os == 'Linux'
         run: pip install "${{ matrix.torch == 'latest' && 'torch' || format('torch=={0}', matrix.torch) }}" --index-url https://download.pytorch.org/whl/cpu
       - if: runner.os == 'macOS'
@@ -83,6 +113,22 @@ jobs:
           name: coverage
           path: coverage.xml
 
+  test-extra:
+    needs: changes
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.11'
+            torch: latest
+          - os: macos-latest
+            python: '3.12'
+            torch: latest
+    steps: *test-steps
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -91,6 +137,7 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
+          cache-dependency-path: pyproject.toml
       - run: pip install build twine
       - run: python -m build
       - run: twine check --strict dist/*

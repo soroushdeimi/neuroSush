@@ -140,7 +140,11 @@ def _behaviors(items: list[_Behavior], path: tuple[str | int, ...]) -> list[dict
 
 @router.post("/validate")
 def validate(payload: Annotated[Any, Body()]) -> dict[str, Any]:
-    """Parse v1 specs using the library and check constructor arguments without running."""
+    """Check v1 constructors or initialize a v2 network inside the worker."""
+    if isinstance(payload, dict) and payload.get("version") == 2:
+        from studio.pool.runtime import get_pool
+
+        return get_pool().call("validate", payload)
     try:
         parsed = _Column.model_validate(payload)
     except ValidationError as error:

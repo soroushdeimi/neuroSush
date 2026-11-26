@@ -1,0 +1,47 @@
+/* Native vector figures: theme tokens only, no raster assets. */
+.nc-root{position:relative;width:100%;font-family:var(--font-sans)}
+.nc-svg{display:block;width:100%;height:auto;background:transparent}
+.nc-svg text{fill:var(--text);font-family:var(--font-sans)}
+.nc-tick{font-size:13px;fill:var(--text-2)}
+.nc-axis{font-size:14px;fill:var(--text)}
+.nc-panel-title{font-size:14px;fill:var(--text);font-weight:500}
+.nc-group-label{font-size:14px;fill:var(--text);font-weight:500}
+.nc-map-label{font-size:12px;fill:var(--text-2)}
+.nc-rule{stroke:var(--rule);stroke-width:1}
+.nc-legend line{stroke-width:3}
+.nc-swatch.nc-accent{stroke:var(--accent-text)}
+.nc-swatch.nc-blue{stroke:var(--inh)}
+.nc-line{stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.nc-line.nc-accent{stroke:var(--accent-text)}
+.nc-line.nc-blue{stroke:var(--inh)}
+.nc-dot{stroke:var(--bg);stroke-width:1.5}
+.nc-dot.nc-accent{fill:var(--accent-text)}
+.nc-dot.nc-blue{fill:var(--inh)}
+.nc-ebline{stroke-width:1.5}
+.nc-ebline.nc-accent{stroke:var(--accent-text)}
+.nc-ebline.nc-blue{stroke:var(--inh)}
+.nc-bar{stroke:var(--bg);stroke-width:1}
+.nc-bar.nc-accent{fill:var(--accent-text)}
+.nc-bar.nc-blue{fill:var(--inh)}
+.nc-cell{fill:var(--accent);stroke:var(--rule);stroke-width:.5}
+.nc-legend-bar{stroke:var(--rule);stroke-width:1}
+.nc-ramp-0{stop-color:var(--accent);stop-opacity:0}
+.nc-ramp-1{stop-color:var(--accent);stop-opacity:1}
+.nc-dot.nc-hl{stroke:var(--text);stroke-width:2}
+.nc-bar.nc-hl{stroke:var(--text);stroke-width:2}
+.nc-cell.nc-hl{stroke:var(--text);stroke-width:1.5}
+.nc-panel.nc-hl .nc-bar{stroke:var(--text);stroke-width:1.5}
+.nc-hl-ring{fill:none;stroke:var(--text);stroke-width:1.5}
+.nc-hl-band{fill:var(--text);opacity:.12}
+.nc-tooltip{position:absolute;transform:translate(-50%,-100%);background:var(--surface-2);color:var(--text);border:1px solid var(--rule);border-radius:var(--radius);padding:4px 8px;font-size:var(--t-label);line-height:1.35;pointer-events:none;white-space:nowrap;z-index:2}
+.nc-tooltip[hidden]{display:none}
+.nc-draw{stroke-dasharray:2000;stroke-dashoffset:2000;animation:nc-draw 900ms var(--ease-out) forwards}
+@keyframes nc-draw{to{stroke-dashoffset:0}}
+.nc-fade{opacity:0;animation:nc-fade 400ms var(--ease-out) forwards}
+@keyframes nc-fade{to{opacity:1}}
+.nc-grow{transform:scaleY(0);transform-box:fill-box;transform-origin:center bottom;animation:nc-grow 600ms var(--ease-out) forwards}
+@keyframes nc-grow{to{transform:scaleY(1)}}
+.nc-paused *{animation-play-state:paused!important}
+@media (prefers-reduced-motion:reduce){
+  .nc-draw,.nc-fade,.nc-grow{animation:none;stroke-dashoffset:0;opacity:1;transform:none}
+}

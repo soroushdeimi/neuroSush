@@ -1,8 +1,8 @@
 /**
  * Plate M03 — The Nernst equation: why a membrane has a voltage.
  * Two compartments separated by a membrane with one selective channel.
- * Ions random-walk (Brownian) and cross the pore with odds derived from the
- * electrochemical potential difference; the escaping charge separates across
+ * Ions random-walk (Brownian) and cross as illustrative markers driven by an imposed
+ * RC relaxation toward the Nernst voltage; the escaping charge separates across
  * the bilayer until electric drift cancels diffusion at
  * E = (RT/zF) · ln([out]/[in]). The voltage bookkeeping is the continuum leak
  * ODE  C dV/dt = −g (V − E)  with E the Nernst potential of the live mM values;
@@ -39,7 +39,7 @@
       diffusion: 'Diffusion — ions wander from crowded to empty with no force pushing; a purely statistical walk.',
       anion: 'Fixed anions — large immobile negative proteins stay inside; they cannot follow the cation out, so charge separates.',
       drift: 'Electric drift — a charge in the membrane field feels qE and is steered back or forward.',
-      nernst: 'Nernst potential — the voltage at which drift exactly cancels diffusion: zero net flux.',
+      nernst: 'Nernst potential — the voltage at which drift exactly cancels diffusion: zero net flux. Zero net flux permits continuing equal inward and outward microscopic fluxes; the markers show net transfer only.',
       decade: 'Decade slope — each tenfold ratio adds RT/zF·ln 10 per unit charge: 61.5 mV at 37 °C, 58.2 mV at 20 °C.'
     },
     chapters: [
@@ -92,13 +92,13 @@
       if (!(cOut > 0) || !(cIn > 0)) {
         throw new Error('concentrations must be positive, got [out]=' + cOut + ' [in]=' + cIn);
       }
-      if (z === 0) throw new Error('z must be nonzero, got ' + z);
+      if (!isFinite(z) || z === 0) throw new Error('z must be a finite nonzero number, got ' + z);
       return core.rtOverF_mV(tempC) / z * Math.log(cOut / cIn);
     },
     // RT/F for z = 1, in mV, at tempC °C.
     rtOverF_mV: function (tempC) {
-      if (!isFinite(tempC) || tempC < -273.15) {
-        throw new Error('temperature must be a finite °C above −273.15, got ' + tempC);
+      if (!isFinite(tempC) || tempC <= -273.15) {
+        throw new Error('temperature must be a finite °C strictly above −273.15, got ' + tempC);
       }
       return 1000 * R_GAS * (273.15 + tempC) / F_FARADAY;
     },
@@ -107,14 +107,14 @@
       if (!(zAbs > 0)) throw new Error('|z| must be positive, got ' + zAbs);
       return core.rtOverF_mV(tempC) * Math.log(10) / zAbs;
     },
-    // One exact implicit step of C·dV/dt = −g·(V−E): dV = (E−V)(1 − e^(−dt/τ)).
-    // With C in µF and g in nS the membrane time constant is τ = (C/g)·1000 ms.
+    // One exact analytic step of C·dV/dt = −g·(V−E): dV = (E−V)(1 − e^(−dt/τ)).
+    // With C in µF and g in nS the membrane time constant is τ = (C/g)·1000000 ms.
     // Returns {dV}; never mutates inputs.
     odeStep: function (V_mV, E_mV, g_nS, C_uF, dt_ms) {
       if (!(C_uF > 0)) throw new Error('capacitance must be positive, got ' + C_uF);
       if (!(g_nS >= 0)) throw new Error('conductance must be non-negative, got ' + g_nS);
       if (!(dt_ms > 0)) throw new Error('time step must be positive, got ' + dt_ms);
-      const tau = (C_uF / g_nS) * 1000; // ms
+      const tau = (C_uF / g_nS) * 1000000; // ms
       if (g_nS === 0) return { dV: 0 };
       const dV = (E_mV - V_mV) * (1 - Math.exp(-dt_ms / tau));
       return { dV };
@@ -185,7 +185,7 @@
       if (p.frozen) { core.ageFlashes(sim, dt); return { outN: 0, inN: 0, dV: 0 }; }
       const open = !!p.open && (p.g_nS || 0) > 0;
       const V = p.V_mV || 0;
-      const tk = Math.sqrt((273.15 + (p.tempC || 37)) / 310.15);
+      const tk = Math.sqrt((273.15 + (p.tempC ?? 37)) / 310.15);
       const sigFree = 1.7 * tk;
       const sigPore = 0.62 * tk;
       const driftPerMv = -0.0008 * (p.z || 1); // px/ms per mV: force of the field
@@ -255,7 +255,7 @@
       if (Math.abs(d) > sim.N * 0.04 && sim.rand() < 0.5) {
         let k = Math.floor(sim.rand() * sim.N);
         for (let tries = 0; tries < 8; tries++) {
-          if (sim.particles[k].inside !== d > 0) break;
+          if (sim.particles[k].inside !== (d > 0)) break;
           k = (k + 1) % sim.N;
         }
         sim.particles[k].inside = d > 0;
@@ -304,7 +304,7 @@
       outside: 5,
       tempC: 37,
       g_nS: 10,
-      C_uF: 1,
+      C_uF: 0.001, // 1 nF = 0.001 µF
       V_mV: 0,
       t_ms: 0,
       frozen: false,
@@ -381,6 +381,15 @@
         '<div class="m03-explain">The 200 markers are the picture of the flux; the voltage keeps its ' +
         'own clean books in the continuum leak ODE, whose E follows the mM concentrations.</div>' +
         '<div class="m03-gloss" id="m03-gloss" aria-live="polite"></div>' +
+        '<details id="m03-learn" ' + (typeof window !== 'undefined' && window.innerWidth >= 620 ? 'open' : '') + ' style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">' +
+        '<summary style="cursor:pointer;font-weight:600;" class="m03-eqlabel">Learn: the math, the brain, the ML analogy</summary>' +
+        '<div style="font-size:11px;line-height:1.4;margin-top:6px;display:flex;flex-direction:column;gap:6px;">' +
+        '<div><b>1. What you see:</b> Two compartments separated by a membrane with ion channels and random-walking markers representing ions diffusing down concentration gradients and drifting in the membrane electric field.</div>' +
+        '<div><b>2. The math:</b> Nernst equation E = (RT / zF) · ln([out] / [in]), where R = 8.314 J/(mol·K), F = 96485 C/mol, thermal voltage RT / F = 26.7 mV at 37 °C. Membrane voltage relaxes via C · dV/dt = -g · (V - E), with time constant τ = (C / g) · 1000000 = 100 ms (for C = 0.001 µF = 1 nF, g = 10 nS).</div>' +
+        '<div><b>3. In the brain:</b> Electrochemical equilibrium for individual ion species (K⁺, Na⁺, Cl⁻). Concentration gradients generate resting and reversal potentials across the neuronal lipid bilayer, establishing the driving force for synaptic transmission.</div>' +
+        '<div><b>4. Like classic ML:</b> Nernst equation corresponds to log-odds equilibrium from occupancy ratios (like logit/softmax balance), and RC relaxation is a first-order exponential moving average. However, neither is a learned probability or optimization objective; physical thermodynamics fix the equilibrium.</div>' +
+        '</div>' +
+        '</details>' +
         controlsHTML();
       marginEl.appendChild(wrap);
       wireControls();
@@ -638,20 +647,10 @@
       const g = st.channelOpen && !st.frozen ? st.g_nS : 0;
       let dV = 0;
       if (g > 0) {
-        const sub = 4, h = dtMs / sub;
-        for (let k = 0; k < sub; k++) dV += core.odeStep(st.V_mV, E, g, st.C_uF, h).dV;
+        dV = core.odeStep(st.V_mV, E, g, st.C_uF, dtMs).dV;
       }
       st.V_mV += dV;
       st.t_ms += dtMs;
-      // slow concentration bookkeeping: an escaping + charge drains a cation
-      // from [in] into [out]. The mM scale is ~10^11 times coarser than the
-      // membrane's charge, so the drift is a crawl — one leak relaxation must
-      // barely move it.
-      if (g > 0 && dV !== 0) {
-        const shift = 0.0005 * dtMs * (g / 10) * -Math.sign(dV) * Math.sign(ionData[st.ion].z);
-        st.inside = Math.max(0.5, Math.min(300, st.inside - shift));
-        st.outside = Math.max(0.5, Math.min(300, st.outside + shift));
-      }
       st.gateAnim += ((st.channelOpen ? 1 : 0) - st.gateAnim) * Math.min(1, dtMs / 120);
       if (!st.trace.length || st.t_ms - st.trace[st.trace.length - 1].t >= 40) {
         st.trace.push({ t: st.t_ms, V: st.V_mV, E: E_of() });

@@ -1,0 +1,50 @@
+name: Site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/site_assets/**'
+      - 'scripts/build_site.py'
+      - 'scripts/check_site*'
+      - 'src/neurosush/viz/web/**'
+      - 'tests/viz/js/**'
+      - 'tests/site/**'
+      - 'docs/SITE.md'
+      - '.github/workflows/site.yml'
+  pull_request:
+    paths:
+      - 'scripts/site_assets/**'
+      - 'scripts/build_site.py'
+      - 'scripts/check_site*'
+      - 'src/neurosush/viz/web/**'
+      - 'tests/viz/js/**'
+      - 'tests/site/**'
+      - 'docs/SITE.md'
+      - '.github/workflows/site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -e .
+      - run: node --test tests/viz/js/*.test.mjs 'tests/site/*.test.mjs'
+      - run: PYTHONPATH=src python3 scripts/build_site.py --out /tmp/site && python3 scripts/check_site.py /tmp/site

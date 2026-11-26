@@ -36,3 +36,12 @@ test('6x6 grid neighbors, world switching and remapping behaviour',()=>{
   assert.equal(w.pos, 0);
   assert.equal(w.trials, 0);
 });
+
+test('Learn section is present with four blocks',()=>{
+  const plateSource = readFileSync(new URL('../../../src/neurosush/viz/web/plates/T02.js', import.meta.url), 'utf8');
+  assert.ok(plateSource.includes('Learn: the math, the brain, the ML analogy'));
+  assert.ok(plateSource.includes('What you see:'));
+  assert.ok(plateSource.includes('The math:'));
+  assert.ok(plateSource.includes('In the brain:'));
+  assert.ok(plateSource.includes('Like classic ML:'));
+});

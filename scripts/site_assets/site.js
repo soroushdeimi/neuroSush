@@ -18,7 +18,83 @@
  const css=()=>getComputedStyle(document.documentElement);
  const colors={};const color=name=>colors[String(light)+name]||(colors[String(light)+name]=css().getPropertyValue(name).trim());
  const rgb=name=>{const hex=color(name).slice(1);return [0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)/255);};
- const canvas=$('#neural');if(!canvas)return;
+ const canvas=$('#neural');if(!canvas){
+  // If not landing page (e.g. atlas or other page), still run atlas init if needed
+  const initAtlas = () => {
+   if (!document.body.classList.contains('atlas-page')) return;
+   const searchInput = document.getElementById('atlas-search');
+   const resultCount = document.getElementById('result-count');
+   const emptyState = document.getElementById('empty-state');
+   const groupChips = document.querySelectorAll('.atlas-group-chip');
+   const levelChips = document.querySelectorAll('.atlas-level-chip');
+   const groups = document.querySelectorAll('.atlas-group-section');
+
+   let activeGroup = 'all';
+   let activeLevel = 'all';
+   let searchQuery = '';
+
+   function filterCards() {
+     let matchCount = 0;
+     const q = searchQuery.toLowerCase().trim();
+
+     groups.forEach(groupSec => {
+       const gId = groupSec.dataset.groupId;
+       const groupMatchesGroup = (activeGroup === 'all' || activeGroup === gId);
+       let groupVisibleCards = 0;
+
+       const groupCards = groupSec.querySelectorAll('.atlas-card');
+       groupCards.forEach(card => {
+         const cLevel = card.dataset.level;
+         const cText = card.textContent.toLowerCase();
+         const matchesGroup = groupMatchesGroup;
+         const matchesLevel = (activeLevel === 'all' || cLevel === activeLevel);
+         const matchesSearch = !q || cText.includes(q);
+
+         const visible = matchesGroup && matchesLevel && matchesSearch;
+         card.hidden = !visible;
+         if (visible) {
+           groupVisibleCards++;
+           matchCount++;
+         }
+       });
+
+       if (groupMatchesGroup && groupVisibleCards > 0) {
+         groupSec.hidden = false;
+       } else {
+         groupSec.hidden = true;
+       }
+     });
+
+     if (resultCount) resultCount.textContent = `Showing ${matchCount} item${matchCount === 1 ? '' : 's'}`;
+     if (emptyState) emptyState.hidden = (matchCount > 0);
+   }
+
+   groupChips.forEach(chip => {
+     chip.addEventListener('click', () => {
+       groupChips.forEach(c => c.setAttribute('aria-pressed', 'false'));
+       chip.setAttribute('aria-pressed', 'true');
+       activeGroup = chip.dataset.group;
+       filterCards();
+     });
+   });
+
+   levelChips.forEach(chip => {
+     chip.addEventListener('click', () => {
+       levelChips.forEach(c => c.setAttribute('aria-pressed', 'false'));
+       chip.setAttribute('aria-pressed', 'true');
+       activeLevel = chip.dataset.level;
+       filterCards();
+     });
+   });
+
+   searchInput?.addEventListener('input', e => {
+     searchQuery = e.target.value;
+     filterCards();
+   });
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initAtlas);else initAtlas();
+  return;
+ }
  let seed=812;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
  const count=innerWidth<650?9000:32000, shapes=Array.from({length:6},()=>new Float32Array(count*3));
  const tau=Math.PI*2;
@@ -102,7 +178,7 @@
  }
  function drawStatic(){trace();render(0);mobileFigures();}
  const chapters=[...document.querySelectorAll('#story .chapter')].slice(0,6);
- function scroll(){const rect=$('#story').getBoundingClientRect(),c=innerHeight/2;let i=0,t=0;if(chapters.length>0){const centres=chapters.map(ch=>{const r=ch.getBoundingClientRect();return r.top+r.height/2;});if(c<centres[0]){i=0;t=0;}else if(c>=centres[5]){i=5;t=0;}else{for(let idx=0;idx<5;idx++){if(c>=centres[idx]&&c<centres[idx+1]){i=idx;t=Math.max(0,Math.min(1,(c-centres[idx])/(centres[idx+1]-centres[idx])));break;}}}let q=i===5?5:(i+0.05+0.2*Math.max(0,Math.min(1,(t-0.35)/0.3)));target=Math.max(0,Math.min(1,q/5));chapters.forEach(chapter=>{const copy=chapter.querySelector('.chapter-copy'),r=copy.getBoundingClientRect();copy.style.opacity=reduced()||innerWidth<1024?'1':String(Math.max(0,Math.min(1,(innerHeight-r.top)/180,(r.bottom-65)/150)));});document.querySelectorAll('.chapter-figure').forEach(f=>{const r=f.getBoundingClientRect();f.dataset.visible=String(r.bottom>64&&r.top<innerHeight);});}const active=t<0.5?i:Math.min(5,i+1);$('.rail').hidden=rect.bottom<innerHeight*.3;document.querySelectorAll('.rail a').forEach((a,idx)=>a.setAttribute('aria-current',String(idx===active)));const stage=$('.stage');if(stage){stage.style.transform='translateY('+Math.min(0,rect.bottom-innerHeight)+'px)';stage.style.visibility=rect.bottom<=0?'hidden':'visible';}}
+ function scroll(){const rect=$('#story').getBoundingClientRect(),c=innerHeight/2;let i=0,t=0;if(chapters.length>0){const centres=chapters.map(ch=>{const r=ch.getBoundingClientRect();return r.top+r.height/2;});if(c<centres[0]){i=0;t=0;}else if(c>=centres[5]){i=5;t=0;}else{for(let idx=0;idx<5;idx++){if(c>=centres[idx]&&c<centres[idx+1]){i=idx;t=Math.max(0,Math.min(1,(c-centres[idx])/(centres[idx+1]-centres[idx])));break;}}}let q=i===5?5:(i+0.05+0.2*Math.max(0,Math.min(1,(t-0.12)/0.3)));target=Math.max(0,Math.min(1,q/5));chapters.forEach(chapter=>{const copy=chapter.querySelector('.chapter-copy'),r=copy.getBoundingClientRect();copy.style.opacity=reduced()||innerWidth<1024?'1':String(Math.max(0,Math.min(1,(innerHeight-r.top)/180,(r.bottom-65)/150)));});document.querySelectorAll('.chapter-figure').forEach(f=>{const r=f.getBoundingClientRect();f.dataset.visible=String(r.bottom>64&&r.top<innerHeight);});}const active=t<0.5?i:Math.min(5,i+1);$('.rail').hidden=rect.bottom<innerHeight*.3;document.querySelectorAll('.rail a').forEach((a,idx)=>a.setAttribute('aria-current',String(idx===active)));const stage=$('.stage');if(stage){stage.style.transform='translateY('+Math.min(0,rect.bottom-innerHeight)+'px)';stage.style.visibility=rect.bottom<=0?'hidden':'visible';}}
  addEventListener('scroll',()=>{scroll();if(reduced()){progress=target;render(0);}},{passive:true});addEventListener('resize',()=>{scroll();drawStatic();},{passive:true});
 
  document.documentElement.classList.add('has-js');
@@ -128,4 +204,78 @@
  document.addEventListener('visibilitychange',()=>{cancelAnimationFrame(frame);frame=0;if(!document.hidden)start();});function changeMotion(){motionState();cancelAnimationFrame(frame);frame=0;progress=target;drawStatic();start();}
  motion.addEventListener('change',changeMotion);document.addEventListener('scene:motion',changeMotion);
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimationFrame(frame);frame=0;});scroll();drawStatic();start();
+
+ const initAtlas = () => {
+  if (!document.body.classList.contains('atlas-page')) return;
+  const searchInput = document.getElementById('atlas-search');
+  const resultCount = document.getElementById('result-count');
+  const emptyState = document.getElementById('empty-state');
+  const groupChips = document.querySelectorAll('.atlas-group-chip');
+  const levelChips = document.querySelectorAll('.atlas-level-chip');
+  const groups = document.querySelectorAll('.atlas-group-section');
+
+  let activeGroup = 'all';
+  let activeLevel = 'all';
+  let searchQuery = '';
+
+  function filterCards() {
+    let matchCount = 0;
+    const q = searchQuery.toLowerCase().trim();
+
+    groups.forEach(groupSec => {
+      const gId = groupSec.dataset.groupId;
+      const groupMatchesGroup = (activeGroup === 'all' || activeGroup === gId);
+      let groupVisibleCards = 0;
+
+      const groupCards = groupSec.querySelectorAll('.atlas-card');
+      groupCards.forEach(card => {
+        const cLevel = card.dataset.level;
+        const cText = card.textContent.toLowerCase();
+        const matchesGroup = groupMatchesGroup;
+        const matchesLevel = (activeLevel === 'all' || cLevel === activeLevel);
+        const matchesSearch = !q || cText.includes(q);
+
+        const visible = matchesGroup && matchesLevel && matchesSearch;
+        card.hidden = !visible;
+        if (visible) {
+          groupVisibleCards++;
+          matchCount++;
+        }
+      });
+
+      if (groupMatchesGroup && groupVisibleCards > 0) {
+        groupSec.hidden = false;
+      } else {
+        groupSec.hidden = true;
+      }
+    });
+
+    if (resultCount) resultCount.textContent = `Showing ${matchCount} item${matchCount === 1 ? '' : 's'}`;
+    if (emptyState) emptyState.hidden = (matchCount > 0);
+  }
+
+  groupChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      groupChips.forEach(c => c.setAttribute('aria-pressed', 'false'));
+      chip.setAttribute('aria-pressed', 'true');
+      activeGroup = chip.dataset.group;
+      filterCards();
+    });
+  });
+
+  levelChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      levelChips.forEach(c => c.setAttribute('aria-pressed', 'false'));
+      chip.setAttribute('aria-pressed', 'true');
+      activeLevel = chip.dataset.level;
+      filterCards();
+    });
+  });
+
+  searchInput?.addEventListener('input', e => {
+    searchQuery = e.target.value;
+    filterCards();
+  });
+ };
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initAtlas);else initAtlas();
 })();
