@@ -48,6 +48,11 @@ def s1_response(
     if eps <= 0:
         raise ValueError(f"eps must be positive, got {eps}")
 
+    # half precision has no CPU conv2d and underflows the default eps, so compute in float32
+    compute_dtype = (
+        torch.float32 if images.dtype in (torch.float16, torch.bfloat16) else images.dtype
+    )
+    compute_images = images.to(compute_dtype)
     responses: list[torch.Tensor] = []
     for kernel in bank:
         if kernel.dim() != 4 or kernel.shape[1] != 1:
@@ -68,12 +73,10 @@ def s1_response(
             )
 
         pad = s // 2 if padding == "same" else 0
-        conv = F.conv2d(images, kernel, padding=pad)
+        conv = F.conv2d(compute_images, kernel.to(compute_dtype), padding=pad)
         if normalize:
-            # half precision underflows the default eps, so normalise in float32
-            compute = images.float() if images.dtype in (torch.float16, torch.bfloat16) else images
-            ones = torch.ones(1, 1, s, s, dtype=compute.dtype, device=images.device)
-            local_norm = torch.sqrt(F.conv2d(compute**2, ones, padding=pad) + eps)
-            conv = (conv / local_norm).to(images.dtype)
-        responses.append(torch.abs(conv))
+            ones = torch.ones(1, 1, s, s, dtype=compute_dtype, device=images.device)
+            local_norm = torch.sqrt(F.conv2d(compute_images**2, ones, padding=pad) + eps)
+            conv = conv / local_norm
+        responses.append(torch.abs(conv).to(images.dtype))
     return responses

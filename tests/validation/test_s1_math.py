@@ -66,6 +66,19 @@ class TestS1Response:
         assert out[0].dtype == torch.float16
         assert out[0].item() == pytest.approx(1.0, abs=1e-2)
 
+    def test_half_precision_matches_float32(self):
+        # half precision must be computed in float32 and match the float32 path bit for bit
+        for dtype in (torch.float16, torch.bfloat16):
+            gen = torch.Generator().manual_seed(0)
+            images = torch.rand(1, 1, 8, 8, generator=gen).to(dtype)
+            bank = [torch.rand(2, 1, 3, 3, generator=gen).to(dtype)]
+            for normalize in (False, True):
+                out = s1_response(images, bank, padding="same", normalize=normalize)
+                expected = s1_response(
+                    images.float(), [bank[0].float()], padding="same", normalize=normalize
+                )
+                assert torch.equal(out[0], expected[0].to(dtype))
+
     def test_normalize_uses_each_batch_entry(self):
         # both constant images must normalise to 1.0 with their own local norm
         images = torch.stack([torch.full((1, 3, 3), 1.0), torch.full((1, 3, 3), 2.0)])
