@@ -5,6 +5,8 @@ All notable changes to neuroSush are documented here, following the
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-27
+
 ### Added
 - Added `neurosush.hmax` building blocks: Gabor filters, analog S1/C1/S2/C2 responses, C1 prototype sampling, spike-time winner selection and simplified STDP, spatial lateral inhibition, and invariance probes, with a [guide](docs/hmax.md) and mathematical and pipeline validation tests.
 
