@@ -117,3 +117,29 @@ def test_all_is_sorted_and_importable():
     assert hmax.__all__ == sorted(hmax.__all__, key=_isort_key)
     for name in hmax.__all__:
         assert hasattr(hmax, name)
+
+
+def test_all_contains_exactly_the_public_api():
+    # pin the full public API so a dropped re-export is caught, not just a reordering
+    assert set(hmax.__all__) == {
+        "SERRE2007_BANDS",
+        "SERRE2007_GAMMA",
+        "SERRE2007_THETAS",
+        "GaborBandSpec",
+        "bar_image",
+        "c1_bands_from_spec",
+        "c1_pool",
+        "c2_global_max",
+        "gabor_bank",
+        "invariance_curve",
+        "normalized_correlation",
+        "s1_response",
+        "s2_rbf",
+        "sample_c1_patches",
+        "select_conv_winners",
+        "serre2007_gabor_bank",
+        "shift_image",
+        "simplified_stdp",
+        "spatial_lateral_inhibition",
+        "stdp_convergence",
+    }
